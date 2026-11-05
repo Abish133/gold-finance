@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  src: url('/fonts/NotoSansTamil-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  src: url('/fonts/NotoSansTamil-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: 'Inter', 'Noto Sans Tamil', ui-sans-serif, system-ui, sans-serif;
+  --font-tamil: 'Noto Sans Tamil', 'Inter', sans-serif;
+
+  --color-gold-50: #fffbeb;
+  --color-gold-100: #fef3c7;
+  --color-gold-200: #fde68a;
+  --color-gold-300: #fcd34d;
+  --color-gold-400: #fbbf24;
+  --color-gold-500: #f59e0b;
+  --color-gold-600: #d97706;
+  --color-gold-700: #b45309;
+  --color-gold-800: #92400e;
+  --color-gold-900: #78350f;
+
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #020617;
+
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.06);
+  --shadow-drawer: -24px 0 48px rgb(15 23 42 / 0.18);
+
+  --animate-slide-in: slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-rise: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+
+  @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; }
+  body { @apply bg-ink-50 text-ink-800 dark:bg-ink-950 dark:text-ink-100; font-feature-settings: 'cv11', 'ss01'; }
+  ::selection { @apply bg-gold-200 text-ink-900; }
+  input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; }
+  input[type='number'] { -moz-appearance: textfield; }
+  * { scrollbar-width: thin; scrollbar-color: var(--color-ink-300) transparent; }
+  .dark * { scrollbar-color: var(--color-ink-700) transparent; }
+}
+
+@layer components {
+  .card { @apply rounded-2xl border border-ink-200/70 bg-white shadow-soft dark:border-ink-800 dark:bg-ink-900; }
+  .input {
+    @apply h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 outline-none transition
+      placeholder:text-ink-400 focus:border-gold-500 focus:ring-4 focus:ring-gold-500/15 disabled:cursor-not-allowed disabled:bg-ink-100
+      dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100 dark:disabled:bg-ink-800;
+  }
+  .label { @apply mb-1.5 block text-xs font-semibold tracking-wide text-ink-500 uppercase dark:text-ink-400; }
+  .gold-gradient { background-image: linear-gradient(135deg, #fde68a 0%, #f59e0b 45%, #b45309 100%); }
+  .num { font-variant-numeric: tabular-nums; }
+  .tamil { font-family: var(--font-tamil); }
+}
+
+/* ---------- print ---------- */
+@page { size: A4; margin: 8mm; }
+@media print {
+  html, body { background: #fff !important; }
+  .no-print { display: none !important; }
+  .page-break { break-after: page; }
+}
