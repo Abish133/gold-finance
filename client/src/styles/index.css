@@ -15,64 +15,91 @@
   font-display: swap;
 }
 
+/*
+ * Theme follows the desktop MyBook look: navy menu bar, cream header strip,
+ * gold accent lines, white panels with crisp borders - refreshed with modern spacing.
+ */
 @theme {
-  --font-sans: 'Inter', 'Noto Sans Tamil', ui-sans-serif, system-ui, sans-serif;
-  --font-tamil: 'Noto Sans Tamil', 'Inter', sans-serif;
+  --font-sans: 'Segoe UI', 'Inter', 'Noto Sans Tamil', ui-sans-serif, system-ui, sans-serif;
+  --font-tamil: 'Noto Sans Tamil', 'Segoe UI', sans-serif;
+  --font-brand: Georgia, Cambria, 'Times New Roman', serif;
+
+  --color-navy-50: #eef3fa;
+  --color-navy-100: #dbe5f3;
+  --color-navy-200: #b7cbe6;
+  --color-navy-300: #8aa9d3;
+  --color-navy-400: #5b82bb;
+  --color-navy-500: #3c64a0;
+  --color-navy-600: #2d5085;
+  --color-navy-700: #26446f;
+  --color-navy-800: #1f3a5f;
+  --color-navy-900: #182e4c;
+  --color-navy-950: #0f1f35;
+
+  --color-cream-50: #fffdf7;
+  --color-cream-100: #fdf8ea;
+  --color-cream-200: #f8efd2;
+
+  --color-coral-400: #f39a7f;
+  --color-coral-500: #ef7f5f;
 
   --color-gold-50: #fffbeb;
   --color-gold-100: #fef3c7;
   --color-gold-200: #fde68a;
   --color-gold-300: #fcd34d;
-  --color-gold-400: #fbbf24;
-  --color-gold-500: #f59e0b;
-  --color-gold-600: #d97706;
-  --color-gold-700: #b45309;
-  --color-gold-800: #92400e;
-  --color-gold-900: #78350f;
+  --color-gold-400: #e9b949;
+  --color-gold-500: #d4a017;
+  --color-gold-600: #b88a10;
+  --color-gold-700: #94700d;
+  --color-gold-800: #745709;
+  --color-gold-900: #573f05;
 
-  --color-ink-50: #f8fafc;
-  --color-ink-100: #f1f5f9;
-  --color-ink-200: #e2e8f0;
-  --color-ink-300: #cbd5e1;
-  --color-ink-400: #94a3b8;
-  --color-ink-500: #64748b;
-  --color-ink-600: #475569;
-  --color-ink-700: #334155;
-  --color-ink-800: #1e293b;
-  --color-ink-900: #0f172a;
-  --color-ink-950: #020617;
+  --color-ink-50: #f6f8fb;
+  --color-ink-100: #eef1f5;
+  --color-ink-200: #dfe4ea;
+  --color-ink-300: #c7cfd9;
+  --color-ink-400: #95a1b1;
+  --color-ink-500: #667386;
+  --color-ink-600: #4a5668;
+  --color-ink-700: #364152;
+  --color-ink-800: #222c3b;
+  --color-ink-900: #141c28;
+  --color-ink-950: #0a0f17;
 
-  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.06);
-  --shadow-drawer: -24px 0 48px rgb(15 23 42 / 0.18);
+  --shadow-soft: 0 1px 2px rgb(24 46 76 / 0.06);
+  --shadow-drawer: -16px 0 40px rgb(15 31 53 / 0.22);
 
-  --animate-slide-in: slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  --animate-fade-in: fade-in 0.2s ease-out;
-  --animate-rise: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-slide-in: slide-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fade-in 0.18s ease-out;
+  --animate-rise: rise 0.25s ease-out;
+  --animate-drop: drop 0.14s ease-out;
 
   @keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 }
 
 @layer base {
   html { -webkit-font-smoothing: antialiased; }
-  body { @apply bg-ink-50 text-ink-800 dark:bg-ink-950 dark:text-ink-100; font-feature-settings: 'cv11', 'ss01'; }
+  body { @apply bg-[#eef1f5] text-ink-800 dark:bg-ink-950 dark:text-ink-100; }
   ::selection { @apply bg-gold-200 text-ink-900; }
   input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; }
   input[type='number'] { -moz-appearance: textfield; }
   * { scrollbar-width: thin; scrollbar-color: var(--color-ink-300) transparent; }
-  .dark * { scrollbar-color: var(--color-ink-700) transparent; }
 }
 
 @layer components {
-  .card { @apply rounded-2xl border border-ink-200/70 bg-white shadow-soft dark:border-ink-800 dark:bg-ink-900; }
+  .card { @apply rounded-md border border-ink-300/80 bg-white shadow-soft dark:border-ink-700 dark:bg-ink-900; }
   .input {
-    @apply h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 outline-none transition
-      placeholder:text-ink-400 focus:border-gold-500 focus:ring-4 focus:ring-gold-500/15 disabled:cursor-not-allowed disabled:bg-ink-100
+    @apply h-10 w-full rounded-md border border-ink-300 bg-white px-3 text-sm text-ink-900 outline-none transition
+      placeholder:text-ink-400 focus:border-navy-500 focus:ring-3 focus:ring-navy-500/15 disabled:cursor-not-allowed disabled:bg-ink-100
       dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100 dark:disabled:bg-ink-800;
   }
-  .label { @apply mb-1.5 block text-xs font-semibold tracking-wide text-ink-500 uppercase dark:text-ink-400; }
-  .gold-gradient { background-image: linear-gradient(135deg, #fde68a 0%, #f59e0b 45%, #b45309 100%); }
+  .label { @apply mb-1 block text-[11px] font-semibold tracking-wide text-ink-500 uppercase dark:text-ink-400; }
+  .gold-gradient { background-image: linear-gradient(135deg, #f3d27a 0%, #d4a017 55%, #a87d0c 100%); }
+  .navy-gradient { background-image: linear-gradient(180deg, #23426b 0%, #1f3a5f 100%); }
+  .brand { font-family: var(--font-brand); font-style: italic; font-weight: 700; }
   .num { font-variant-numeric: tabular-nums; }
   .tamil { font-family: var(--font-tamil); }
 }

@@ -41,7 +41,7 @@ export function Drawer({ open, onClose, title, subtitle, icon: Icon, size = 'md'
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 animate-fade-in bg-ink-950/40 backdrop-blur-[2px]" onClick={closeOnOverlay ? onClose : undefined} />
+      <div className="absolute inset-0 animate-fade-in bg-navy-950/45" onClick={closeOnOverlay ? onClose : undefined} />
       <section
         ref={panel}
         data-drawer
@@ -49,20 +49,20 @@ export function Drawer({ open, onClose, title, subtitle, icon: Icon, size = 'md'
         aria-modal="true"
         className={clsx('relative flex h-full w-full animate-slide-in flex-col bg-white shadow-drawer dark:bg-ink-900', SIZES[size] || size)}
       >
-        <header className="flex items-start gap-3 border-b border-ink-200/70 px-6 py-4 dark:border-ink-800">
+        <header className="navy-gradient flex items-center gap-3 border-b-[3px] border-gold-500 px-5 py-3 text-white">
           {Icon && (
-            <div className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-gold-100 text-gold-700 dark:bg-gold-500/10 dark:text-gold-400">
+            <div className="grid size-9 shrink-0 place-items-center rounded-md bg-white/95 text-navy-800">
               <Icon className="size-5" />
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-semibold text-ink-900 dark:text-white">{title}</h2>
-            {subtitle && <p className="mt-0.5 truncate text-sm text-ink-500">{subtitle}</p>}
+            <h2 className="truncate text-base font-bold">{title}</h2>
+            {subtitle && <p className="truncate text-xs text-navy-100">{subtitle}</p>}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X className="size-5" /></Button>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-md text-white/80 hover:bg-white/15 hover:text-white"><X className="size-5" /></button>
         </header>
         <div className={clsx('flex-1 overflow-y-auto px-6 py-5', bodyClassName)}>{children}</div>
-        {footer && <footer className="flex items-center justify-end gap-2 border-t border-ink-200/70 bg-ink-50/60 px-6 py-3 dark:border-ink-800 dark:bg-ink-950/40">{footer}</footer>}
+        {footer && <footer className="flex items-center justify-end gap-2 border-t border-ink-300 bg-cream-100 px-5 py-3 dark:border-ink-800 dark:bg-ink-950/40">{footer}</footer>}
       </section>
     </div>,
     document.body,

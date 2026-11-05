@@ -45,7 +45,7 @@ export function Switch({ checked, onChange, label, description, disabled }) {
     <label htmlFor={id} className={clsx('flex cursor-pointer items-start gap-3', disabled && 'opacity-50')}>
       <span className="relative mt-0.5 inline-flex">
         <input id={id} type="checkbox" className="peer sr-only" checked={!!checked} disabled={disabled} onChange={(e) => onChange?.(e.target.checked)} />
-        <span className="h-6 w-11 rounded-full bg-ink-200 transition peer-checked:bg-gold-500 dark:bg-ink-700" />
+        <span className="h-6 w-11 rounded-full bg-ink-200 transition peer-checked:bg-navy-700 dark:bg-ink-700" />
         <span className="absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
       </span>
       {(label || description) && (
@@ -71,14 +71,14 @@ export function Checkbox({ checked, onChange, label, className }) {
 /** Segmented control - nice replacement for radio groups */
 export function Segmented({ value, onChange, options, size = 'md' }) {
   return (
-    <div className="inline-flex rounded-xl bg-ink-100 p-1 dark:bg-ink-800">
+    <div className="inline-flex rounded-md border border-ink-300 bg-white p-0.5 dark:border-ink-700 dark:bg-ink-800">
       {options.map((o) => {
         const v = typeof o === 'object' ? o.value : o;
         const l = typeof o === 'object' ? o.label : o;
         return (
           <button key={v} type="button" onClick={() => onChange(v)}
-            className={clsx('rounded-lg font-semibold transition', size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
-              value === v ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-950 dark:text-white' : 'text-ink-500 hover:text-ink-800 dark:hover:text-ink-200')}>
+            className={clsx('rounded-[4px] font-semibold transition', size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
+              value === v ? 'bg-navy-800 text-white shadow-sm' : 'text-ink-500 hover:text-ink-800 dark:hover:text-ink-200')}>
             {l}
           </button>
         );

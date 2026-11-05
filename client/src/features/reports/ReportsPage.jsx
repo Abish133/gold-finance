@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { BarChart3, Download, Printer, Play, FileBarChart } from 'lucide-react';
 import clsx from 'clsx';
 import { Button, Card, DataTable, Empty, Field, Input, PageHeader, Select, Spinner } from '@/components/ui';
@@ -31,7 +32,9 @@ export default function ReportsPage() {
   const { data: lk } = useLookups();
   const { data: company } = useCompany();
   const { can, isAllBranches, currentBranch } = useAuth();
-  const [key, setKey] = useState(null);
+  const [sp] = useSearchParams();
+  const [key, setKey] = useState(sp.get('key'));
+  useEffect(() => { if (sp.get('key')) { setKey(sp.get('key')); setRun(null); } }, [sp]);
   const [params, setParams] = useState({ from: monthStart(), to: today(), asOn: today(), days: 0 });
   const [run, setRun] = useState(null);
   const def = catalog.find((r) => r.key === key);

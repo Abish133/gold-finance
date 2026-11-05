@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Users, Plus, Download } from 'lucide-react';
 import { Avatar, Button, DataTable, PageHeader, SearchInput, Select, Segmented } from '@/components/ui';
@@ -34,6 +34,7 @@ export default function CustomersPage() {
   const areas = useFetch('/customers/areas');
   const [editing, setEditing] = useState(null);
   const viewId = params.get('view');
+  useEffect(() => { if (params.get('new') === '1') { setEditing({}); setParams({}); } }, [params, setParams]);
 
   const columns = isAllBranches ? [...customerColumns, { key: 'branch_name', label: 'Branch' }] : customerColumns;
 

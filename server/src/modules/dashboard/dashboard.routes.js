@@ -49,6 +49,22 @@ router.get('/', permit('dashboard', 'view'), async (req, res) => {
   });
 });
 
+/** Bottom status bar (like the desktop app): this month's loans / releases, unsettled > 12 months */
+router.get('/status', async (req, res) => {
+  const b = req.branchIds;
+  const row = await queryOne(
+    `SELECT
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND entry_type <> 'OLD'
+          AND loan_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month_loans,
+       (SELECT COUNT(*) FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type = 'RELEASE'
+          AND txn_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month_releases,
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date < DATE_SUB(CURDATE(), INTERVAL 12 MONTH)) unsettled_12m,
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN') open_loans`,
+    { b },
+  );
+  res.json({ data: row });
+});
+
 /** Global search (Ctrl + K): loans + customers in the caller's branches */
 router.get('/search', async (req, res) => {
   const q = String(req.query.q || '').trim();

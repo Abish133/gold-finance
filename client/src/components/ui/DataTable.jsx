@@ -30,7 +30,7 @@ export const DataTable = memo(function DataTable({
       <div className={clsx('relative overflow-x-auto', fetching && !loading && 'opacity-70 transition-opacity')}>
         <table className="w-full text-sm">
           <thead className={clsx(stickyHeader && 'sticky top-0 z-10')}>
-            <tr className="bg-ink-50/90 text-left text-xs font-semibold tracking-wide text-ink-500 uppercase backdrop-blur dark:bg-ink-800/60">
+            <tr className="border-b border-ink-300 bg-navy-50 text-left text-xs font-bold tracking-wide text-navy-800 uppercase dark:bg-ink-800 dark:text-ink-200">
               {selectable && (
                 <th className="w-10 px-4 py-3"><input type="checkbox" className="size-4 accent-gold-600" checked={allSelected} onChange={toggleAll} /></th>
               )}
@@ -50,8 +50,8 @@ export const DataTable = memo(function DataTable({
           <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
             {!loading && rows.map((r, i) => (
               <tr key={r[rowKey] ?? i} onClick={onRowClick ? () => onRowClick(r) : undefined}
-                className={clsx('transition-colors', onRowClick && 'cursor-pointer hover:bg-gold-50/60 dark:hover:bg-gold-500/5',
-                  selected.includes(r[rowKey]) && 'bg-gold-50 dark:bg-gold-500/10', rowClassName?.(r))}>
+                className={clsx('transition-colors', onRowClick && 'cursor-pointer hover:bg-navy-50/70 dark:hover:bg-navy-800/20',
+                  selected.includes(r[rowKey]) && 'bg-cream-200 dark:bg-gold-500/10', rowClassName?.(r))}>
                 {selectable && (
                   <td className="px-4" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" className="size-4 accent-gold-600" checked={selected.includes(r[rowKey])} onChange={() => toggle(r[rowKey])} />
@@ -67,7 +67,7 @@ export const DataTable = memo(function DataTable({
           </tbody>
           {totals && rows.length > 0 && (
             <tfoot>
-              <tr className="bg-ink-900 text-white dark:bg-ink-800">
+              <tr className="bg-navy-800 text-white">
                 {selectable && <td />}
                 {columns.map((c, i) => (
                   <td key={c.key} className={clsx('num px-4 py-3 text-sm font-bold', alignFor(c) === 'right' && 'text-right')}>

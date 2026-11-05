@@ -167,7 +167,8 @@ export default function LoanCounterPage() {
   const qc = useQueryClient();
   const { data: full, isLoading } = useFetch(loanId ? `/loans/${loanId}` : null);
   const { printLoan, printTxn, busy, printerUi } = usePrinter();
-  const [tab, setTab] = useState('INTEREST');
+  const [tab, setTab] = useState(params.get('tab') || 'INTEREST');
+  useEffect(() => { if (params.get('tab')) setTab(params.get('tab')); }, [params]);
   const [cancel, setCancel] = useState(false);
   const [voidTxn, setVoidTxn] = useState(null);
   const [reason, setReason] = useState('');
@@ -200,7 +201,7 @@ export default function LoanCounterPage() {
 
   return (
     <div className="animate-rise">
-      <PageHeader icon={HandCoins} title="Loan Counter" subtitle="Interest · Part payment · Top-up · Renewal · Release" actions={<LoanFinder onFound={(id) => setParams({ loan: id })} />} />
+      <PageHeader icon={HandCoins} title="Loan Counter" subtitle="Interest · Part payment · Top-up · Renewal · Release" actions={<LoanFinder onFound={(id) => setParams({ loan: id, tab })} />} />
       {!loanId && <Card><Empty icon={ScanLine} title="Scan or enter a loan number" message="Use a barcode scanner on the packet sticker, or type the loan number and press Enter." /></Card>}
       {loanId && (isLoading || !full) && <Spinner />}
       {full && (
