@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { RefreshCw, FileDown, FileSpreadsheet, Printer, FolderOpen, Lock } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -28,6 +28,9 @@ export default function LedgerReportPage() {
   const list = useMemo(() => ledgers.filter((l) => !q || l.name.toLowerCase().includes(q.toLowerCase()) || String(l.id) === q), [ledgers, q]);
   const entries = (data?.entries || []).filter((e) => showSys || !e.source_type);
   const pick = (l) => { setLedger(l); setRun({ ledger_id: l.id, ...range }); };
+  const [sp] = useSearchParams();
+  // opened from Trial Balance / Final Accounts with ?ledger=<id>
+  useEffect(() => { const id = Number(sp.get('ledger')); const l = id && ledgers.find((x) => x.id === id); if (l && ledger?.id !== id) pick(l); }, [sp, ledgers]); // eslint-disable-line react-hooks/exhaustive-deps
   const quick = (k) => {
     const r = { year: [fyStart(), today()], month: [dayjs().startOf('month').format('YYYY-MM-DD'), today()], last: [dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')], today: [today(), today()] }[k];
     setRange({ from: r[0], to: r[1] }); if (ledger) setRun({ ledger_id: ledger.id, from: r[0], to: r[1] });

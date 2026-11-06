@@ -132,7 +132,7 @@ router.get('/ledger-statement', permit('acc_ledger_report', 'view'), async (req,
 
 router.get('/trial-balance', permit('acc_final', 'view'), async (req, res) => {
   const to = req.query.to || dayjs().format('YYYY-MM-DD');
-  const rows = (await acc.ledgerBalances(req.branchIds, null, to)).filter((r) => r.balance);
+  const rows = (await acc.ledgerBalances(req.branchIds, null, to)).filter((r) => r.balance || req.query.all === '1');
   const dr = round2(rows.filter((r) => r.balance > 0).reduce((s, r) => s + r.balance, 0));
   const cr = round2(rows.filter((r) => r.balance < 0).reduce((s, r) => s - r.balance, 0));
   res.json({ data: { rows, totalDebit: dr, totalCredit: cr } });

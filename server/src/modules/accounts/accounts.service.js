@@ -25,7 +25,8 @@ export const ledgerStatement = async (ledger, branchIds, from, to) => {
   const opening = await openingBalance(ledger, branchIds, from);
   const rows = await query(
     `SELECT e.entry_date, e.debit, e.credit, COALESCE(e.narration, v.narration) narration, v.voucher_no, v.voucher_type, v.source_type, v.source_id,
-            b.name branch_name
+            b.name branch_name,
+            (SELECT GROUP_CONCAT(DISTINCT l2.name SEPARATOR ', ') FROM voucher_entries e2 JOIN ledgers l2 ON l2.id = e2.ledger_id WHERE e2.voucher_id = e.voucher_id AND e2.ledger_id <> e.ledger_id) account
        FROM voucher_entries e JOIN vouchers v ON v.id = e.voucher_id JOIN branches b ON b.id = e.branch_id
       WHERE e.ledger_id = :l AND e.branch_id IN (:b) AND e.entry_date BETWEEN :f AND :t
       ORDER BY e.entry_date, e.id`,

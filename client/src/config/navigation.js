@@ -64,16 +64,20 @@ export const MENUS = [
   {
     key: 'accounts', label: 'Accounts', icon: Banknote,
     items: [
-      { label: 'Cash Book / Day Book', hint: 'Cash movement and all vouchers', path: '/accounts/cash-book', icon: BookText, screen: 'acc_cashbook' },
       { label: 'Voucher Entry', hint: 'Rent, salary, bills', path: '/accounts/vouchers', icon: Receipt, screen: 'acc_voucher', hot: 'F6' },
       { label: 'Account Ledger', hint: 'Statement of any account', path: '/accounts/ledger', icon: NotebookPen, screen: 'acc_ledger_report' },
+      { label: 'Cash Book / Day Book', hint: 'Cash movement and all vouchers', path: '/accounts/cash-book', icon: BookText, screen: 'acc_cashbook' },
       { label: 'Bank Reconciliation', hint: 'Match book entries with bank statement', path: '/accounts/bank-reco', icon: Scale, screen: 'acc_bank_reco' },
       { label: 'Tally Export', hint: 'Vouchers & ledgers to Tally', path: '/accounts/tally', icon: FileBarChart, screen: 'acc_tally' },
-      { label: 'Final Accounts', hint: 'Trial balance · P&L · Balance sheet', path: '/accounts/final', icon: Scale, screen: 'acc_final' },
+      { label: 'Final Accounts', icon: Scale, items: [
+        { label: 'Trial Balance', path: '/accounts/final?tab=tb', icon: Scale, screen: 'acc_final' },
+        { label: 'Profit & Loss', path: '/accounts/final?tab=pl', icon: TrendingUp, screen: 'acc_final' },
+        { label: 'Balance Sheet', path: '/accounts/final?tab=bs', icon: Layers, screen: 'acc_final' },
+      ] },
+      { label: 'Account Master', hint: 'Ledgers & opening balances', path: '/accounts/ledgers', icon: Layers, screen: 'acc_ledgers' },
       { section: 'Day' },
       { label: 'Cash Denomination', hint: 'Count the cash drawer', path: '/accounts/denomination', icon: Coins, screen: 'cash_denomination' },
       { label: 'Day End', hint: 'Check cash and close the day', path: '/accounts/day-close', icon: Lock, screen: 'day_close', hot: 'F4' },
-      { label: 'Account Master', hint: 'Ledgers & opening balances', path: '/accounts/ledgers', icon: Layers, screen: 'acc_ledgers' },
     ],
   },
   {
