@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { money, today, monthStart, n, round2 } from '@/lib/format';
 import { LedgerSelect, DateRange } from './shared';
 
-function VoucherDrawer({ open, onClose }) {
+export function VoucherDrawer({ open, onClose }) {
   const qc = useQueryClient();
   const { data: lk } = useLookups();
   const [f, setF] = useState({ voucher_type: 'PAYMENT', date: today(), mode: 'CASH', lines: [{ debit: '', credit: '' }, { debit: '', credit: '' }] });

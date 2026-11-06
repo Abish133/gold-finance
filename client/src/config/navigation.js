@@ -19,7 +19,7 @@ export const MENUS = [
       { label: 'Part Payment / Interest', hint: 'Interest or part amount', path: '/loans/part-payment', icon: Wallet, screen: 'loan_interest', hot: 'F5' },
       { label: 'Top-up Loan', hint: 'Extra amount on same loan', path: '/loans/topup', icon: ArrowUpCircle, screen: 'loan_topup' },
       { label: 'Re-loan', hint: 'Release old, new loan in one step', path: '/loans/reloan', icon: RefreshCcw, screen: 'loan_renewal' },
-      { label: 'Interest Calculator', hint: 'Quote & compare schemes', path: '/loans/calculator', icon: Calculator, screen: 'interest_calculator' },
+      { label: 'Interest Calculator', hint: 'Interest due on open loans / quote', path: '/loans/calculator', icon: Calculator, screen: 'interest_calculator' },
       { label: 'Loan Details', hint: 'All actions & history of one loan', path: '/loans/counter', icon: HandCoins, screen: 'loan_list' },
       { section: 'More' },
       { label: 'Old Loan Entry', hint: 'Enter an old paper loan', path: '/loans/old', icon: History, screen: 'loan_old' },
@@ -61,7 +61,7 @@ export const MENUS = [
   {
     key: 'accounts', label: 'Accounts', icon: Banknote,
     items: [
-      { label: 'Day Report', hint: 'Today at a glance', path: '/accounts/cash-book', icon: BookText, screen: 'acc_cashbook', hot: 'F7' },
+      { label: 'Cash Book / Day Book', hint: 'Cash movement and all vouchers', path: '/accounts/cash-book', icon: BookText, screen: 'acc_cashbook' },
       { label: 'Voucher Entry', hint: 'Rent, salary, bills', path: '/accounts/vouchers', icon: Receipt, screen: 'acc_voucher', hot: 'F6' },
       { label: 'Account Ledger', hint: 'Statement of any account', path: '/accounts/ledger', icon: NotebookPen, screen: 'acc_ledger_report' },
       { label: 'Bank Reconciliation', hint: 'Match book entries with bank statement', path: '/accounts/bank-reco', icon: Scale, screen: 'acc_bank_reco' },
@@ -76,7 +76,7 @@ export const MENUS = [
   {
     key: 'reports', label: 'Reports', icon: FileBarChart,
     items: [
-      { label: 'Day Report', hint: 'Today at a glance', path: '/accounts/cash-book', icon: BookText, screen: 'acc_cashbook' },
+      { label: 'Day Report', hint: 'Today at a glance', path: '/accounts/day-report', icon: BookText, screen: 'acc_cashbook', hot: 'F7' },
       { section: 'Loan reports' },
       { label: 'Loan Report', path: '/reports?key=daywise_loans', icon: FileBarChart, screen: 'reports_loan' },
       { label: 'Release Report', path: '/reports?key=daywise_releases', icon: FileBarChart, screen: 'reports_release' },
@@ -89,8 +89,8 @@ export const MENUS = [
       { label: 'Owner Summary', path: '/reports?key=owner_summary', icon: FileBarChart, screen: 'reports_summary' },
       { label: 'Monthly Trend', path: '/reports?key=monthly_trend', icon: FileBarChart, screen: 'reports_summary' },
       { section: 'Stock & auction' },
-      { label: 'Current Stock Report', path: '/reports?key=current_stock', icon: FileBarChart, screen: 'reports_loan' },
-      { label: 'Auction Report', path: '/reports?key=auction_report', icon: FileBarChart, screen: 'reports_summary' },
+      { label: 'Current Stock Report', path: '/stock/current', icon: FileBarChart, screen: 'reports_loan' },
+      { label: 'Auction Report', path: '/auction/report', icon: FileBarChart, screen: 'reports_summary' },
       { label: 'All Reports', hint: 'Every report with print & Excel', path: '/reports', icon: BarChart3, screen: ['reports_loan', 'reports_release', 'reports_collection', 'reports_customer', 'reports_summary'] },
     ],
   },
@@ -121,7 +121,7 @@ export const MENUS = [
       { label: 'Company Information', path: '/settings/company', icon: Building, screen: 's_company' },
       { label: 'Branches', path: '/settings/branches', icon: Building2, screen: 's_branches' },
       { label: 'System Control', path: '/settings/system', icon: Settings2, screen: 's_system' },
-      { label: 'Printer Setup', hint: 'Bill, terms, stickers', path: '/settings/print', icon: Printer, screen: 's_print' },
+      { label: 'Printer Setup', hint: 'Paper, copies, bill content', path: '/settings/printer', icon: Printer, screen: 's_print' },
       { label: 'SMS Settings', path: '/settings/messages', icon: MessageSquare, screen: 's_messages' },
       { section: 'Data' },
       { label: 'Backup Database', path: '/settings/backup', icon: DatabaseBackup, screen: 's_backup' },

@@ -9,7 +9,7 @@ import { today } from '@/lib/format';
 import dayjs from 'dayjs';
 
 /** Interest calculator + side-by-side scheme comparison (Loan Comparison). */
-export default function InterestCalculatorPage() {
+export default function InterestCalculatorPage({ embedded }) {
   const { data: lk } = useLookups();
   const [f, setF] = useState({ principal: 50000, loan_date: dayjs().subtract(3, 'month').format('YYYY-MM-DD'), as_of: today() });
   const [ids, setIds] = useState([]);
@@ -17,7 +17,7 @@ export default function InterestCalculatorPage() {
 
   return (
     <div className="animate-rise">
-      <PageHeader icon={Calculator} title="Interest Calculator" subtitle="Quote any customer instantly and compare schemes" />
+      {!embedded && <PageHeader icon={Calculator} title="Interest Calculator" subtitle="Quote any customer instantly and compare schemes" />}
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <Card title="Inputs">
           <div className="space-y-4">

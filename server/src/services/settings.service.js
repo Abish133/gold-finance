@@ -21,6 +21,27 @@ export const DEFAULTS = {
   DISCOUNT_APPROVAL_LIMIT: '500',        // discount above this needs admin approval (0 = off)
   TOPUP_WITHIN_DAYS: '3',                // top-up allowed only within N days of loan (0 = always)
   DEFAULT_INTEREST_TYPE: 'COMPOUND',
+  DEFAULT_ADVANCE_INTEREST: '1',         // deduct first month's interest when the loan is given
+  DEFAULT_INTEREST_RATE: '1',            // day-wise interest default rate (number)
+  ALLOW_BACKDATE_BILLING: '1',           // billing date can be set before today (permission still needed)
+  LTV_SAFE_PERCENT: '75',                // new loan: up to this % of item value shown green
+  LTV_WARN_PERCENT: '85',                // new loan: above this % asks before save
+  OLD_LOAN_WARN_MONTHS: '12',            // warn when customer has a loan open longer than this
+  AUCTION_OVERDUE_MONTHS: '12',          // auction list / interest calculator mark older loans
+  STOCK_RISK_MARGIN: '10',               // stock analysis: margin below this % = at-risk loan
+  RELEASE_GRACE_DAYS: '0',               // extra days after full months not charged
+  PRINT_LOAN_RECEIPT_COPIES: '1',
+  PRINT_LOAN_RECEIPT_PAPER: 'A4',
+  PRINT_RELEASE_RECEIPT_COPIES: '1',
+  PRINT_RELEASE_RECEIPT_PAPER: 'A5',
+  PRINT_PART_RECEIPT_COPIES: '1',
+  PRINT_PART_RECEIPT_PAPER: 'A5',
+  PRINT_NOTICE_PAPER: 'A4',
+  PRINT_REPORT_PAPER: 'A4',
+  PRINT_DAYEND_PAPER: 'A4',
+  HOME_SHOW_CHARTS: '1',
+  HOME_SHOW_DUE_SOON: '1',
+  EMP_LEAVE_PER_YEAR: '12',
   DEFAULT_TENURE_MONTHS: '12',
   // auction
   AUCTION_AFTER_DAYS_OVERDUE: '30',
