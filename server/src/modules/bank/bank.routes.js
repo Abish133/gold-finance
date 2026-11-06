@@ -31,26 +31,66 @@ router.get('/pledges', permit('bank_pledge', 'view'), async (req, res) => {
   const p = { b: req.branchIds };
   if (req.query.status) { where.push('bp.status = :st'); p.st = req.query.status; }
   if (lq.search) { where.push('(bp.pledge_no LIKE :s OR ba.bank_name LIKE :s)'); p.s = `%${lq.search}%`; }
+  if (req.query.bank_account_id) { where.push('bp.bank_account_id = :ba'); p.ba = req.query.bank_account_id; }
+  const dcol = req.query.date_on === 'release' ? 'bp.release_date' : 'bp.pledge_date';
+  if (req.query.from) { where.push(`${dcol} >= :f`); p.f = req.query.from; }
+  if (req.query.to) { where.push(`${dcol} <= :t`); p.t = req.query.to; }
   const w = where.join(' AND ');
   const rows = await query(`SELECT bp.*, ba.bank_name, ba.bank_branch, br.name branch_name,
       (SELECT COUNT(*) FROM bank_pledge_loans x WHERE x.bank_pledge_id = bp.id) loan_count
     FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id JOIN branches br ON br.id = bp.branch_id
     WHERE ${w} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p);
   const [{ total }] = await query(`SELECT COUNT(*) total FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE ${w}`, p);
-  res.json(paged(rows.map((r) => ({ ...r, ...(r.status === 'OPEN' ? bankInterest(r, dayjs()) : {}) })), total, lq));
+  const asOn = req.query.as_on || dayjs().format('YYYY-MM-DD');
+  const out = rows.map((r) => (r.status === 'OPEN' ? { ...r, ...bankInterest(r, asOn) } : { ...r, days: dayjs(r.release_date).diff(dayjs(r.pledge_date), 'day'), interest: num(r.interest_paid) }));
+  // tiles over the whole filter (not just this page)
+  const wNoStatus = where.filter((x) => !x.startsWith('bp.status')).join(' AND ');
+  const all = await query(`SELECT bp.* FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE ${wNoStatus}`, p);
+  const open = all.filter((r) => r.status === 'OPEN');
+  const closed = all.filter((r) => r.status !== 'OPEN');
+  const sum = (list, k) => round2(list.reduce((t, r) => t + num(r[k]), 0));
+  const tiles = { all: all.length, allAmt: sum(all, 'amount'), open: open.length, openAmt: sum(open, 'amount'), interestDue: round2(open.reduce((t, r) => t + bankInterest(r, asOn).interest, 0)),
+    released: closed.length, releasedAmt: sum(closed, 'amount'), interestPaid: sum(closed, 'interest_paid'), charges: sum(all, 'charges'), cashReceived: sum(all, 'cash_received') };
+  res.json({ ...paged(out, total, lq), tiles });
 });
 
 router.get('/pledges/available-loans', permit('bank_pledge', 'view'), requireBranch, async (req, res) => {
-  const rows = await query(`SELECT l.id, l.bill_no, l.loan_date, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, c.name customer_name
-    FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.branch_id = :b AND l.status = 'OPEN' AND l.bank_pledge_id IS NULL ORDER BY l.loan_date`, { b: req.branchId });
+  const rows = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.loan_date, l.loan_on, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.item_photo, l.avg_purity, l.market_value,
+      c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone
+    FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.branch_id = :b AND l.status = 'OPEN' AND l.bank_pledge_id IS NULL ORDER BY l.loan_no`, { b: req.branchId });
   res.json({ data: rows });
+});
+
+/* bank accounts with open bank loans (desktop Bank Accounts screen) */
+router.get('/accounts-summary', permit('bank_accounts', 'view'), async (req, res) => {
+  const rows = await query(`SELECT ba.*, br.name branch_name, (SELECT COUNT(*) FROM bank_pledges bp WHERE bp.bank_account_id = ba.id AND bp.status = 'OPEN') open_count,
+      (SELECT COALESCE(SUM(amount),0) FROM bank_pledges bp WHERE bp.bank_account_id = ba.id AND bp.status = 'OPEN') outstanding
+    FROM bank_accounts ba JOIN branches br ON br.id = ba.branch_id WHERE ba.branch_id IN (:b) ORDER BY ba.id`, { b: req.branchIds });
+  res.json({ data: rows });
+});
+
+/* month-wise taken / released / balance (Bank Reports) */
+router.get('/month-wise', permit('bank_pledge', 'view'), async (req, res) => {
+  const p = { b: req.branchIds, f: req.query.from || '2000-01-01', t: req.query.to || dayjs().format('YYYY-MM-DD') };
+  const ba = req.query.bank_account_id ? 'AND bank_account_id = :ba' : '';
+  if (ba) p.ba = req.query.bank_account_id;
+  const taken = await query(`SELECT DATE_FORMAT(pledge_date, '%Y-%m') m, COUNT(*) c, SUM(amount) a, SUM(charges) ch FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND pledge_date BETWEEN :f AND :t GROUP BY m`, p);
+  const rel = await query(`SELECT DATE_FORMAT(release_date, '%Y-%m') m, COUNT(*) c, SUM(amount) a, SUM(interest_paid) i FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND release_date BETWEEN :f AND :t GROUP BY m`, p);
+  const months = [...new Set([...taken.map((x) => x.m), ...rel.map((x) => x.m)])].sort();
+  let bal = num((await queryOne(`SELECT COALESCE(SUM(amount),0) a FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND pledge_date < :f AND (release_date IS NULL OR release_date >= :f)`, p))?.a);
+  const data = months.map((m) => {
+    const t = taken.find((x) => x.m === m) || {}; const r = rel.find((x) => x.m === m) || {};
+    bal = round2(bal + num(t.a) - num(r.a));
+    return { month: m, taken_count: num(t.c), taken: num(t.a), charges: num(t.ch), released_count: num(r.c), released: num(r.a), interest: num(r.i), balance: bal };
+  });
+  res.json({ data });
 });
 
 router.get('/pledges/:id', permit('bank_pledge', 'view'), async (req, res) => {
   const bp = await queryOne('SELECT bp.*, ba.bank_name, ba.bank_branch FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE bp.id = :id', { id: req.params.id });
   if (!bp) throw ApiError.notFound();
   assertBranch(req, bp.branch_id);
-  const loans = await query(`SELECT l.id, l.bill_no, l.loan_date, l.principal, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.status, c.name customer_name
+  const loans = await query(`SELECT l.id, l.bill_no, l.loan_date, l.loan_on, l.principal, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.status, l.bank_pledge_id, c.name customer_name
     FROM bank_pledge_loans x JOIN loans l ON l.id = x.loan_id JOIN customers c ON c.id = l.customer_id WHERE x.bank_pledge_id = :id`, { id: bp.id });
   res.json({ data: { ...bp, loans, calc: bankInterest(bp, req.query.date || dayjs()) } });
 });

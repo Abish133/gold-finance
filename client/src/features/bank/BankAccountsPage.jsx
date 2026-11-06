@@ -1,29 +1,95 @@
-import { Building2 } from 'lucide-react';
-import { ResourcePage } from '@/components/common/ResourcePage';
-import { Badge } from '@/components/ui';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { Plus, Pencil, Trash2, FileDown, FileSpreadsheet, BookOpen, Printer, LogOut, Building2 } from 'lucide-react';
+import { toast } from 'sonner';
+import clsx from 'clsx';
+import { Button, ConfirmDrawer, Drawer, Field, Input, Select, Textarea } from '@/components/ui';
+import { useFetch, useCompany } from '@/hooks/useApi';
+import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
+import { printTable } from '@/lib/printTable';
+import { exportCsv } from '@/lib/exporters';
+import { amount, n } from '@/lib/format';
+import { useKeys } from '@/features/loans/desk';
 
+const USED = { PLEDGE: 'Potali', OPERATING: 'Online money', BOTH: 'Both' };
+const cols = [{ key: 'code', label: 'Code' }, { key: 'bank_name', label: 'Bank Name' }, { key: 'bank_branch', label: 'Branch' }, { key: 'account_no', label: 'A/c No' }, { key: 'used', label: 'Used For' }, { key: 'open_count', label: 'Open', type: 'number' }, { key: 'outstanding', label: 'Outstanding', type: 'money' }];
+const FIELDS = [['bank_name', 'Bank name *'], ['bank_branch', 'Bank branch'], ['account_name', 'Account name'], ['account_no', 'Account no'], ['ifsc', 'IFSC'], ['customer_id_at_bank', 'Customer ID at bank'], ['phone', 'Phone'], ['opened_on', 'Opened on', 'date']];
+
+/** Bank Accounts (desktop): banks for bank loans (potali) and for online / card / cheque money. */
 export default function BankAccountsPage() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { can, isAllBranches } = useAuth();
+  const { data: company } = useCompany();
+  const { data = [], refetch } = useFetch('/bank/accounts-summary');
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const [edit, setEdit] = useState(null);
+  const [del, setDel] = useState(false);
+  const rows = useMemo(() => data.filter((r) => !q || `${r.bank_name} ${r.bank_branch} ${r.account_no}`.toLowerCase().includes(q.toLowerCase()))
+    .map((r, i) => ({ ...r, code: i + 1, used: USED[r.used_for] || r.used_for })), [data, q]);
+  const refresh = () => { refetch(); qc.invalidateQueries({ queryKey: ['/masters/lookups'] }); };
+  const save = async () => {
+    if (!edit.bank_name) return toast.error('Enter bank name');
+    try {
+      const body = Object.fromEntries(Object.entries(edit).filter(([k]) => [...FIELDS.map((f) => f[0]), 'used_for', 'address', 'is_active'].includes(k)));
+      if (edit.id) await api.put(`/masters/bank-accounts/${edit.id}`, body); else await api.post('/masters/bank-accounts', body);
+      toast.success('Bank saved'); setEdit(null); refresh();
+    } catch (e) { toast.error(e.message); }
+  };
+  const remove = async () => { try { await api.del(`/masters/bank-accounts/${sel.id}`); toast.success('Bank deleted'); setDel(false); setSel(null); refresh(); } catch (e) { toast.error(e.message); } };
+  const print = () => printTable({ title: 'Bank Accounts', company, columns: cols, rows });
+  useKeys({ 'ctrl+n': () => !isAllBranches && setEdit({ used_for: 'BOTH', is_active: 1 }), f2: () => sel && setEdit(sel), delete: () => sel && setDel(true), f6: () => navigate('/bank/book'), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('bank-accounts', cols, rows), escape: () => navigate('/') }, [sel, rows]);
+  const tile = (l, v, h, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>;
   return (
-    <ResourcePage
-      title="Bank Accounts" singular="Bank Account" endpoint="/masters/bank-accounts" screen="bank_accounts" icon={Building2}
-      subtitle="Operating & pledge accounts. A ledger is created automatically for each account."
-      defaults={{ used_for: 'BOTH', is_active: 1 }}
-      columns={[
-        { key: 'bank_name', label: 'Bank', sortable: true, render: (r) => <div><p className="font-semibold">{r.bank_name}</p><p className="text-xs text-ink-500">{r.bank_branch}</p></div> },
-        { key: 'account_no', label: 'Account no' }, { key: 'ifsc', label: 'IFSC' },
-        { key: 'used_for', label: 'Used for', render: (r) => <Badge tone="blue">{r.used_for}</Badge> },
-        { key: 'branch_name', label: 'Our branch' },
-        { key: 'is_active', label: 'Active', render: (r) => (r.is_active ? <Badge tone="green">Yes</Badge> : <Badge>No</Badge>) },
-      ]}
-      fields={[
-        { name: 'bank_name', label: 'Bank name', required: true }, { name: 'bank_branch', label: 'Bank branch' },
-        { name: 'account_name', label: 'Account name' }, { name: 'account_no', label: 'Account no' },
-        { name: 'ifsc', label: 'IFSC' }, { name: 'customer_id_at_bank', label: 'Customer ID at bank' },
-        { name: 'phone', label: 'Phone' }, { name: 'opened_on', label: 'Opened on', type: 'date' },
-        { name: 'used_for', label: 'Used for', type: 'select', options: ['OPERATING', 'PLEDGE', 'BOTH'], placeholder: undefined },
-        { name: 'address', label: 'Address', type: 'textarea', span: 'full', rows: 2 },
-        { name: 'is_active', label: 'Active', type: 'switch' },
-      ]}
-    />
+    <div className="animate-rise space-y-3">
+      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Bank Accounts</h1><p className="text-sm text-navy-100">Banks for bank loans (potali) and for online / card / cheque money</p></section>
+      <div className="card flex items-end gap-3 px-4 py-3"><Field label="Search bank / branch / a/c no" className="w-96"><Input autoFocus className="bg-gold-50" value={q} onChange={(e) => setQ(e.target.value)} /></Field><span className="ml-auto text-xs text-ink-500">{rows.length} of {data.length} bank accounts</span></div>
+      <div className="grid gap-3 sm:grid-cols-4">
+        {tile('Bank accounts', data.length, 'all', 'border-t-navy-800 bg-cream-100')}
+        {tile('With open bank loans', data.filter((r) => n(r.open_count)).length, '', 'border-t-violet-600')}
+        {tile('Open potali', data.reduce((s, r) => s + n(r.open_count), 0), 'potali not released', 'border-t-blue-600')}
+        {tile('Outstanding', `Rs ${amount(data.reduce((s, r) => s + n(r.outstanding), 0))}`, 'bank loan amount outstanding', 'border-t-rose-600')}
+      </div>
+      <div className="card min-h-[calc(100vh-30rem)] overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="navy-gradient text-white"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-3 py-2', ['money', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
+          <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
+            {!rows.length && <tr><td colSpan={7} className="py-16 text-center text-ink-400">No bank accounts - press New Bank (Ctrl+N)</td></tr>}
+            {rows.map((r) => (
+              <tr key={r.id} onClick={() => setSel(r)} onDoubleClick={() => setEdit(r)} className={clsx('cursor-pointer', sel?.id === r.id && 'bg-navy-50 dark:bg-ink-800', !r.is_active && 'text-ink-400')}>
+                <td className="px-3 py-2">{r.code}</td><td className="px-3 font-semibold">{r.bank_name}</td><td className="px-3">{r.bank_branch}</td><td className="px-3">{r.account_no}</td><td className="px-3">{r.used}</td>
+                <td className="num px-3 text-right">{r.open_count}</td><td className="num px-3 text-right">{amount(r.outstanding)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="card flex flex-wrap gap-2 px-3 py-2">
+        {can('bank_accounts', 'add') && !isAllBranches && <Button variant="outline" icon={Plus} onClick={() => setEdit({ used_for: 'BOTH', is_active: 1 })}>New Bank (Ctrl+N)</Button>}
+        {can('bank_accounts', 'edit') && <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => setEdit(sel)}>Edit (F2)</Button>}
+        {can('bank_accounts', 'delete') && <Button variant="outline" icon={Trash2} disabled={!sel} onClick={() => setDel(true)}>Delete (Del)</Button>}
+        <span className="flex-1" />
+        <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
+        <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('bank-accounts', cols, rows)}>Excel (Ctrl+E)</Button>
+        <Button variant="outline" icon={BookOpen} onClick={() => navigate('/bank/book')}>Bank Pledge Book (F6)</Button>
+        <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
+        <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
+      </div>
+      <p className="px-1 text-xs text-ink-500">Ctrl+N = new bank · F2 / double-click = edit · Del = delete · F6 = bank pledge book · F9 = print · Esc = exit</p>
+      <Drawer open={!!edit} onClose={() => setEdit(null)} size="md" icon={Building2} title={edit?.id ? `Edit bank · ${edit.bank_name}` : 'New bank'} subtitle="A ledger is created automatically for each bank account" footer={<Button variant="gold" onClick={save}>Save (F2)</Button>}>
+        {edit && (
+          <div className="grid grid-cols-2 gap-3">
+            {FIELDS.map(([k, l, type]) => <Field key={k} label={l}><Input type={type || 'text'} value={edit[k] ? String(edit[k]).slice(0, type === 'date' ? 10 : 200) : ''} onChange={(e) => setEdit({ ...edit, [k]: e.target.value })} /></Field>)}
+            <Field label="Used for"><Select value={edit.used_for || 'BOTH'} onChange={(e) => setEdit({ ...edit, used_for: e.target.value })} options={[{ value: 'PLEDGE', label: 'Potali (bank loans)' }, { value: 'OPERATING', label: 'Online / card / cheque money' }, { value: 'BOTH', label: 'Both' }]} /></Field>
+            <Field label="Active"><Select value={String(edit.is_active ?? 1)} onChange={(e) => setEdit({ ...edit, is_active: Number(e.target.value) })} options={[{ value: '1', label: 'Yes' }, { value: '0', label: 'No' }]} /></Field>
+            <Field label="Address" className="col-span-2"><Textarea rows={2} value={edit.address || ''} onChange={(e) => setEdit({ ...edit, address: e.target.value })} /></Field>
+          </div>
+        )}
+      </Drawer>
+      <ConfirmDrawer open={del} onClose={() => setDel(false)} onConfirm={remove} title={`Delete ${sel?.bank_name}?`} message="Banks already used in bank loans or payments cannot be deleted - set them inactive instead." />
+    </div>
   );
 }

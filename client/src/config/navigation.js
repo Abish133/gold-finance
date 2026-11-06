@@ -53,11 +53,12 @@ export const MENUS = [
   {
     key: 'bank', label: 'Bank', icon: Landmark,
     items: [
-      { label: 'Pledge to Bank', hint: 'New bank loan on our loans', path: '/bank/pledges?new=1', icon: Landmark, screen: 'bank_pledge' },
-      { label: 'Release from Bank', hint: 'Repay a bank loan', path: '/bank/pledges', icon: Landmark, screen: 'bank_pledge' },
-      { label: 'Bank Pledge Book', hint: 'All bank loans - at bank and released', path: '/bank/pledges?status=all', icon: BookOpen, screen: 'bank_pledge' },
-      { label: 'Bank Reports', hint: 'Taken, released, month-wise', path: '/reports?key=bank_loans_taken', icon: FileBarChart, screen: 'reports_summary' },
-      { label: 'Bank Accounts', hint: 'Operating & pledge accounts', path: '/bank/accounts', icon: Building2, screen: 'bank_accounts' },
+      { label: 'Pledge to Bank', hint: 'New bank loan on our loans', path: '/bank/pledge', icon: Landmark, screen: 'bank_pledge' },
+      { label: 'Release from Bank', hint: 'Repay a bank loan', path: '/bank/release', icon: Landmark, screen: 'bank_pledge' },
+      { label: 'Bank Pledge Book', hint: 'All bank loans - at bank and released', path: '/bank/book', icon: BookOpen, screen: 'bank_pledge' },
+      { label: 'Bank Reports', hint: 'Taken, released, month-wise', path: '/bank/reports', icon: FileBarChart, screen: 'bank_pledge' },
+      { section: ' ' },
+      { label: 'Bank Accounts', hint: 'Banks for potali and online money', path: '/bank/accounts', icon: Building2, screen: 'bank_accounts' },
     ],
   },
   {
