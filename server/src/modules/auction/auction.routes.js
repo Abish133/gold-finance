@@ -151,12 +151,32 @@ router.post('/mark-auctioned', permit('auction_sale', 'add'), requireBranch, asy
 /* ---------------- stock check ---------------- */
 router.get('/stock-check', permit('stock', 'view'), requireBranch, async (req, res) => {
   const date = req.query.date || dayjs().format('YYYY-MM-DD');
-  const rows = await query(`SELECT l.id, l.bill_no, l.barcode, l.loan_date, l.net_wt, l.total_pcs, l.item_summary, l.current_principal, l.bank_pledge_id, c.name customer_name,
-      s.checked_at, u.full_name checked_by_name
+  const rows = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.barcode, l.loan_date, l.loan_on, l.net_wt, l.total_pcs, l.item_summary, l.current_principal, l.bank_pledge_id,
+      c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone, IF(s.checked_by IS NULL AND s.missing = 0, NULL, s.checked_at) checked_at, s.missing, s.remarks, u.full_name checked_by_name
     FROM loans l JOIN customers c ON c.id = l.customer_id
     LEFT JOIN stock_checks s ON s.loan_id = l.id AND s.check_date = :d LEFT JOIN users u ON u.id = s.checked_by
-    WHERE l.branch_id = :b AND l.status = 'OPEN' ORDER BY s.checked_at IS NULL DESC, l.loan_date`, { b: req.branchId, d: date });
+    WHERE l.branch_id = :b AND l.status = 'OPEN' ORDER BY l.loan_no`, { b: req.branchId, d: date });
   res.json({ data: rows });
+});
+
+/* mark / unmark a packet as missing for this check */
+router.post('/stock-check/missing', permit('stock', 'edit'), requireBranch, async (req, res) => {
+  const date = req.body.date || dayjs().format('YYYY-MM-DD');
+  const loan = await queryOne("SELECT id, bill_no FROM loans WHERE id = :id AND branch_id = :b AND status = 'OPEN'", { id: req.body.loan_id, b: req.branchId });
+  if (!loan) throw ApiError.notFound('Loan not found');
+  if (req.body.missing === false) await query('DELETE FROM stock_checks WHERE branch_id = :b AND loan_id = :l AND check_date = :d AND missing = 1', { b: req.branchId, l: loan.id, d: date });
+  else await query(`INSERT INTO stock_checks (branch_id, check_date, loan_id, checked_by, missing, remarks) VALUES (:b, :d, :l, :u, 1, :r)
+    ON DUPLICATE KEY UPDATE missing = 1, remarks = COALESCE(:r, remarks)`, { b: req.branchId, d: date, l: loan.id, u: req.user.id, r: req.body.remarks || null });
+  audit(req, 'STOCK_MISSING', 'loans', loan.id, { date, missing: req.body.missing !== false });
+  res.json({ ok: true });
+});
+
+/* new check: clear all scans of the day */
+router.delete('/stock-check', permit('stock', 'delete'), requireBranch, async (req, res) => {
+  const date = req.query.date || dayjs().format('YYYY-MM-DD');
+  const r = await query('DELETE FROM stock_checks WHERE branch_id = :b AND check_date = :d', { b: req.branchId, d: date });
+  audit(req, 'STOCK_CHECK_RESET', 'stock_checks', 0, { date, removed: r.affectedRows });
+  res.json({ ok: true });
 });
 
 router.post('/stock-check', permit('stock', 'add'), requireBranch, async (req, res) => {
@@ -166,7 +186,7 @@ router.post('/stock-check', permit('stock', 'add'), requireBranch, async (req, r
     { b: req.branchId, c: code, id: Number(req.body.loan_id) || -1 });
   if (!loan) throw ApiError.notFound(`No loan found for "${code}"`);
   if (loan.status !== 'OPEN') throw ApiError.badRequest(`Loan ${loan.bill_no} is ${loan.status.toLowerCase()} - should not be in stock`);
-  await query('INSERT IGNORE INTO stock_checks (branch_id, check_date, loan_id, checked_by) VALUES (:b, :d, :l, :u)', { b: req.branchId, d: date, l: loan.id, u: req.user.id });
+  await query('INSERT INTO stock_checks (branch_id, check_date, loan_id, checked_by) VALUES (:b, :d, :l, :u) ON DUPLICATE KEY UPDATE checked_at = IF(missing = 1 OR checked_by IS NULL, NOW(), checked_at), missing = 0, checked_by = :u', { b: req.branchId, d: date, l: loan.id, u: req.user.id });
   res.json({ data: loan });
 });
 

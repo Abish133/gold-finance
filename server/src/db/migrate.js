@@ -12,6 +12,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 
 /** v2 - parity with the desktop app (mix loans, compound interest, release no, bank reco ...) */
 const COLUMNS = [
+  ['stock_checks', 'missing', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER remarks'],
   ['loans', 'loan_on', "ENUM('GOLD','SILVER','MIX') NOT NULL DEFAULT 'GOLD' AFTER metal_id"],
   ['loans', 'interest_type', "ENUM('SIMPLE','COMPOUND') NOT NULL DEFAULT 'SIMPLE' AFTER rate_type"],
   ['loans', 'release_no', 'INT NULL AFTER close_date'],

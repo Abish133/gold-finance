@@ -228,8 +228,9 @@ router.put('/stock-note/:loanId', permit('stock', 'edit'), requireBranch, async 
   const loan = await queryOne('SELECT id, branch_id, bill_no FROM loans WHERE id = :id', { id: req.params.loanId });
   if (!loan) throw ApiError.notFound();
   assertBranch(req, loan.branch_id);
-  await query(`INSERT INTO stock_checks (branch_id, check_date, loan_id, remarks, checked_by) VALUES (:b, :d, :l, :r, :u)
-    ON DUPLICATE KEY UPDATE remarks = :r`, { b: req.branchId, d, l: loan.id, r: String(req.body.remarks || '').slice(0, 150), u: req.user.id });
+  // a note alone does not mark the packet as checked (checked_by stays empty)
+  await query(`INSERT INTO stock_checks (branch_id, check_date, loan_id, remarks) VALUES (:b, :d, :l, :r)
+    ON DUPLICATE KEY UPDATE remarks = :r`, { b: req.branchId, d, l: loan.id, r: String(req.body.remarks || '').slice(0, 150) });
   audit(req, 'STOCK_CORRECTION', 'loans', loan.id, { remarks: req.body.remarks });
   res.json({ ok: true });
 });

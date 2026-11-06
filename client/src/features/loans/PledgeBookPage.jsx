@@ -24,9 +24,10 @@ const STATUS_PARAM = { PENDING: { status: 'OPEN', bank: '0' }, RELEASED: { statu
 const columns = [
   { key: 'sno', label: 'S.No', render: (r) => r.__i, print: (r, i) => i + 1 },
   { key: 'bill_no', label: 'Loan No', sortable: true, render: (r) => <b>{r.bill_no}</b> },
+  { key: 'manual_bill_no', label: 'Bill Book No', render: (r) => r.manual_bill_no || '-' },
   { key: 'loan_date', label: 'Loan Date', type: 'date', sortable: true },
-  { key: 'customer_name', label: 'Customer', sortable: true },
-  { key: 'loan_on', label: 'Metal', render: (r) => r.loan_on || r.metal_name },
+  { key: 'customer_name', label: 'Customer', sortable: true, render: (r) => <div><p className="font-semibold">{r.customer_name}</p><p className="text-[11px] text-ink-500">{[r.relation_name && `${r.relation_type || ''} ${r.relation_name}`, r.customer_phone].filter(Boolean).join(' · ')}</p></div> },
+  { key: 'loan_on', label: 'Metal', render: (r) => <span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{r.loan_on || r.metal_name}</span>, print: (r) => r.loan_on || r.metal_name },
   { key: 'item_summary', label: 'Pledged Items', className: 'max-w-56 truncate' },
   { key: 'gross_wt', label: 'Gross Wt', type: 'weight' },
   { key: 'net_wt', label: 'Net Wt', type: 'weight', sortable: true },

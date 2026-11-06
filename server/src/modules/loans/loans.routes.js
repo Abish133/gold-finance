@@ -57,7 +57,7 @@ router.get('/', anyLoan, async (req, res) => {
     query(`SELECT l.id, l.branch_id, l.bill_no, l.loan_no, l.manual_bill_no, l.barcode, l.loan_date, l.due_date, l.principal, l.current_principal,
              l.interest_rate, l.rate_type, l.interest_type, l.loan_on, l.advance_interest, l.market_value, l.release_no, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary,
              l.status, l.close_date, l.entry_type, l.bank_pledge_id, l.sticker_printed_at, l.item_photo,
-             c.id AS customer_id, c.customer_no, c.name AS customer_name, c.phone AS customer_phone, c.area, m.name AS metal_name, s.code AS scheme_code,
+             c.id AS customer_id, c.customer_no, c.name AS customer_name, c.phone AS customer_phone, c.relation_type, c.relation_name, c.area, m.name AS metal_name, s.code AS scheme_code,
              b.name AS branch_name, DATEDIFF(CURDATE(), l.loan_date) AS age_days,
              (SELECT COUNT(*) FROM print_logs pl WHERE pl.loan_id = l.id AND pl.doc_type = 'LOAN_RECEIPT') AS receipt_prints,
              (SELECT GROUP_CONCAT(DISTINCT pp.mode) FROM loan_transactions lt JOIN transaction_payments pp ON pp.transaction_id = lt.id WHERE lt.loan_id = l.id AND lt.txn_type = 'DISBURSE') AS paid_by
