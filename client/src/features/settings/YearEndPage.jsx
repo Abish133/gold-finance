@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CalendarRange, RefreshCw, Printer, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -11,9 +11,11 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { amount, compact, n } from '@/lib/format';
-import { ExitButton } from '@/features/loans/desk';
+import { ExitButton, useKeys } from '@/features/loans/desk';
+import { useNavigate } from 'react-router';
 
-const STEPS = [['Checks', 'Year over, Day End, other computers'], ['Backup', 'Take a backup file first'], ['Accounts', 'Closing of every account, profit'], ['Pending loans', 'Loans pending go to the new year'], ['Close year', 'Lock the year, new financial year'], ['Reports', 'Print accounts and pending loans']];
+const STEPS = [['Checks', 'Year over, Day End, other computers'], ['Backup', 'Separate Year End backup file'], ['Accounts', 'Closing of every account, profit'], ['Pending loans', 'Loans pending go to the new year'], ['Close year', 'Lock the year, new financial year'], ['Reports', 'Print accounts and pending loans']];
+const TAG = (c) => (c.ok ? ['OK', 'bg-emerald-100 text-emerald-800'] : c.warn ? ['WARNING', 'bg-amber-100 text-amber-800'] : ['STOP', 'bg-rose-100 text-rose-800']);
 
 /** Year End Process (desktop: frmYearEnd) - close the accounting year; open loans carry forward. */
 export default function YearEndPage() {
@@ -24,10 +26,19 @@ export default function YearEndPage() {
   const { data, refetch } = useFetch('/desk/year-end-checks');
   const pl = useFetch('/accounts/profit-loss', data ? { from: data.fy.start_date, to: data.fy.end_date } : undefined, { enabled: !!data });
   const pending = useFetch('/loans', { status: 'OPEN', pageSize: 200 });
+  const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
+  const [tab, setTab] = useState('checks');
   const fy = data?.fy;
   const next = fy ? `${dayjs(fy.end_date).year()}-${String((dayjs(fy.end_date).year() + 1) % 100).padStart(2, '0')}` : '';
-  const chart = (data?.monthly || []).map((m) => ({ m: dayjs(`${m.m}-01`).format('MMM'), given: n(m.given) }));
+  // every month of the year, April to March (desktop chart)
+  const chart = fy ? Array.from({ length: 12 }, (_, i) => { const d = dayjs(fy.start_date).add(i, 'month'); const r = (data?.monthly || []).find((x) => x.m === d.format('YYYY-MM')); return { m: d.format('MMM'), Given: n(r?.given), Released: n(r?.released) }; }) : [];
+  const checks = data?.checks || [];
+  const warns = checks.filter((c) => !c.ok).length;
+  const printYear = () => pl.data && printTable({ title: `Profit & Loss ${fy?.name}`, company, rows: [...pl.data.income.map((r) => ({ ...r, side: 'Income' })), ...pl.data.expense.map((r) => ({ ...r, side: 'Expense' }))], columns: [{ key: 'side', label: 'Type' }, { key: 'name', label: 'Account' }, { key: 'amount', label: 'Amount', type: 'money' }] });
+  useKeys({ f5: () => refetch(), f9: printYear, escape: () => navigate('/') }, [pl.data, fy]);
+  const income = n(pl.data?.income?.reduce((t, r) => t + n(r.amount), 0));
+  const expense = n(pl.data?.expense?.reduce((t, r) => t + n(r.amount), 0));
   const icon = (c) => (c.ok ? <CheckCircle2 className="size-4 text-emerald-600" /> : c.warn ? <AlertTriangle className="size-4 text-amber-600" /> : <XCircle className="size-4 text-rose-600" />);
   return (
     <div className="animate-rise space-y-3">
@@ -39,6 +50,7 @@ export default function YearEndPage() {
       <div className="grid items-start gap-3 xl:grid-cols-[360px_1fr]">
         <div className="card overflow-hidden">
           <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Year end steps</p>
+          <div className="px-3 pt-3"><p className="text-sm font-bold">{fy?.is_closed ? 'Done' : 'Ready'}</p><div className="mt-1 h-2 rounded bg-ink-200"><div className="h-2 rounded bg-emerald-600" style={{ width: fy?.is_closed ? '100%' : '0%' }} /></div></div>
           <ol className="space-y-1 p-3">{STEPS.map(([t, h], i) => (
             <li key={t} className="flex gap-3 rounded-md p-2"><span className="grid size-7 shrink-0 place-items-center rounded-md bg-navy-100 text-sm font-bold text-navy-800">{i + 1}</span><span><p className="font-semibold">{t}</p><p className="text-xs text-ink-500">{h}</p></span></li>
           ))}</ol>
@@ -49,20 +61,27 @@ export default function YearEndPage() {
         </div>
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-5">
-            {[['Loans given', data?.given?.c, `Rs ${compact(data?.given?.a)}`], ['Released', data?.released?.c, `Rs ${compact(data?.released?.a)}`], ['Net profit', pl.data ? amount(pl.data.netProfit) : '-', 'income - expense'],
-              ['Pending loans', data?.pending?.c, `${data?.pending?.bank || 0} at bank · go to new year`], ['Carried forward', data ? amount(data.pending.a) : '-', 'outstanding carried']].map(([l, v, h]) => (
+            {[['Loans given', data?.given?.c, compact(data?.given?.a)], ['Released', data?.released?.c, compact(data?.released?.a)], ['Net profit', pl.data ? `Rs ${amount(pl.data.netProfit)}` : '-', `income ${compact(income)} - expense ${compact(expense)}`],
+              ['Pending loans', data?.pending?.c, `${data?.pending?.bank || 0} at bank · go to new year`], ['Carried forward', data ? `Rs ${amount(data.pending.a)}` : '-', 'outstanding carried']].map(([l, v, h]) => (
               <div key={l} className="card border-t-4 border-t-navy-600 px-4 py-3"><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-xl font-bold text-navy-900">{v ?? 0}</p><p className="text-[11px] text-ink-500">{h}</p></div>
             ))}
           </div>
-          <div className="card p-3"><p className="mb-1 text-xs font-bold text-ink-600 uppercase">Loans given - month-wise (amount)</p>
-            <div className="h-44"><ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" stroke="#dfe4ea" /><XAxis dataKey="m" fontSize={11} /><YAxis fontSize={10} width={60} tickFormatter={(x) => compact(x)} /><Tooltip /><Bar dataKey="given" fill="#18181b" /></BarChart></ResponsiveContainer></div>
+          <div className="card p-3"><p className="mb-1 text-xs font-bold text-ink-600 uppercase">Loans given vs released - month-wise (amount)</p>
+            <div className="h-44"><ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" stroke="#dfe4ea" /><XAxis dataKey="m" fontSize={11} /><YAxis fontSize={10} width={60} tickFormatter={(x) => compact(x)} /><Tooltip /><Legend verticalAlign="top" align="right" iconSize={10} wrapperStyle={{ fontSize: 11 }} /><Bar dataKey="Given" fill="#18181b" /><Bar dataKey="Released" fill="#b8892b" /></BarChart></ResponsiveContainer></div>
           </div>
-          <div className="card overflow-hidden">
-            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="w-12 px-3 py-2" /><th className="px-3 text-left">Check</th><th className="px-3 text-left">Detail</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{(data?.checks || []).map((c) => <tr key={c.text}><td className="px-3 py-2">{icon(c)}</td><td className="px-3">{c.text}</td><td className="px-3 text-ink-600">{c.detail}</td></tr>)}</tbody></table>
-          </div>
-          <DataTable dense rows={years} columns={[{ key: 'name', label: 'Year', render: (r) => <b>{r.name}</b> }, { key: 'start_date', label: 'From', type: 'date' }, { key: 'end_date', label: 'To', type: 'date' },
-            { key: 's', label: 'Status', render: (r) => (r.is_current ? <Badge tone="green">Current</Badge> : r.is_closed ? <Badge>Closed</Badge> : <Badge tone="gold">Open</Badge>) }]} />
+          <div className="flex gap-1">{[['checks', `Checks${warns ? ` (${warns} warning${warns > 1 ? 's' : ''})` : ''}`], ['accounts', 'Accounts'], ['pending', `Pending Loans (${data?.pending?.c ?? 0})`], ['log', 'Log']].map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setTab(k)} className={clsx('h-9 rounded-md border px-5 text-sm font-semibold', tab === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800 dark:bg-ink-900 dark:text-white')}>{l}</button>
+          ))}</div>
+          {tab === 'checks' && <div className="card overflow-hidden">
+            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="w-24 px-3 py-2" /><th className="px-3 text-left">Check</th><th className="px-3 text-left">Detail</th></tr></thead>
+              <tbody className="divide-y divide-ink-200">{checks.map((c) => { const [t, cls] = TAG(c); return <tr key={c.text}><td className="px-3 py-2"><span className={clsx('inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-bold', cls)}>{icon(c)}{t}</span></td><td className="px-3">{c.text}</td><td className="px-3 text-ink-600">{c.detail}</td></tr>; })}</tbody></table>
+          </div>}
+          {tab === 'accounts' && <DataTable dense rows={[...(pl.data?.income || []).map((r) => ({ ...r, side: 'Income' })), ...(pl.data?.expense || []).map((r) => ({ ...r, side: 'Expense' }))]} empty="No income / expense entries this year"
+            columns={[{ key: 'side', label: 'Type' }, { key: 'name', label: 'Account' }, { key: 'amount', label: 'Amount', type: 'money' }]} />}
+          {tab === 'pending' && <DataTable dense rows={pending.data?.data || []} empty="No pending loans"
+            columns={[{ key: 'bill_no', label: 'Loan No' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'current_principal', label: 'Outstanding', type: 'money' }, { key: 'bank_pledge_id', label: 'At bank', render: (r) => (r.bank_pledge_id ? 'Yes' : '') }]} />}
+          {tab === 'log' && <DataTable dense rows={years} columns={[{ key: 'name', label: 'Year', render: (r) => <b>{r.name}</b> }, { key: 'start_date', label: 'From', type: 'date' }, { key: 'end_date', label: 'To', type: 'date' },
+            { key: 's', label: 'Status', render: (r) => (r.is_current ? <Badge tone="green">Current</Badge> : r.is_closed ? <Badge>Closed</Badge> : <Badge tone="gold">Open</Badge>) }]} />}
         </div>
       </div>
       <div className={clsx('card flex flex-wrap justify-end gap-2 px-3 py-2')}>
@@ -72,7 +91,7 @@ export default function YearEndPage() {
               columns: [{ key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items' }, { key: 'net_wt', label: 'Net', type: 'weight' }, { key: 'principal', label: 'Loan', type: 'money' }, { key: 'status', label: 'Status' }, { key: 'close_date', label: 'Released', type: 'date' }] }); }}>{t}</Button>
         ))}
         <Button variant="outline" icon={Printer} onClick={() => printTable({ title: 'Pending loans carried to new year', company, rows: pending.data?.data || [], columns: [{ key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'net_wt', label: 'Net', type: 'weight' }, { key: 'current_principal', label: 'Outstanding', type: 'money' }] })}>Print Pending Loans</Button>
-        <Button variant="outline" icon={Printer} onClick={() => pl.data && printTable({ title: `Profit & Loss ${fy?.name}`, company, rows: [...pl.data.income.map((r) => ({ ...r, side: 'Income' })), ...pl.data.expense.map((r) => ({ ...r, side: 'Expense' }))], columns: [{ key: 'side', label: 'Type' }, { key: 'name', label: 'Account' }, { key: 'amount', label: 'Amount', type: 'money' }] })}>Print Year End (F9)</Button>
+        <Button variant="outline" icon={Printer} onClick={printYear}>Print Year End (F9)</Button>
         <ExitButton />
       </div>
       <ConfirmDrawer open={confirm} onClose={() => setConfirm(false)} title={`Close ${fy?.name} and start ${next}?`} confirmText="Run year end" tone="primary"

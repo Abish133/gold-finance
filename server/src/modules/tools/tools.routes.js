@@ -7,7 +7,7 @@ import { requireBranch } from '#middleware/branch.js';
 import { ApiError } from '#utils/ApiError.js';
 import { round2, num } from '#utils/money.js';
 import { audit } from '#services/audit.service.js';
-import { nextNumber } from '#services/sequence.service.js';
+import { nextNumber, setNumber } from '#services/sequence.service.js';
 import { createLoan } from '#modules/loans/loans.service.js';
 import { openingBalance } from '#modules/accounts/accounts.service.js';
 
@@ -100,6 +100,27 @@ router.get('/tally/history', permit('acc_tally', 'view'), async (req, res) => {
 const BRANCH_DATA = ['auction_sales', 'auction_notices', 'stock_checks', 'print_logs', 'cash_denominations', 'day_closes', 'salary_payments', 'employee_attendance',
   'bank_pledges', 'message_queue'];
 
+/** What Start Fresh will remove in this branch (desktop shows the counts before you confirm). */
+router.get('/start-fresh-preview', permit('s_start_fresh', 'view'), requireBranch, async (req, res) => {
+  const p = { b: req.branchId };
+  const one = async (sql) => Number((await queryOne(sql, p))?.c || 0);
+  const t = (types) => one(`SELECT COUNT(*) c FROM loan_transactions WHERE branch_id = :b AND txn_type IN (${types})`);
+  const rows = [
+    ['Loans (new / old / re-loan)', await one('SELECT COUNT(*) c FROM loans WHERE branch_id = :b')],
+    ['Releases and part payments', await t("'RELEASE','PART_PAYMENT'")],
+    ['Interest and top-up entries', await t("'INTEREST','TOPUP'")],
+    ['Bank re-pledge entries', await one('SELECT COUNT(*) c FROM bank_pledges WHERE branch_id = :b')],
+    ['Cash and account entries', await one('SELECT COUNT(*) c FROM vouchers WHERE branch_id = :b')],
+    ['Day End records', await one('SELECT COUNT(*) c FROM day_closes WHERE branch_id = :b')],
+    ['Auction entries', await one('SELECT (SELECT COUNT(*) FROM auction_sales WHERE branch_id = :b) + (SELECT COUNT(*) FROM auction_notices WHERE branch_id = :b) c')],
+    ['Stock check records', await one('SELECT COUNT(*) c FROM stock_checks WHERE branch_id = :b')],
+    ['Employee salary and attendance entries', await one('SELECT (SELECT COUNT(*) FROM salary_payments WHERE branch_id = :b) + (SELECT COUNT(*) FROM employee_attendance WHERE branch_id = :b) c')],
+    ['SMS queue and print / notice logs', await one('SELECT (SELECT COUNT(*) FROM message_queue WHERE branch_id = :b) + (SELECT COUNT(*) FROM print_logs WHERE branch_id = :b) c')],
+    ['Customers who had practice loans', await one('SELECT COUNT(DISTINCT customer_id) c FROM loans WHERE branch_id = :b')],
+  ];
+  res.json({ data: { rows: rows.map(([label, count]) => ({ label, count })), today: dayjs().format('YYYY-MM-DD') } });
+});
+
 /** Remove practice entries of one branch (loans, receipts, vouchers...). Masters stay. Super admin + password. */
 router.post('/start-fresh', permit('s_start_fresh', 'delete'), requireBranch, async (req, res) => {
   if (!req.user.is_super_admin) throw ApiError.forbidden('Only the super admin can start fresh');
@@ -107,20 +128,36 @@ router.post('/start-fresh', permit('s_start_fresh', 'delete'), requireBranch, as
   const me = await queryOne('SELECT password_hash FROM users WHERE id = :id', { id: req.user.id });
   if (!(await bcrypt.compare(req.body.password || '', me.password_hash))) throw ApiError.forbidden('Password is wrong');
   const b = req.branchId;
+  const nextLoanNo = Math.max(1, parseInt(req.body.next_loan_no, 10) || 1);
+  const start = req.body.start_date ? dayjs(req.body.start_date) : null;
+  if (start && (!start.isValid() || start.isAfter(dayjs(), 'day'))) throw ApiError.badRequest('Start date cannot be after today');
   await withTransaction(async (tx) => {
+    // customers who only came for practice loans go with them; customers without any loan stay
+    const practice = req.body.customers ? (await tx.query('SELECT DISTINCT customer_id id FROM loans WHERE branch_id = :b', { b })).map((r) => r.id) : [];
     await tx.query('DELETE p FROM bank_pledge_loans p JOIN bank_pledges bp ON bp.id = p.bank_pledge_id WHERE bp.branch_id = :b', { b });
     for (const t of BRANCH_DATA) await tx.query(`DELETE FROM ${t} WHERE branch_id = :b`, { b });
     await tx.query('DELETE FROM release_by_other WHERE loan_id IN (SELECT id FROM loans WHERE branch_id = :b)', { b });
     await tx.query('DELETE FROM loan_transactions WHERE branch_id = :b', { b });
     await tx.query('DELETE FROM loans WHERE branch_id = :b', { b });
     await tx.query('DELETE FROM vouchers WHERE branch_id = :b', { b });
-    if (req.body.customers) {
-      await tx.query("DELETE FROM documents WHERE branch_id = :b AND owner_type = 'CUSTOMER'", { b });
-      await tx.query('DELETE FROM customers WHERE branch_id = :b', { b });
+    if (practice.length) {
+      await tx.query("DELETE FROM documents WHERE owner_type = 'CUSTOMER' AND owner_id IN (:ids)", { ids: practice });
+      await tx.query('DELETE FROM customers WHERE id IN (:ids) AND NOT EXISTS (SELECT 1 FROM loans l WHERE l.customer_id = customers.id)', { ids: practice });
     }
-    await tx.query(`DELETE FROM number_sequences WHERE branch_id = :b AND seq_key IN ('LOAN','RECEIPT','RELEASE','VCH'${req.body.customers ? ",'CUSTOMER'" : ''})`, { b });
+    const left = await tx.queryOne('SELECT COUNT(*) c FROM customers WHERE branch_id = :b', { b });
+    await tx.query(`DELETE FROM number_sequences WHERE branch_id = :b AND seq_key IN ('LOAN','RECEIPT','RELEASE','VCH'${Number(left.c) ? '' : ",'CUSTOMER'"})`, { b });
+    // next loan no: set for both the running and the yearly-reset sequence
+    if (nextLoanNo > 1) {
+      const fy = await tx.queryOne('SELECT id FROM financial_years WHERE is_current = 1');
+      for (const fyId of [0, fy?.id].filter((x) => x != null)) await setNumber(tx, { branchId: b, key: 'LOAN', fyId, lastNo: nextLoanNo - 1 });
+    }
+    // start (billing) date: the day before is marked closed so the billing date starts there
+    if (start && start.isBefore(dayjs(), 'day')) {
+      await tx.query('INSERT INTO day_closes (branch_id, close_date, opening_cash, closing_cash, summary, closed_by) VALUES (:b, :d, 0, 0, :s, :u)',
+        { b, d: start.subtract(1, 'day').format('YYYY-MM-DD'), s: JSON.stringify({ startFresh: true }), u: req.user.id });
+    }
   });
-  audit(req, 'START_FRESH', 'branches', b, { customers: !!req.body.customers });
+  audit(req, 'START_FRESH', 'branches', b, { customers: !!req.body.customers, next_loan_no: nextLoanNo, start_date: start?.format('YYYY-MM-DD') || null });
   res.json({ ok: true });
 });
 

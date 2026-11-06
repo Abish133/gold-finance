@@ -183,7 +183,10 @@ router.get('/year-end-checks', permit('s_year_end', 'view'), async (req, res) =>
     queryOne("SELECT COUNT(*) c, COALESCE(SUM(principal),0) a FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND loan_date BETWEEN :s AND :e", p),
     queryOne("SELECT COUNT(*) c, COALESCE(SUM(ABS(principal_amount)),0) a FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type = 'RELEASE' AND txn_date BETWEEN :s AND :e", p),
     queryOne("SELECT COUNT(*) c, COALESCE(SUM(current_principal),0) a, SUM(bank_pledge_id IS NOT NULL) bank FROM loans WHERE branch_id IN (:b) AND status = 'OPEN'", p),
-    query(`SELECT DATE_FORMAT(loan_date, '%Y-%m') m, SUM(principal) given FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND loan_date BETWEEN :s AND :e GROUP BY m ORDER BY m`, p),
+    query(`SELECT m, SUM(given) given, SUM(released) released FROM (
+        SELECT DATE_FORMAT(loan_date, '%Y-%m') m, principal given, 0 released FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND loan_date BETWEEN :s AND :e
+        UNION ALL SELECT DATE_FORMAT(txn_date, '%Y-%m'), 0, ABS(principal_amount) FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type = 'RELEASE' AND txn_date BETWEEN :s AND :e
+      ) x GROUP BY m ORDER BY m`, p),
     query('SELECT b.name, (SELECT MAX(close_date) FROM day_closes d WHERE d.branch_id = b.id) last_close FROM branches b WHERE b.id IN (:b)', p),
   ]);
   const checks = [
