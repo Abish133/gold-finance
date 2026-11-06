@@ -15,9 +15,11 @@ const DOCS = [
   ['LOAN_RECEIPT', 'Loan receipt', 'New loan, re-loan, old loan, duplicate bill'],
   ['RELEASE_RECEIPT', 'Release receipt', 'Loan closure'],
   ['PART_RECEIPT', 'Part payment / top-up receipt', 'Interest, part payment, top-up'],
+  ['STICKER', 'Jewel packet sticker', 'A4 sticker sheet'],
   ['NOTICE', 'Auction notices / letters', ''],
   ['REPORT', 'Reports and lists', ''],
   ['DAYEND', 'Day End / cash report', ''],
+  ['STICKER_THERMAL', 'Jewel Packet Sticker (Thermal)', 'Label printer roll'],
 ];
 const PAPERS = ['A4', 'A5', 'Letter', '80mm roll', '58mm roll'];
 

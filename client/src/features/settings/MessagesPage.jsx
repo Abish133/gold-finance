@@ -9,7 +9,7 @@ import { dateTime } from '@/lib/format';
 import { SettingsForm } from './SettingsForm';
 
 export default function MessagesPage() {
-  const [tab, setTab] = useState('settings');
+  const [tab, setTab] = useState('queue');
   const queue = useList(tab === 'queue' ? '/admin/message-queue' : null, {});
   const { data: tiles } = useFetch('/desk/sms-tiles');
   const { data: st } = useFetch('/admin/settings', { scope: 'global' });
@@ -24,7 +24,7 @@ export default function MessagesPage() {
           <div key={l} className={`card border-t-4 px-4 py-3 ${c}`}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold text-navy-900">{v || 0}</p><p className="text-[11px] text-ink-500">{h}</p></div>
         ))}
       </div>
-      <Tabs className="mb-5" value={tab} onChange={setTab} tabs={[{ value: 'settings', label: 'Settings' }, { value: 'templates', label: 'Templates' }, { value: 'queue', label: 'Sent log' }]} />
+      <Tabs className="mb-5" value={tab} onChange={setTab} tabs={[{ value: 'queue', label: 'Queue & Log' }, { value: 'templates', label: 'Templates' }, { value: 'settings', label: 'Auto SMS Rules' }]} />
       {tab === 'settings' && <SettingsForm allowBranchScope={false} sections={[{ title: 'SMS gateway', subtitle: 'Any HTTP SMS provider (DLT approved) - use {phone} and {message} in the URL', fields: [
         { key: 'SMS_ENABLED', label: 'Enable SMS', type: 'bool' },
         { key: 'SMS_PROVIDER_URL', label: 'Provider URL', hint: 'https://api.provider.com/send?apikey=XXX&to={phone}&text={message}' },

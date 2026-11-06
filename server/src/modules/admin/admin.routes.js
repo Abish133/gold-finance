@@ -252,6 +252,14 @@ const BACKUP_TABLES = ['customers', 'loans', 'loan_items', 'loan_transactions', 
   'bank_accounts', 'bank_pledges', 'auction_notices', 'auction_sales', 'employees', 'salary_payments', 'cash_denominations', 'day_closes'];
 const GLOBAL_TABLES = ['company', 'branches', 'metals', 'purities', 'metal_rates', 'items', 'item_categories', 'schemes', 'ledger_groups', 'ledgers', 'settings', 'financial_years', 'roles', 'role_permissions'];
 
+/* backup history + database size (desktop Backup screen tiles) */
+router.get('/backup-history', permit('s_backup', 'view'), async (req, res) => {
+  const rows = await query(`SELECT a.id, a.created_at, a.details, u.full_name by_name FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
+    WHERE a.action = 'BACKUP' ORDER BY a.id DESC LIMIT 50`);
+  const size = await queryOne('SELECT ROUND(SUM(data_length + index_length) / 1024) kb, COUNT(*) tables FROM information_schema.tables WHERE table_schema = DATABASE()');
+  res.json({ data: { rows, sizeKb: Number(size?.kb || 0), tables: Number(size?.tables || 0) } });
+});
+
 router.get('/backup', permit('s_backup', 'export'), async (req, res) => {
   const out = { generated_at: new Date().toISOString(), branches: req.branchIds, tables: {} };
   for (const t of GLOBAL_TABLES) out.tables[t] = await query(`SELECT * FROM ${t}`);
@@ -263,7 +271,8 @@ router.get('/backup', permit('s_backup', 'export'), async (req, res) => {
         ? await query('SELECT li.* FROM loan_items li JOIN loans l ON l.id = li.loan_id WHERE l.branch_id IN (:b)', { b: req.branchIds })
         : await query('SELECT tp.* FROM transaction_payments tp JOIN loan_transactions t ON t.id = tp.transaction_id WHERE t.branch_id IN (:b)', { b: req.branchIds });
   }
-  audit(req, 'BACKUP', 'database', null, { branches: req.branchIds });
+  const rowsCount = Object.values(out.tables).reduce((t, r) => t + r.length, 0);
+  audit(req, 'BACKUP', 'database', null, { branches: req.branchIds, rows: rowsCount, kb: Math.round(JSON.stringify(out).length / 1024), type: req.query.type || 'Manual' });
   res.setHeader('Content-Disposition', `attachment; filename="gold-finance-backup-${new Date().toISOString().slice(0, 10)}.json"`);
   res.json(out);
 });

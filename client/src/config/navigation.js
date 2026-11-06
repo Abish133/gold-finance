@@ -77,7 +77,7 @@ export const MENUS = [
       { label: 'Account Master', hint: 'Ledgers & opening balances', path: '/accounts/ledgers', icon: Layers, screen: 'acc_ledgers' },
       { section: 'Day' },
       { label: 'Cash Denomination', hint: 'Count the cash drawer', path: '/accounts/denomination', icon: Coins, screen: 'cash_denomination' },
-      { label: 'Day End', hint: 'Check cash and close the day', path: '/accounts/day-close', icon: Lock, screen: 'day_close', hot: 'F4' },
+      { label: 'Day End', hint: 'Check everything and close the day', path: '/settings/day-end', icon: Lock, screen: ['day_close', 'cash_denomination'], hot: 'F4' },
     ],
   },
   {
@@ -119,11 +119,14 @@ export const MENUS = [
   {
     key: 'settings', label: 'Settings', icon: Wrench,
     items: [
-      { label: 'Day End', hint: 'Check cash and close the day', path: '/accounts/denomination', icon: Coins, screen: 'cash_denomination' },
-      { label: 'Day Close', hint: 'Lock the books for a date', path: '/accounts/day-close', icon: Lock, screen: 'day_close' },
+      { label: 'Day End', hint: 'Check everything and close the day', path: '/settings/day-end', icon: CalendarCheck, screen: ['day_close', 'cash_denomination'] },
+      { label: 'Day Close', hint: 'Closed days, re-open the last day', path: '/accounts/day-close', icon: Lock, screen: 'day_close' },
       { label: 'Change Company / Branch', path: '/?switch=branch', icon: Building2, screen: 'dashboard' },
       { section: ' ' },
-      { label: 'Users & Roles', hint: 'Logins and screen access', path: '/settings/users', icon: KeyRound, screen: 's_users' },
+      { label: 'Users & Roles', icon: KeyRound, items: [
+        { label: 'Users', hint: 'Logins, branches, passwords', path: '/settings/users', icon: KeyRound, screen: 's_users' },
+        { label: 'Roles & Permissions', hint: 'Which screens each role can use', path: '/settings/roles', icon: Shield, screen: 's_roles' },
+      ] },
       { label: 'System Control', path: '/settings/system', icon: Settings2, screen: 's_system' },
       { label: 'Printer Setup', hint: 'Paper, copies, bill content, labels', path: '/settings/printer', icon: Printer, screen: 's_print' },
       { label: 'SMS Settings', path: '/settings/messages', icon: MessageSquare, screen: 's_messages' },
@@ -134,7 +137,6 @@ export const MENUS = [
       { label: 'User Log', hint: 'Logins & activity', path: '/settings/audit?action=LOGIN', icon: ScrollText, screen: 's_audit' },
       { label: 'Year End Process', path: '/settings/year-end', icon: CalendarRange, screen: 's_year_end' },
       { section: 'More' },
-      { label: 'Roles & Permissions', hint: 'Which screens each role can use', path: '/settings/roles', icon: Shield, screen: 's_roles' },
       { label: 'Branches', path: '/settings/branches', icon: Building2, screen: 's_branches' },
       { label: 'Appearance', hint: 'Background image', path: '/settings/appearance', icon: Palette, screen: 's_company' },
       { label: 'Audit Trail', path: '/settings/audit', icon: ScrollText, screen: 's_audit' },

@@ -120,6 +120,7 @@ export const router = createBrowserRouter([
       r('stock', P.StockCheck, 'stock'),
       r('stock/analysis', P.StockAnalysis, ['stock', 'reports_loan']),
       r('auction/release', P.AuctionRelease, 'auction_sale'),
+      r('settings/day-end', P.DayReport, ['day_close', 'cash_denomination'], { mode: 'end' }),
       r('reports/loans', P.LoanRep, 'reports_loan'),
       r('reports/releases', P.ReleaseRep, 'reports_release'),
       r('reports/release-details', P.ReleaseRep, 'reports_release', { detail: true }),

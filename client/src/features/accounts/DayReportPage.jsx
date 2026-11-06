@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { Search, RefreshCw, FileDown, FileSpreadsheet, Coins, CalendarCheck, Printer } from 'lucide-react';
+import { Search, RefreshCw, FileDown, FileSpreadsheet, Coins, CalendarCheck, Printer, Check, X } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Input } from '@/components/ui';
-import { useFetch, useCompany } from '@/hooks/useApi';
+import { Button, Checkbox, Input } from '@/components/ui';
+import { useFetch, useCompany, useLookups } from '@/hooks/useApi';
+import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, n, today } from '@/lib/format';
@@ -12,24 +16,48 @@ import { ExitButton, Line, useKeys } from '@/features/loans/desk';
 
 const MODE = ['CASH', 'UPI', 'BANK', 'CARD', 'CHEQUE'];
 
-/** Day Report (desktop: frmDayDetails) - accounts summary, cash tally and Day End. */
-export default function DayReportPage() {
+/** Day Report (desktop: frmDayDetails) and Day End (mode="end"): accounts summary, cash tally, close the day. */
+export default function DayReportPage({ mode = 'report' }) {
+  const isEnd = mode === 'end';
+  const qc = useQueryClient();
+  const { can, isAllBranches } = useAuth();
+  const { data: lk } = useLookups();
+  const billing = useFetch(isEnd ? '/desk/billing-date' : null);
+  const [printFirst, setPrintFirst] = useState(true);
+  const [closing, setClosing] = useState(false);
   const navigate = useNavigate();
   const { data: company } = useCompany();
   const [r, setR] = useState({ from: today(), to: today() });
   const [q, setQ] = useState(r);
+  // Day End works on the billing date (the day after the last Day End)
+  useEffect(() => { const d = billing.data?.billingDate; if (isEnd && d) { setR({ from: d, to: d }); setQ({ from: d, to: d }); } }, [isEnd, billing.data?.billingDate]);
   const { data, refetch } = useFetch('/desk/day-report', q);
+  const rateOk = (lk?.rates || []).some((x) => dayjs(x.rate_date).isSame(dayjs(q.to), 'day'));
+  const nextDay = dayjs(q.to).add(1, 'day').format('YYYY-MM-DD');
   const t = data?.tally;
   const cols = [{ key: 'id', label: 'A/c No' }, { key: 'name', label: 'A/c Name' }, { key: 'jama', label: 'Jama (Received)', type: 'money' }, { key: 'nave', label: 'Nave (Paid)', type: 'money' }];
   const print = () => printTable({ title: `Day Report ${dayjs(q.from).format('DD/MM/YYYY')}${q.to !== q.from ? ` - ${dayjs(q.to).format('DD/MM/YYYY')}` : ''}`, company, columns: cols, rows: data?.accounts || [],
     totals: { jama: data?.jama, nave: data?.nave } });
   const modeAmt = (dir, m) => n((data?.modes || []).find((x) => x.dir === dir && x.mode === m)?.amount);
-  useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => navigate('/accounts/denomination'), f10: () => navigate('/accounts/day-close'), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, data]);
+  const closeDay = async () => {
+    if (isAllBranches) return toast.error('Select a branch to close the day');
+    if (q.from !== q.to) return toast.error('Day End closes one day - set From and To to the same date');
+    if (data?.dayClosed) return toast.error('This day is already closed');
+    setClosing(true);
+    try {
+      if (printFirst) await print();
+      await api.post('/accounts/day-close', { date: q.to });
+      toast.success(`Day ${dayjs(q.to).format('DD/MM/YYYY')} closed. Billing date is now ${dayjs(nextDay).format('DD/MM/YYYY')}`);
+      ['/desk/billing-date', '/desk/day-report', '/accounts/day-close', '/dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      if (dayjs(nextDay).isAfter(dayjs(), 'day')) refetch(); else { setR({ from: nextDay, to: nextDay }); setQ({ from: nextDay, to: nextDay }); }
+    } catch (e) { toast.error(e.message); } finally { setClosing(false); }
+  };
+  useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => navigate('/accounts/denomination'), f10: () => (isEnd ? closeDay() : navigate('/settings/day-end')), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, q, data, printFirst, isEnd]);
 
   return (
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">Day Report</h1><p className="text-sm text-navy-100">Accounts summary, cash update and print</p></div>
+        <div className="flex-1"><h1 className="text-2xl font-bold">{isEnd ? 'Day End' : 'Day Report'}</h1><p className="text-sm text-navy-100">{isEnd ? 'Check everything and close the day' : 'Accounts summary, cash update and print'}</p></div>
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-white p-1.5 text-ink-800">
           <span className="px-1 text-xs">From</span><Input type="date" className="h-9 w-40" value={r.from} onChange={(e) => setR({ ...r, from: e.target.value })} />
           <span className="px-1 text-xs">To</span><Input type="date" className="h-9 w-40" value={r.to} onChange={(e) => setR({ ...r, to: e.target.value })} />
@@ -81,8 +109,21 @@ export default function DayReportPage() {
             {t?.counted == null ? <>CASH NOT COUNTED<p className="text-xs font-normal">Press F6 and count the drawer.</p></> : Math.abs(t.countDiff) < 0.01 ? 'CASH TALLIED' : `${t.countDiff > 0 ? 'EXCESS' : 'SHORTAGE'} ${amount(Math.abs(t.countDiff))}`}
           </div>
           <div className="flex items-center justify-between text-sm"><b className="text-xs text-ink-600 uppercase">Day End</b><span className={clsx('rounded px-2 py-0.5 text-xs font-bold', data?.dayClosed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>{data?.dayClosed ? 'Closed' : 'Not closed'}</span></div>
-          <p className="rounded-md bg-cream-100 p-3 text-xs text-ink-700">Update entries and count the cash (F6) here. When everything is correct, press "Go to Day End".</p>
-          <Button variant="outline" size="lg" className="h-12 w-full border-emerald-600 text-emerald-700" icon={CalendarCheck} onClick={() => navigate('/accounts/day-close')}>Go to Day End (F10)</Button>
+          {isEnd ? (
+            <div className="space-y-1.5 text-sm">
+              {[[rateOk, 'Gold / Silver rate entered'], [t?.counted != null, 'Cash counted (F6)', 'Cash not counted (F6)'], [t?.counted != null && Math.abs(t.countDiff) < 0.01, 'Cash tally', 'Cash not tally (Close Day will offer Day Report)']].map(([ok, yes, no]) => (
+                <p key={yes} className={clsx('flex items-center gap-2', ok ? 'text-emerald-700' : 'text-rose-600')}>{ok ? <Check className="size-4" /> : <X className="size-4" />}{ok ? yes : no || yes}</p>
+              ))}
+              <p className="text-ink-600">Account posting: {(data?.accounts || []).filter((a) => n(a.jama) || n(a.nave)).length} rows will be written</p>
+              <div className="flex items-center justify-between"><span>New billing date</span><b className="num">{dayjs(nextDay).format('DD/MM/YYYY')}</b></div>
+              <Checkbox checked={printFirst} onChange={setPrintFirst} label="Print Day Report before closing" />
+              {can('day_close', 'add') && <Button variant="outline" size="lg" className="h-12 w-full border-emerald-600 bg-amber-50 text-emerald-800" icon={CalendarCheck} loading={closing} disabled={data?.dayClosed}
+                onClick={closeDay}>{data?.dayClosed ? 'Day already closed' : `Close Day & Move to ${dayjs(nextDay).format('DD/MM/YYYY')} (F10)`}</Button>}
+            </div>
+          ) : (<>
+            <p className="rounded-md bg-cream-100 p-3 text-xs text-ink-700">Update entries and count the cash (F6) here. When everything is correct, press Go to Day End.</p>
+            <Button variant="outline" size="lg" className="h-12 w-full border-emerald-600 text-emerald-700" icon={CalendarCheck} onClick={() => navigate('/settings/day-end')}>Go to Day End (F10)</Button>
+          </>)}
           <div className="grid grid-cols-2 gap-2"><Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button><ExitButton /></div>
         </div>
       </div>
