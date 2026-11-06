@@ -317,4 +317,43 @@ router.get('/employee/:id/history', permitAny(['salary', 'employees']), async (r
   res.json({ data: { salary, totalPaid: round2(salary.reduce((t, r) => t + num(r.net_pay), 0)) } });
 });
 
+/* ------------------------------------------------ Stock Analysis: amount due against market value of open loans */
+router.get('/stock-analysis', permitAny(['stock', 'reports_loan']), async (req, res) => {
+  const asOn = req.query.as_on || dayjs().format('YYYY-MM-DD');
+  const where = ['l.branch_id IN (:b)', "l.status = 'OPEN'", 'l.loan_date <= :d'];
+  const p = { b: req.branchIds, d: asOn };
+  if (req.query.from) { where.push('l.loan_date >= :f'); p.f = req.query.from; }
+  if (req.query.to) { where.push('l.loan_date <= :t'); p.t = req.query.to; }
+  if (num(req.query.age)) { where.push('l.loan_date <= DATE_SUB(:d, INTERVAL :ag MONTH)'); p.ag = num(req.query.age); }
+  if (req.query.loan_on) { where.push('l.loan_on = :lo'); p.lo = req.query.loan_on; }
+  if (req.query.where === 'hand') where.push('l.bank_pledge_id IS NULL');
+  if (req.query.where === 'bank') where.push('l.bank_pledge_id IS NOT NULL');
+  if (req.query.search) { where.push('(l.bill_no LIKE :s OR l.manual_bill_no LIKE :s OR c.name LIKE :s OR c.phone LIKE :s)'); p.s = `%${req.query.search}%`; }
+  const loans = await query(`SELECT l.*, c.name customer_name, c.phone customer_phone, c.relation_type, c.relation_name FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${where.join(' AND ')} ORDER BY l.loan_date, l.id LIMIT 3000`, p);
+  const calc = await withCalc(loans, asOn, req.branchId);
+  const settings = await getSettings(req.branchId || 0);
+  const margin = num(settings.STOCK_RISK_MARGIN, 10);
+  const rates = await query(`SELECT m.code, r.market_rate, r.purity FROM metal_rates r JOIN metals m ON m.id = r.metal_id
+    WHERE r.rate_date = (SELECT MAX(rate_date) FROM metal_rates y WHERE y.metal_id = r.metal_id AND y.rate_date <= :d)`, { d: asOn });
+  const top = (code) => rates.filter((r) => r.code === code).sort((a2, b2) => num(b2.purity) - num(a2.purity))[0];
+  const gold = top('GOLD'); const silver = top('SILVER');
+  // value at the top purity rate (fine weight x fine rate)
+  const value = (l) => { const r = l.loan_on === 'SILVER' ? silver : gold; return r ? round2((num(l.net_wt) * num(l.avg_purity || 91.6) / 100) * num(r.market_rate) * (100 / num(r.purity || 100))) : 0; };
+  const rows = calc.map((c, i) => {
+    const l = loans[i];
+    const mv = value(l);
+    const marginPct = mv ? round2(((mv - c.total_due) / mv) * 100) : null;
+    const result = mv < c.total_due ? 'LOSS' : marginPct != null && marginPct < margin ? 'RISK' : 'PROFIT';
+    return { ...c, manual_bill_no: l.manual_bill_no, relation_type: l.relation_type, relation_name: l.relation_name, where: l.bank_pledge_id ? 'Bank' : 'Hand',
+      purity: num(l.avg_purity), balance: c.loan_due, market_value: mv, margin: round2(mv - c.total_due), margin_pct: marginPct, result };
+  });
+  const sum = (list, k) => round2(list.reduce((t, r) => t + num(r[k]), 0));
+  const of = (k) => rows.filter((r) => r.result === k);
+  res.json({ data: { rows, margin, rates: { gold: gold?.market_rate || null, silver: silver?.market_rate || null }, summary: {
+    open: rows.length, goldWt: sum(rows.filter((r) => r.loan_on !== 'SILVER'), 'net_wt'), silverWt: sum(rows.filter((r) => r.loan_on === 'SILVER'), 'net_wt'),
+    principal: sum(rows, 'loan_due'), given: sum(rows, 'principal'), interest: sum(rows, 'interest_due'), market: sum(rows, 'market_value'), totalDue: sum(rows, 'total_due'),
+    profit: of('PROFIT').length, profitAmt: sum(of('PROFIT'), 'margin'), risk: of('RISK').length, riskAmt: sum(of('RISK'), 'margin'), loss: of('LOSS').length, lossAmt: sum(of('LOSS'), 'margin'),
+  } } });
+});
+
 export default router;

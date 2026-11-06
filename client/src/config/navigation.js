@@ -15,31 +15,31 @@ export const MENUS = [
     key: 'loan', label: 'Loan', icon: CircleDollarSign,
     items: [
       { label: 'New Loan', hint: 'Give a new loan', path: '/loans/new', icon: FilePlus2, screen: 'loan_new', hot: 'F1' },
-      { label: 'Release', hint: 'Close / settle a loan', path: '/loans/release', icon: Unlock, screen: 'loan_release', hot: 'F2' },
-      { label: 'Part Payment / Interest', hint: 'Interest or part amount', path: '/loans/part-payment', icon: Wallet, screen: 'loan_interest', hot: 'F5' },
+      { label: 'Release Loan', hint: 'Close / settle a loan', path: '/loans/release', icon: Unlock, screen: 'loan_release', hot: 'F2' },
+      { label: 'Part Payment', hint: 'Interest or part amount', path: '/loans/part-payment', icon: Wallet, screen: 'loan_interest', hot: 'F5' },
       { label: 'Top-up Loan', hint: 'Extra amount on same loan', path: '/loans/topup', icon: ArrowUpCircle, screen: 'loan_topup' },
       { label: 'Re-loan', hint: 'Release old, new loan in one step', path: '/loans/reloan', icon: RefreshCcw, screen: 'loan_renewal' },
       { label: 'Interest Calculator', hint: 'Interest due on open loans / quote', path: '/loans/calculator', icon: Calculator, screen: 'interest_calculator' },
-      { label: 'Loan Details', hint: 'All actions & history of one loan', path: '/loans/counter', icon: HandCoins, screen: 'loan_list' },
-      { section: 'More' },
+      { section: ' ' },
       { label: 'Old Loan Entry', hint: 'Enter an old paper loan', path: '/loans/old', icon: History, screen: 'loan_old' },
-
       { label: 'Edit Loan Record', hint: 'Correct an open loan', path: '/loans/edit', icon: Pencil, screen: 'loan_edit' },
-      { section: 'Print' },
-      { label: 'Jewel Packet Sticker', hint: 'Print item stickers', path: '/loans/stickers', icon: Tag, screen: 'loan_sticker', hot: 'F9' },
-      { label: 'Duplicate Bill', hint: 'Reprint loan receipt', path: '/loans/duplicate', icon: Printer, screen: 'loan_print', hot: 'F8' },
+      { label: 'Loan Details', hint: 'All actions & history of one loan', path: '/loans/counter', icon: HandCoins, screen: 'loan_list' },
+      { label: 'Print', icon: Printer, items: [
+        { label: 'Jewel Packet Sticker', hint: 'Print item stickers', path: '/loans/stickers', icon: Tag, screen: 'loan_sticker', hot: 'F9' },
+        { label: 'Duplicate Bill', hint: 'Reprint loan receipt', path: '/loans/duplicate', icon: Printer, screen: 'loan_print', hot: 'F8' },
+      ] },
     ],
   },
   {
     key: 'records', label: 'Records', icon: Files,
     items: [
-      { label: 'Customers', hint: 'Search / edit customers', path: '/customers', icon: Users, screen: 'customers', hot: 'F3' },
-      { label: 'New Customer', hint: 'Add a customer', path: '/customers?new=1', icon: UserPlus, screen: 'customers' },
-      { label: 'Blocked Customers', hint: 'Block / unblock', path: '/customers/blocked', icon: UserX, screen: 'customer_blocked' },
-      { label: 'Merge Customers', hint: 'Combine duplicates', path: '/customers/merge', icon: Merge, screen: 'customer_merge' },
-      { section: 'Register' },
       { label: 'Pledge Book', hint: 'All loans register', path: '/loans', icon: BookOpen, screen: 'loan_list' },
-      { label: 'Stock Check', hint: 'Scan packets in vault', path: '/stock', icon: ScanLine, screen: 'stock' },
+      { label: 'Customers', hint: 'Search / edit customers, ledger', path: '/customers', icon: Users, screen: 'customers', hot: 'F3' },
+      { label: 'Stock', icon: Boxes, items: [
+        { label: 'Stock Analysis', hint: 'Amount due against market value', path: '/stock/analysis', icon: TrendingUp, screen: 'stock' },
+        { label: 'Stock Check', hint: 'Scan packets in vault', path: '/stock', icon: ScanLine, screen: 'stock' },
+      ] },
+      { section: 'More' },
       { label: 'Bill Book Check', hint: 'Missing / repeated bill numbers', path: '/loans/bill-book-check', icon: BookCheck, screen: 'loan_list' },
     ],
   },
@@ -147,6 +147,6 @@ export const MENUS = [
 ];
 
 /** Function keys, same as the desktop app. */
-export const HOTKEYS = MENUS.flatMap((m) => m.items).filter((i) => i.hot).map((i) => ({ key: i.hot, path: i.path, screen: i.screen, label: i.label }));
+export const HOTKEYS = MENUS.flatMap((m) => m.items.flatMap((i) => i.items || [i])).filter((i) => i.hot).map((i) => ({ key: i.hot, path: i.path, screen: i.screen, label: i.label }));
 
 export const allowed = (can, screen) => (!screen ? true : Array.isArray(screen) ? screen.some((s) => can(s)) : can(screen));

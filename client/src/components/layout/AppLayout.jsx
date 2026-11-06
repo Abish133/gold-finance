@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { useForm } from 'react-hook-form';
-import { Bell, LogOut, Moon, Search, Sun, Building2, Check, KeyRound, Layers, ChevronDown, Power, Keyboard, Info, User, Maximize, Minimize } from 'lucide-react';
+import { Bell, LogOut, Moon, Search, Sun, Building2, Check, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, User, Maximize, Minimize } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch, useAction, useCompany, useSettings } from '@/hooks/useApi';
@@ -25,14 +25,17 @@ const useTheme = () => {
 function MenuBar({ onAction, onExit }) {
   const { can } = useAuth();
   const [open, setOpen] = useState(null);
+  const [sub, setSub] = useState(null);
   const bar = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const menus = MENUS.map((m) => ({ ...m, items: m.items.filter((i) => i.section || allowed(can, i.screen)) }))
+  const visible = (i) => (i.items ? i.items.some((x) => allowed(can, x.screen)) : i.section || allowed(can, i.screen));
+  const menus = MENUS.map((m) => ({ ...m, items: m.items.filter(visible).map((i) => (i.items ? { ...i, items: i.items.filter((x) => allowed(can, x.screen)) } : i)) }))
     .map((m) => ({ ...m, items: m.items.filter((i, idx, arr) => !i.section || (arr[idx + 1] && !arr[idx + 1].section)) }))
     .filter((m) => m.items.some((i) => !i.section));
 
-  useEffect(() => setOpen(null), [location]);
+  useEffect(() => { setOpen(null); setSub(null); }, [location]);
+  useEffect(() => setSub(null), [open]);
   useEffect(() => {
     if (!open) return undefined;
     const close = (e) => { if (!bar.current?.contains(e.target)) setOpen(null); };
@@ -69,9 +72,32 @@ function MenuBar({ onAction, onExit }) {
           <div className="fixed z-40 mt-10 w-80 animate-drop overflow-hidden rounded-b-md border border-ink-300 bg-white text-ink-800 shadow-xl dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100"
             style={{ left: `${left}px` }}>
             <div className="h-0.5 bg-gold-500" />
-            <ul className="max-h-[75vh] overflow-y-auto py-1">
+            <ul className="max-h-[75vh] py-1">
               {m.items.map((i, k) => (i.section ? (
-                <li key={`s${k}`} className="mt-1 border-t border-ink-200 px-4 pt-2 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase dark:border-ink-700">{i.section}</li>
+                i.section.trim() ? <li key={`s${k}`} className="mt-1 border-t border-ink-200 px-4 pt-2 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase dark:border-ink-700">{i.section}</li> : <li key={`s${k}`} className="my-1 border-t border-ink-200 dark:border-ink-700" />
+              ) : i.items ? (
+                /* submenu (desktop: Print ▸, Stock ▸) */
+                <li key={i.label} className="relative border-t border-ink-200 dark:border-ink-700" onMouseEnter={() => setSub(i.label)} onMouseLeave={() => setSub(null)}>
+                  <button type="button" onClick={() => setSub(sub === i.label ? null : i.label)} className={clsx('flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-navy-50 dark:hover:bg-navy-800/40', sub === i.label && 'bg-navy-50 dark:bg-navy-800/40')}>
+                    <i.icon className="size-4.5 shrink-0 text-navy-600 dark:text-navy-300" />
+                    <span className="flex-1 font-semibold text-navy-900 dark:text-white">{i.label}</span>
+                    <ChevronRight className="size-4 text-ink-500" />
+                  </button>
+                  {sub === i.label && (
+                    <ul className="fixed z-50 w-72 overflow-hidden rounded-md border border-ink-300 bg-white py-1 shadow-xl dark:border-ink-700 dark:bg-ink-900"
+                      style={{ left: `${left + 320}px`, marginTop: '-40px' }}>
+                      {i.items.map((x) => (
+                        <li key={x.label}>
+                          <button type="button" onClick={() => choose(x)} className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-navy-50 dark:hover:bg-navy-800/40">
+                            <x.icon className="size-4.5 shrink-0 text-navy-600 dark:text-navy-300" />
+                            <span className="min-w-0 flex-1"><span className="block truncate font-semibold text-navy-900 dark:text-white">{x.label}</span>{x.hint && <span className="block truncate text-xs text-ink-500">{x.hint}</span>}</span>
+                            {x.hot && <kbd className="rounded border border-ink-300 bg-ink-50 px-1.5 text-[10px] font-bold text-ink-600 dark:border-ink-700 dark:bg-ink-800">{x.hot}</kbd>}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
               ) : (
                 <li key={i.label}>
                   <button type="button" onClick={() => choose(i)} className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-navy-50 dark:hover:bg-navy-800/40">
