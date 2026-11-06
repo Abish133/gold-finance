@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { Bell, LogOut, Moon, Search, Sun, Building2, Check, KeyRound, Layers, ChevronDown, Power, Keyboard, Info, User, Maximize, Minimize } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useFetch, useAction, useCompany } from '@/hooks/useApi';
+import { useFetch, useAction, useCompany, useSettings } from '@/hooks/useApi';
 import { useHotkey } from '@/hooks/useUtils';
 import { Button, Drawer, Spinner, Field, Input, Badge } from '@/components/ui';
 import { GlobalSearch } from './GlobalSearch';
@@ -153,8 +153,8 @@ const BranchOption = ({ active, onClick, title, sub, icon: Icon }) => (
   </button>
 );
 
-const HeaderTile = ({ icon, label, value, onClick, accent }) => (
-  <button type="button" onClick={onClick} className="flex items-center gap-2.5 border-l border-ink-200 px-4 py-1 text-left first:border-l-0 hover:bg-white/60 dark:border-ink-700">
+const HeaderTile = ({ icon, label, value, onClick, accent, title }) => (
+  <button type="button" onClick={onClick} title={title} className="flex items-center gap-2.5 border-l border-ink-200 px-4 py-1 text-left first:border-l-0 hover:bg-white/60 dark:border-ink-700">
     {icon}
     <span className="leading-tight">
       <span className="block text-[10px] font-semibold tracking-wide text-ink-500 uppercase">{label}</span>
@@ -170,6 +170,7 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
   const { data: rates = [] } = useFetch('/masters/rates/latest/all', undefined, { staleTime: 5 * 60_000 });
   const { data: years = [] } = useFetch('/admin/financial-years', undefined, { staleTime: 30 * 60_000 });
   const fy = years.find((y) => y.is_current);
+  const { data: billing } = useFetch('/desk/billing-date', undefined, { staleTime: 60_000 });
   const gold = rates.find((r) => r.metal_code === 'GOLD');
   const silver = rates.find((r) => r.metal_code === 'SILVER');
   const todayRate = gold && dayjs(gold.rate_date).isSame(dayjs(), 'day');
@@ -194,8 +195,9 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
       </button>
 
       <div className="flex items-center rounded-md border border-ink-200 bg-white/70 py-1 dark:border-ink-700 dark:bg-ink-950/40">
-        <HeaderTile label="Billing date" value={dayjs().format('DD/MM/YYYY')}
-          icon={<span className="grid h-8 w-7 place-items-end overflow-hidden rounded-sm border border-ink-300 bg-white pb-0.5 text-center text-xs font-bold text-navy-900"><span className="absolute" /><span className="block w-full border-t-4 border-rose-600 pt-0.5">{dayjs().format('D')}</span></span>} />
+        <HeaderTile label="Billing date" value={dayjs(billing?.billingDate).format('DD/MM/YYYY')} accent={billing?.behind ? 'text-rose-600' : undefined}
+          onClick={billing?.behind ? () => navigate('/accounts/day-report') : undefined} title={billing?.behind ? 'Billing date is behind today - finish Day End' : undefined}
+          icon={<span className="grid h-8 w-7 place-items-end overflow-hidden rounded-sm border border-ink-300 bg-white pb-0.5 text-center text-xs font-bold text-navy-900"><span className="absolute" /><span className="block w-full border-t-4 border-rose-600 pt-0.5">{dayjs(billing?.billingDate).format('D')}</span></span>} />
         <HeaderTile label="Gold rate" value={gold ? `₹${amount(gold.market_rate)}` : 'Not set'} accent={!todayRate ? 'text-rose-600' : undefined} onClick={() => navigate('/masters/rates')}
           icon={<span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-gold-300 to-gold-600 text-[11px] font-black text-white ring-2 ring-gold-200">G</span>} />
         <HeaderTile label="Silver rate" value={silver ? `₹${amount(silver.market_rate)}` : 'Not set'} onClick={() => navigate('/masters/rates')}
@@ -310,6 +312,8 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { can, logout } = useAuth();
   const { data: alerts = [] } = useFetch('/dashboard/alerts', undefined, { refetchInterval: 5 * 60_000 });
+  const { data: settings } = useSettings();
+  const bg = settings?.BACKGROUND_IMAGE;
 
   useHotkey('ctrl+k', () => setPanel('search'));
   for (const h of HOTKEYS) {
@@ -323,6 +327,7 @@ export function AppLayout() {
         <MenuBar onAction={setPanel} onExit={() => setPanel('exit')} />
         <HeaderStrip dark={dark} setDark={setDark} onSearch={() => setPanel('search')} onProfile={() => setPanel('profile')} onAlerts={() => setPanel('alerts')} alertCount={alerts.length} />
       </div>
+      {bg && <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-cover bg-center opacity-[0.07]" style={{ backgroundImage: `url(${bg})` }} />}
       <main className="w-full flex-1 p-2 sm:p-3">
         <Suspense fallback={<Spinner label="Loading screen…" />}><Outlet /></Suspense>
       </main>

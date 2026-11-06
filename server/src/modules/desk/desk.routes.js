@@ -15,6 +15,9 @@ import { ledgerId, LEDGER } from '#services/accounting.service.js';
 import { calcOptions } from '#modules/loans/loans.service.js';
 import { openingBalance } from '#modules/accounts/accounts.service.js';
 import { lastClosedDate } from '#services/daycontrol.service.js';
+import { upload, publicPath } from '#middleware/upload.js';
+import { saveSettings } from '#services/settings.service.js';
+import { requireBranch, assertBranch } from '#middleware/branch.js';
 
 const router = Router();
 
@@ -140,9 +143,20 @@ router.get('/stock', permitAny(['stock', 'reports_loan']), async (req, res) => {
   if (req.query.amount_to) { where.push('l.principal <= :at'); p.at = num(req.query.amount_to); }
   if (req.query.search) { where.push('(l.bill_no LIKE :s OR c.name LIKE :s)'); p.s = `%${req.query.search}%`; }
   const rows = await query(`SELECT l.id, l.bill_no, l.loan_date, TIMESTAMPDIFF(MONTH, l.loan_date, :d) age_months, c.name customer_name, l.item_summary, l.total_items, l.loan_on,
-      l.gross_wt, l.stone_wt, l.net_wt, l.principal, l.principal - l.current_principal - IF(l.status = 'OPEN', 0, 0) part_paid, l.current_principal, l.bank_pledge_id
+      l.gross_wt, l.stone_wt, l.net_wt, l.avg_purity, l.principal, l.current_principal, l.bank_pledge_id
     FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${where.join(' AND ')} ORDER BY l.loan_date LIMIT 5000`, p);
-  const out = rows.map((r) => ({ ...r, where: r.bank_pledge_id ? 'Bank' : 'Hand', part_paid: Math.max(0, round2(num(r.principal) - num(r.current_principal))) }));
+  const settings = await getSettings(req.branchId || 0);
+  const margin = num(settings.STOCK_RISK_MARGIN, 10);
+  const rates = await query(`SELECT m.code, r.market_rate, r.purity FROM metal_rates r JOIN metals m ON m.id = r.metal_id
+    WHERE r.rate_date = (SELECT MAX(rate_date) FROM metal_rates y WHERE y.metal_id = r.metal_id)`);
+  const best = (code) => rates.filter((r) => r.code === code).sort((a2, b2) => Math.abs(b2.purity - 91.6) - Math.abs(a2.purity - 91.6)).pop();
+  const gold = best('GOLD'); const silver = best('SILVER');
+  const out = rows.map((r) => {
+    const rate = r.loan_on === 'SILVER' ? silver : gold;
+    const valueNow = rate ? round2(num(r.net_wt) * num(rate.market_rate) * ((num(r.avg_purity) || 91.6) / num(rate.purity || 91.6))) : 0;
+    const marginPct = valueNow ? round2(((valueNow - num(r.current_principal)) / valueNow) * 100) : null;
+    return { ...r, where: r.bank_pledge_id ? 'Bank' : 'Hand', part_paid: Math.max(0, round2(num(r.principal) - num(r.current_principal))), value_now: valueNow, margin_pct: marginPct, at_risk: marginPct != null && marginPct < margin };
+  });
   res.json({ data: out });
 });
 
@@ -202,6 +216,129 @@ router.get('/year-end-checks', permit('s_year_end', 'view'), async (req, res) =>
     { ok: true, text: 'Backup available', detail: 'Download a backup from Settings → Backup before closing' },
   ];
   res.json({ data: { fy, given, released, pending, monthly, checks } });
+});
+
+/* ------------------------------------------------ Billing date (desktop: working date moves on at Day End) */
+router.get('/billing-date', async (req, res) => {
+  const t = dayjs().format('YYYY-MM-DD');
+  if (!req.branchId) return res.json({ data: { billingDate: t, behind: false } });
+  const last = await lastClosedDate(req.branchId);
+  const firstEntry = (await queryOne('SELECT MIN(txn_date) d FROM loan_transactions WHERE branch_id = :b AND is_void = 0', { b: req.branchId }))?.d;
+  let billing = last ? dayjs(last).add(1, 'day').format('YYYY-MM-DD') : (firstEntry || t);
+  if (dayjs(billing).isAfter(dayjs(t))) billing = t;
+  res.json({ data: { billingDate: billing, lastClosed: last, behind: dayjs(billing).isBefore(dayjs(t), 'day') } });
+});
+
+/* ------------------------------------------------ Bill book check: gaps in loan numbers / bill book numbers */
+router.get('/bill-book-check', permitAny(['loan_list', 's_system']), requireBranch, async (req, res) => {
+  const fy = await queryOne('SELECT * FROM financial_years WHERE is_current = 1');
+  const loans = await query('SELECT id, loan_no, bill_no, manual_bill_no, loan_date, status, entry_type FROM loans WHERE branch_id = :b AND fy_id = :f ORDER BY loan_no', { b: req.branchId, f: fy.id });
+  const gaps = (nums) => { const out = []; for (let i = 1; i < nums.length; i++) for (let k = nums[i - 1] + 1; k < nums[i] && out.length < 500; k++) out.push(k); return out; };
+  const loanNos = loans.map((l) => l.loan_no);
+  const books = loans.map((l) => Number(l.manual_bill_no)).filter((x) => Number.isInteger(x) && x > 0).sort((a2, b2) => a2 - b2);
+  const byBook = {};
+  for (const l of loans) if (l.manual_bill_no) (byBook[l.manual_bill_no] ||= []).push(l.bill_no);
+  const dupBook = Object.entries(byBook).filter(([, v]) => v.length > 1).map(([k, v]) => ({ bill_book_no: k, loans: v.join(', ') }));
+  res.json({ data: {
+    fy: fy.name, total: loans.length, first: loanNos[0] || null, last: loanNos.at(-1) || null,
+    missingLoanNos: gaps(loanNos), missingBillBook: gaps(books), duplicateBillBook: dupBook,
+    cancelled: loans.filter((l) => l.status === 'CANCELLED').map((l) => ({ bill_no: l.bill_no, loan_date: l.loan_date })),
+  } });
+});
+
+/* ------------------------------------------------ Stock correction: note against a packet after stock check */
+router.put('/stock-note/:loanId', permit('stock', 'edit'), requireBranch, async (req, res) => {
+  const d = req.body.date || dayjs().format('YYYY-MM-DD');
+  const loan = await queryOne('SELECT id, branch_id, bill_no FROM loans WHERE id = :id', { id: req.params.loanId });
+  if (!loan) throw ApiError.notFound();
+  assertBranch(req, loan.branch_id);
+  await query(`INSERT INTO stock_checks (branch_id, check_date, loan_id, remarks, checked_by) VALUES (:b, :d, :l, :r, :u)
+    ON DUPLICATE KEY UPDATE remarks = :r`, { b: req.branchId, d, l: loan.id, r: String(req.body.remarks || '').slice(0, 150), u: req.user.id });
+  audit(req, 'STOCK_CORRECTION', 'loans', loan.id, { remarks: req.body.remarks });
+  res.json({ ok: true });
+});
+
+router.get('/stock-notes', permit('stock', 'view'), async (req, res) => {
+  res.json({ data: await query(`SELECT s.*, l.bill_no, l.status, c.name customer_name, u.full_name checked_by_name FROM stock_checks s JOIN loans l ON l.id = s.loan_id
+    JOIN customers c ON c.id = l.customer_id LEFT JOIN users u ON u.id = s.checked_by WHERE s.branch_id IN (:b) AND s.remarks IS NOT NULL AND s.remarks <> '' ORDER BY s.check_date DESC LIMIT 300`, { b: req.branchIds }) });
+});
+
+/* ------------------------------------------------ Documents (customers / employees / loans) */
+const OWNER = { customer: 'CUSTOMER', employee: 'EMPLOYEE', loan: 'LOAN' };
+router.get('/documents/:owner/:id', async (req, res) => {
+  const t = OWNER[req.params.owner];
+  if (!t) throw ApiError.badRequest('Bad owner');
+  res.json({ data: await query(`SELECT d.*, u.full_name by_name FROM documents d LEFT JOIN users u ON u.id = d.created_by
+    WHERE d.owner_type = :t AND d.owner_id = :id AND d.branch_id IN (:b) ORDER BY d.id DESC`, { t, id: req.params.id, b: req.branchIds }) });
+});
+router.post('/documents/:owner/:id', requireBranch, upload.single('file'), async (req, res) => {
+  const t = OWNER[req.params.owner];
+  if (!t || !req.file) throw ApiError.badRequest('Choose a file');
+  const r = await query('INSERT INTO documents (branch_id, owner_type, owner_id, doc_type, file_path, remarks, created_by) VALUES (:b, :t, :o, :dt, :p, :r, :u)',
+    { b: req.branchId, t, o: req.params.id, dt: req.body.doc_type || 'Document', p: publicPath(req.file), r: req.body.remarks || null, u: req.user.id });
+  audit(req, 'UPLOAD', 'documents', r.insertId, { owner: t, id: req.params.id });
+  res.status(201).json({ ok: true });
+});
+router.delete('/documents/:docId', async (req, res) => {
+  const d = await queryOne('SELECT * FROM documents WHERE id = :id', { id: req.params.docId });
+  if (!d) throw ApiError.notFound();
+  assertBranch(req, d.branch_id);
+  await query('DELETE FROM documents WHERE id = :id', { id: d.id });
+  audit(req, 'DELETE', 'documents', d.id);
+  res.json({ ok: true });
+});
+
+/* ------------------------------------------------ Background image */
+router.post('/background', permit('s_company', 'edit'), upload.single('file'), async (req, res) => {
+  const path = req.file ? publicPath(req.file) : '';
+  await saveSettings({ BACKGROUND_IMAGE: path }, 0);
+  audit(req, 'UPDATE', 'settings', 0, { BACKGROUND_IMAGE: path });
+  res.json({ data: { path } });
+});
+
+/* ------------------------------------------------ Advisory: things to act on today */
+router.get('/advisory', async (req, res) => {
+  const b = req.branchIds;
+  const settings = await getSettings(req.branchId || 0);
+  const t = dayjs().format('YYYY-MM-DD');
+  const months = num(settings.AUCTION_OVERDUE_MONTHS, 12);
+  const [overdue, old, dueSoon, rate, counted, closedUpTo, topCustomers, idleBank, stock, g] = await Promise.all([
+    queryOne("SELECT COUNT(*) c, COALESCE(SUM(current_principal),0) a FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND due_date < :t", { b, t }),
+    queryOne("SELECT COUNT(*) c, COALESCE(SUM(current_principal),0) a FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date < DATE_SUB(:t, INTERVAL :m MONTH)", { b, t, m: months }),
+    queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND due_date BETWEEN :t AND DATE_ADD(:t, INTERVAL 7 DAY)", { b, t }),
+    queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = :t', { t }),
+    req.branchId ? queryOne('SELECT COUNT(*) c FROM cash_denominations WHERE branch_id = :b AND count_date = DATE_SUB(:t, INTERVAL 1 DAY)', { b: req.branchId, t }) : Promise.resolve({ c: 1 }),
+    req.branchId ? lastClosedDate(req.branchId) : Promise.resolve(null),
+    query(`SELECT c.name, COUNT(*) loans, SUM(l.current_principal) amount FROM loans l JOIN customers c ON c.id = l.customer_id
+      WHERE l.branch_id IN (:b) AND l.status = 'OPEN' GROUP BY c.id ORDER BY amount DESC LIMIT 5`, { b }),
+    queryOne("SELECT COUNT(*) c FROM bank_pledges WHERE branch_id IN (:b) AND status = 'OPEN' AND pledge_date < DATE_SUB(:t, INTERVAL 6 MONTH)", { b, t }),
+    query("SELECT net_wt, current_principal, avg_purity FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_on <> 'SILVER'", { b }),
+    queryOne("SELECT r.market_rate, r.purity FROM metal_rates r JOIN metals m ON m.id = r.metal_id WHERE m.code = 'GOLD' ORDER BY r.rate_date DESC, ABS(r.purity - 91.6) LIMIT 1"),
+  ]);
+  const margin = num(settings.STOCK_RISK_MARGIN, 10);
+  const atRisk = g ? stock.filter((l) => {
+    const v = num(l.net_wt) * num(g.market_rate) * ((num(l.avg_purity) || 91.6) / num(g.purity || 91.6));
+    return v && ((v - num(l.current_principal)) / v) * 100 < margin;
+  }).length : 0;
+  const items = [];
+  if (!rate.c) items.push({ level: 'high', title: "Enter today's gold / silver rate", text: 'New loans are blocked until the rate is entered.', link: '/masters/rates' });
+  if (closedUpTo && dayjs(t).diff(dayjs(closedUpTo), 'day') > 1) items.push({ level: 'high', title: 'Day End pending', text: `Books are closed only up to ${dayjs(closedUpTo).format('DD/MM/YYYY')}.`, link: '/accounts/day-report' });
+  if (!counted.c) items.push({ level: 'medium', title: "Yesterday's cash was not counted", text: 'Count the drawer before closing the day.', link: '/accounts/denomination' });
+  if (overdue.c) items.push({ level: 'high', title: `${overdue.c} loans are past due date`, text: `Rs ${round2(overdue.a)} outstanding. Send notices or call customers.`, link: '/auction' });
+  if (old.c) items.push({ level: 'medium', title: `${old.c} loans older than ${months} months`, text: `Rs ${round2(old.a)} - candidates for auction release.`, link: '/auction?tab=release' });
+  if (atRisk) items.push({ level: 'high', title: `${atRisk} loans have less than ${margin}% margin`, text: 'Gold value is close to the loan amount. Ask for part payment.', link: '/stock/current' });
+  if (dueSoon.c) items.push({ level: 'low', title: `${dueSoon.c} loans mature in the next 7 days`, text: 'Remind customers to pay interest or renew.', link: '/reports?key=maturity' });
+  if (idleBank.c) items.push({ level: 'low', title: `${idleBank.c} bank pledges older than 6 months`, text: 'Check bank interest and release where possible.', link: '/bank/pledges' });
+  res.json({ data: { items, topCustomers } });
+});
+
+/* ------------------------------------------------ Employee salary history */
+router.get('/employee/:id/history', permitAny(['salary', 'employees']), async (req, res) => {
+  const emp = await queryOne('SELECT id, branch_id FROM employees WHERE id = :id', { id: req.params.id });
+  if (!emp) throw ApiError.notFound();
+  assertBranch(req, emp.branch_id);
+  const salary = await query('SELECT pay_month, working_days, present_days, basic, allowances, deductions, advance_recovery, net_pay, paid_date, payment_mode, remarks FROM salary_payments WHERE employee_id = :e ORDER BY pay_month DESC LIMIT 60', { e: emp.id });
+  res.json({ data: { salary, totalPaid: round2(salary.reduce((t, r) => t + num(r.net_pay), 0)) } });
 });
 
 export default router;

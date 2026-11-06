@@ -8,7 +8,7 @@ import { useFetch, useCompany } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printElement } from '@/lib/print';
-import { NoticeLetters } from '@/features/print/NoticeLetter';
+import { NoticeLetters, NOTICE_FORMATS } from '@/features/print/NoticeLetter';
 import { AuctionReleaseTab } from './AuctionReleaseTab';
 import { money, today, date, monthStart } from '@/lib/format';
 
@@ -32,7 +32,7 @@ export default function AuctionPage() {
     mutationFn: () => api.post('/auction/notices', { ...notice, loan_ids: sel }),
     onSuccess: (r) => {
       toast.success(`${r.data.count} notices recorded`);
-      if (notice.print) printElement(<NoticeLetters loans={chosen} company={company || {}} type={notice.notice_type} auctionDate={notice.auction_date} />, { title: 'Notices' });
+      if (notice.print) printElement(<NoticeLetters loans={chosen} company={company || {}} type={notice.notice_type} auctionDate={notice.auction_date} format={notice.format} />, { title: 'Notices' });
       qc.invalidateQueries({ queryKey: ['/auction/list'] }); setNotice(null); setSel([]);
     },
     onError: (e) => toast.error(e.message),
@@ -48,7 +48,7 @@ export default function AuctionPage() {
       <PageHeader icon={Gavel} title="Auction & Notices" subtitle="Overdue loans, notice tracking and auction settlement" actions={tab === 'list' && (
         <>
           <Button variant="outline" icon={Printer} disabled={!sel.length} onClick={() => printElement(<NoticeLetters loans={chosen} company={company || {}} />, { title: 'Notices' })}>Print notices</Button>
-          {can('auction', 'add') && !isAllBranches && <Button variant="gold" icon={Send} disabled={!sel.length} onClick={() => setNotice({ notice_type: 'FIRST', sent_via: 'REGISTERED', notice_date: today(), print: true })}>Record notice ({sel.length})</Button>}
+          {can('auction', 'add') && !isAllBranches && <Button variant="gold" icon={Send} disabled={!sel.length} onClick={() => setNotice({ notice_type: 'FIRST', sent_via: 'REGISTERED', notice_date: today(), print: true, format: 'REGISTERED' })}>Record notice ({sel.length})</Button>}
         </>
       )} />
       <Tabs className="mb-4" value={tab} onChange={setTab} tabs={[{ value: 'list', label: 'Overdue list', count: rows.length || undefined }, { value: 'notices', label: 'Notices sent' }, can('auction_sale', 'add') && { value: 'release', label: 'Auction Release' }, can('auction_sale') && { value: 'sales', label: 'Auctioned' }].filter(Boolean)} />
@@ -90,6 +90,7 @@ export default function AuctionPage() {
             <Field label="Reference / RLAD no"><Input value={notice.reference || ''} onChange={(e) => setNotice({ ...notice, reference: e.target.value })} /></Field>
             <Checkbox checked={notice.sms} onChange={(v) => setNotice({ ...notice, sms: v })} label="Also send SMS reminder" />
             <Checkbox checked={notice.print} onChange={(v) => setNotice({ ...notice, print: v })} label="Print notice letters" />
+            {notice.print && <Field label="Letter format"><Select value={notice.format || 'LETTER'} onChange={(e) => setNotice({ ...notice, format: e.target.value })} options={NOTICE_FORMATS} /></Field>}
           </div>
         )}
       </Drawer>

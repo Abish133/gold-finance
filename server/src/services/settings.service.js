@@ -42,6 +42,10 @@ export const DEFAULTS = {
   HOME_SHOW_CHARTS: '1',
   HOME_SHOW_DUE_SOON: '1',
   EMP_LEAVE_PER_YEAR: '12',
+  BACKGROUND_IMAGE: '',
+  STICKER_FIELDS: 'company,bill_no,barcode,name,date,weight,pcs,amount',
+  STICKER_COLUMNS: '3',
+  STICKER_GAP_MM: '2',
   DEFAULT_TENURE_MONTHS: '12',
   // auction
   AUCTION_AFTER_DAYS_OVERDUE: '30',

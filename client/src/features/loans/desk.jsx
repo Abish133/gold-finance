@@ -353,9 +353,11 @@ export function ItemsTable({ items, onRemove, onEdit, valueLabel = 'Value', show
 }
 
 /* ------------------------------------------------------------------ LTV bar */
-export function LtvBar({ value, max = 75 }) {
+export function LtvBar({ value, max = 75, safe, warn }) {
   const pct = Math.min(100, n(value));
-  const tone = pct > max ? 'bg-rose-600' : pct > max * 0.9 ? 'bg-gold-500' : 'bg-emerald-600';
+  const s = n(safe) || max * 0.9;
+  const w = n(warn) || max;
+  const tone = pct > Math.max(w, max) ? 'bg-rose-600' : pct > s ? 'bg-amber-500' : 'bg-emerald-600';
   return (
     <div>
       <div className="flex justify-between text-xs text-ink-600"><span>Loan to value</span><b className="num">{value ? `${n(value).toFixed(1)}%` : '-'}</b></div>

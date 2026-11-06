@@ -27,13 +27,13 @@ export const parseSlabs = (slabs, fallbackRate) => {
 export const slabFor = (slabs, months) => slabs.find((s) => s.upto_months == null || months <= s.upto_months) || slabs[slabs.length - 1];
 
 /** Months billed in MONTHS mode: full months + 0 / 0.5 / 1 for the extra days. */
-export const billedMonths = (from, to, halfDays = 15) => {
+export const billedMonths = (from, to, halfDays = 15, graceDays = 0) => {
   const a = dayjs(from).startOf('day');
   const b = dayjs(to).startOf('day');
   if (!b.isAfter(a)) return 0;
   const full = b.diff(a, 'month');
   const extra = b.diff(a.add(full, 'month'), 'day');
-  if (extra === 0) return full;
+  if (extra === 0 || (full > 0 && extra <= graceDays)) return full;
   if (halfDays > 0 && extra <= halfDays) return full + 0.5;
   return full + 1;
 };
@@ -61,8 +61,14 @@ export const calculateInterest = ({ loan, scheme = {}, txns = [], asOf, options 
   // days actually charged
   let months = null;
   let chargeDays = Math.max(elapsedDays, minDays);
+  const optGrace = num(options.graceDays, 0);
+  if (optGrace > 0 && calcMode === 'DAYS') {
+    const fullMonths = dayjs(end).diff(dayjs(start), 'month');
+    const extra = Math.round((end - dayjs(start).add(fullMonths, 'month').valueOf()) / DAY_MS);
+    if (fullMonths > 0 && extra > 0 && extra <= optGrace) chargeDays = Math.max(minDays, elapsedDays - extra);
+  }
   if (calcMode === 'MONTHS') {
-    months = Math.max(billedMonths(loan.loan_date, dayjs(end).format('YYYY-MM-DD'), halfDays), minDays > 0 ? (minDays <= halfDays ? 0.5 : 1) : 0);
+    months = Math.max(billedMonths(loan.loan_date, dayjs(end).format('YYYY-MM-DD'), halfDays, num(options.graceDays, 0)), minDays > 0 ? (minDays <= halfDays ? 0.5 : 1) : 0);
     chargeDays = Math.round(months * 30);
   }
   // per-day factor for a rate

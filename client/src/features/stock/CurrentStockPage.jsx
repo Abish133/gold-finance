@@ -14,6 +14,8 @@ const cols = [
   { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items', className: 'max-w-48 truncate' }, { key: 'loan_on', label: 'Metal' },
   { key: 'gross_wt', label: 'Gross', type: 'weight' }, { key: 'stone_wt', label: 'Less', type: 'weight' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' },
   { key: 'principal', label: 'Amount', type: 'money' }, { key: 'part_paid', label: 'Part Paid', type: 'money' }, { key: 'where', label: 'Where' },
+  { key: 'value_now', label: 'Value Now', type: 'money' },
+  { key: 'margin_pct', label: 'Margin', render: (r) => (r.margin_pct == null ? '-' : <span className={clsx('rounded px-1.5 py-0.5 text-xs font-bold', r.at_risk ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{n(r.margin_pct).toFixed(1)}%{r.at_risk ? ' · at risk' : ''}</span>), print: (r) => (r.margin_pct == null ? '' : `${n(r.margin_pct).toFixed(1)}%${r.at_risk ? ' RISK' : ''}`) },
 ];
 
 /** Current Stock Report (desktop: frmcompleteStock) - pledged items still with us (in hand and at bank). */
@@ -23,7 +25,10 @@ export default function CurrentStockPage() {
   const [f, setF] = useState({ asOn: today(), loan_on: '', where: '', older: 0, amount_from: '', amount_to: '', search: '' });
   const [q, setQ] = useState(f);
   const [metalTotals, setMetalTotals] = useState(false);
-  const { data: rows = [], isFetching, refetch } = useFetch('/desk/stock', q);
+  const [riskOnly, setRiskOnly] = useState(false);
+  const { data: all = [], isFetching, refetch } = useFetch('/desk/stock', q);
+  const atRisk = all.filter((r) => r.at_risk);
+  const rows = riskOnly ? atRisk : all;
   const s = useMemo(() => {
     const by = (m) => rows.filter((r) => r.loan_on === m);
     const age = [[0, 3], [3, 6], [6, 12], [12, 9999]].map(([a, b]) => { const x = rows.filter((r) => r.age_months >= a && r.age_months < b); return { cnt: x.length, amt: x.reduce((t, r) => t + n(r.current_principal), 0) }; });
@@ -48,7 +53,8 @@ export default function CurrentStockPage() {
         <Field label="To"><Input type="number" className="w-28" value={f.amount_to} onChange={(e) => setF({ ...f, amount_to: e.target.value })} /></Field>
         <Button className="ml-auto" icon={Search} onClick={() => setQ(f)}>Show (F5)</Button>
         <div className="flex w-full items-center gap-4"><Input className="max-w-sm" placeholder="Search loan / customer" value={f.search} onChange={(e) => setF({ ...f, search: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && setQ(f)} />
-          <Checkbox checked={metalTotals} onChange={setMetalTotals} label="Metal-wise totals" /><span className="ml-auto text-xs text-ink-500">Rows shown: {rows.length}</span></div>
+          <Checkbox checked={metalTotals} onChange={setMetalTotals} label="Metal-wise totals" />
+          <Checkbox checked={riskOnly} onChange={setRiskOnly} label={`At risk only (${atRisk.length})`} /><span className="ml-auto text-xs text-ink-500">Rows shown: {rows.length}</span></div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Loans in stock</p><p className="num text-2xl font-bold">{rows.length}</p><p className="text-[11px]">{s.hand.length} in hand · {s.bank.length} at bank</p></div>

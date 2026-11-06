@@ -4,7 +4,7 @@ import { RefreshCw, Eye, FileDown, FileSpreadsheet, Calculator } from 'lucide-re
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { Button, Field, Input, Tabs, DataTable } from '@/components/ui';
-import { useFetch, useCompany } from '@/hooks/useApi';
+import { useFetch, useCompany, useSettings } from '@/hooks/useApi';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, date, n, today } from '@/lib/format';
@@ -23,6 +23,8 @@ export default function InterestDuePage() {
   const navigate = useNavigate();
   const { data: company } = useCompany();
   const [tab, setTab] = useState('due');
+  const { data: settings } = useSettings();
+  const overdueMonths = n(settings?.AUCTION_OVERDUE_MONTHS) || 12;
   const [f, setF] = useState({ from: dayjs().subtract(1, 'year').format('YYYY-MM-DD'), to: today(), upto: today(), loan_on: '', where: '', older: 0, search: '' });
   const [q, setQ] = useState(f);
   const { data, isFetching, refetch } = useFetch(tab === 'due' ? '/desk/interest-due' : null, q);
@@ -56,7 +58,7 @@ export default function InterestDuePage() {
             ))}
           </div>
           <div className="grid items-start gap-3 xl:grid-cols-[1fr_300px]">
-            <DataTable dense rows={rows} columns={cols} loading={isFetching && !data} onRowClick={setSel} rowClassName={(r) => (sel?.id === r.id ? 'bg-cream-200' : r.months > 12 ? 'bg-rose-50/60' : '')} />
+            <DataTable dense rows={rows} columns={cols} loading={isFetching && !data} onRowClick={setSel} rowClassName={(r) => (sel?.id === r.id ? 'bg-cream-200' : r.months > overdueMonths ? 'bg-rose-50/60' : '')} />
             <div className="card space-y-1 p-4 text-sm">
               <p className="text-xs font-bold text-gold-700 uppercase">Select a loan</p>
               <Line label="Pledged" value={sel ? date(sel.loan_date) : '-'} />

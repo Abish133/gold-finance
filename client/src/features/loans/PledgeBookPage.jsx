@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { RefreshCw, Eye, FileDown, FileSpreadsheet } from 'lucide-react';
+import { RefreshCw, Eye, FileDown, FileSpreadsheet, Image, ScrollText } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { Button, DataTable, Field, Input, SearchInput } from '@/components/ui';
@@ -10,6 +10,8 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
+import { printElement } from '@/lib/print';
+import { PhotoReport, FormD } from '@/features/print/LoanEstimate';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from './desk';
 
@@ -61,6 +63,8 @@ export default function PledgeBookPage() {
   const all = async () => (await api.get('/loans', { ...params, page: 1, pageSize: 200 })).data;
   const title = `Pledge Book · ${from ? `${dayjs(from).format('DD/MM/YYYY')} to ${dayjs(to).format('DD/MM/YYYY')}` : 'All years'}`;
   const preview = async () => printTable({ title, company, columns: cols, rows: await all() });
+  const photos = async () => printElement(<PhotoReport company={company} loans={await all()} />, { title: 'Photo report' });
+  const formD = async () => printElement(<FormD company={company} loans={await all()} from={from} to={to} />, { title: 'Form D' });
   const excel = async () => exportCsv('pledge-book', cols.filter((c) => c.key !== 'sno'), await all());
   useKeys({ f5: () => list.refetch(), 'ctrl+r': () => list.refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': excel, f3: () => document.querySelector('#pb-search input')?.focus(), escape: () => navigate('/') }, [params]);
 
@@ -101,6 +105,8 @@ export default function PledgeBookPage() {
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={excel}>Excel (Ctrl+E)</Button>
+        <Button variant="outline" icon={Image} onClick={photos}>Photo Report</Button>
+        <Button variant="outline" icon={ScrollText} onClick={formD}>Form D (TN)</Button>
         <ExitButton />
       </div>
       <p className="px-1 text-xs text-ink-500">F5 = load · F3 = search · Enter / double-click = loan details · Ctrl+R = refresh · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>

@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, CheckSquare, Square, Gavel, FileSpreadsheet, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { Button, DataTable, Field, Input } from '@/components/ui';
-import { useFetch, useCompany } from '@/hooks/useApi';
+import { useFetch, useCompany, useSettings } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
@@ -31,6 +31,13 @@ export function AuctionReleaseTab() {
   const { data: company } = useCompany();
   const [f, setF] = useState({ from: dayjs().subtract(5, 'year').format('YYYY-MM-DD'), to: dayjs().subtract(12, 'month').format('YYYY-MM-DD'), older: 12, metal: '', notice: '' });
   const [query, setQuery] = useState(f);
+  const { data: settings } = useSettings();
+  useEffect(() => {
+    const m = n(settings?.AUCTION_OVERDUE_MONTHS);
+    if (!m) return;
+    const next = { ...f, older: m, to: dayjs().subtract(m, 'month').format('YYYY-MM-DD') };
+    setF(next); setQuery(next);
+  }, [settings?.AUCTION_OVERDUE_MONTHS]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data = [], isLoading, refetch } = useFetch('/auction/list', { older_than: query.older, from: query.from, to: query.to, loan_on: query.metal, notice: query.notice });
   const [sel, setSel] = useState([]);
   const [sale, setSale] = useState({});

@@ -40,6 +40,7 @@ export const calcOptions = (settings) => ({
   monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15),
   roundInterestTo: num(settings.ROUND_INTEREST_TO, 1),
   compoundMonths: num(settings.COMPOUND_PERIOD_MONTHS, 12),
+  graceDays: num(settings.RELEASE_GRACE_DAYS, 0),
 });
 
 /**

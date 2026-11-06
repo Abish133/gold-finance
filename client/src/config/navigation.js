@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, UserX, Merge, FilePlus2, History, BookOpen, HandCoins, Wallet, ArrowUpCircle, RefreshCcw, Unlock, Printer, Tag,
   Calculator, Landmark, Building2, Gavel, Boxes, ScanLine, BookText, Receipt, NotebookPen, Scale, Coins, Lock, BarChart3, UserCog, CalendarCheck,
   BadgeIndianRupee, Gem, TrendingUp, Layers, ListChecks, Briefcase, Building, Shield, KeyRound, Settings2, MessageSquare, ScrollText,
-  DatabaseBackup, CalendarRange, UserPlus, Pencil, Trash, Files, Banknote, FileBarChart, Wrench, LifeBuoy, Keyboard, Info, CircleDollarSign,
+  DatabaseBackup, CalendarRange, UserPlus, Pencil, Trash, Files, Banknote, FileBarChart, Wrench, LifeBuoy, Keyboard, Info, CircleDollarSign, BookCheck, Lightbulb, Palette,
 } from 'lucide-react';
 
 /**
@@ -39,6 +39,7 @@ export const MENUS = [
       { section: 'Register' },
       { label: 'Pledge Book', hint: 'All loans register', path: '/loans', icon: BookOpen, screen: 'loan_list' },
       { label: 'Stock Check', hint: 'Scan packets in vault', path: '/stock', icon: ScanLine, screen: 'stock' },
+      { label: 'Bill Book Check', hint: 'Missing / repeated bill numbers', path: '/loans/bill-book-check', icon: BookCheck, screen: 'loan_list' },
     ],
   },
   {
@@ -121,7 +122,8 @@ export const MENUS = [
       { label: 'Company Information', path: '/settings/company', icon: Building, screen: 's_company' },
       { label: 'Branches', path: '/settings/branches', icon: Building2, screen: 's_branches' },
       { label: 'System Control', path: '/settings/system', icon: Settings2, screen: 's_system' },
-      { label: 'Printer Setup', hint: 'Paper, copies, bill content', path: '/settings/printer', icon: Printer, screen: 's_print' },
+      { label: 'Printer Setup', hint: 'Paper, copies, bill content, labels', path: '/settings/printer', icon: Printer, screen: 's_print' },
+      { label: 'Appearance', hint: 'Background image', path: '/settings/appearance', icon: Palette, screen: 's_company' },
       { label: 'SMS Settings', path: '/settings/messages', icon: MessageSquare, screen: 's_messages' },
       { section: 'Data' },
       { label: 'Backup Database', path: '/settings/backup', icon: DatabaseBackup, screen: 's_backup' },
@@ -136,6 +138,7 @@ export const MENUS = [
     key: 'help', label: 'Help', icon: LifeBuoy,
     items: [
       { label: 'Dashboard', path: '/', icon: LayoutDashboard, screen: 'dashboard' },
+      { label: 'Advisory', hint: 'What to act on today', path: '/advisory', icon: Lightbulb, screen: 'dashboard' },
       { label: 'Keyboard Shortcuts', action: 'shortcuts', icon: Keyboard },
       { label: 'About', action: 'about', icon: Info },
     ],

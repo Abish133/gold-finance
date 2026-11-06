@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { UserCog, IdCard, KeyRound, BadgeIndianRupee, CalendarCheck, FileText, Users, Briefcase } from 'lucide-react';
+import { UserCog, IdCard, KeyRound, BadgeIndianRupee, CalendarCheck, FileText, Users, Briefcase, FolderOpen, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { ResourcePage } from '@/components/common/ResourcePage';
-import { Avatar, Button, Drawer, Field, Input, Segmented, Select } from '@/components/ui';
+import { Avatar, Button, DataTable, Drawer, Field, Input, Segmented, Select, Tabs } from '@/components/ui';
+import { DocumentsPanel } from '@/components/common/DocumentsPanel';
+import { DetailsSheet } from '@/features/print/LoanEstimate';
 import { useFetch, useList, useCompany } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printElement } from '@/lib/print';
 import { printTable } from '@/lib/printTable';
-import { date } from '@/lib/format';
+import { date, money } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 
 function IdCards({ list, company }) {
@@ -41,6 +43,7 @@ export default function EmployeesPage() {
   const { data: tiles } = useFetch('/desk/employee-tiles');
   const roles = useList('/admin/roles', { all: 1 }, { enabled: can('s_users', 'add') });
   const [login, setLogin] = useState(null);
+  const [file, setFile] = useState(null);
   const [cred, setCred] = useState({ username: '', password: '', role_id: '' });
   const all = async () => (await api.get('/employees', { all: 1 })).data;
   const idCards = async () => { const l = (await all()).filter((e) => e.status === 'ACTIVE'); printElement(<IdCards list={l} company={company} />, { title: 'ID cards' }); };
@@ -81,7 +84,10 @@ export default function EmployeesPage() {
           <Button variant="outline" icon={FileText} onClick={salarySheet}>Salary Sheet (F11)</Button>
           <Button variant="outline" icon={Users} onClick={summary}>Staff Summary (F12)</Button>
         </>}
-        rowActions={(r) => can('s_users', 'add') && <Button size="sm" variant="ghost" icon={KeyRound} onClick={() => { setLogin(r); setCred({ username: r.emp_code.toLowerCase(), password: '', role_id: '' }); }}>Login</Button>}
+        rowActions={(r) => (<>
+          <Button size="sm" variant="ghost" icon={FolderOpen} onClick={() => setFile(r)}>File</Button>
+          {can('s_users', 'add') && <Button size="sm" variant="ghost" icon={KeyRound} onClick={() => { setLogin(r); setCred({ username: r.emp_code.toLowerCase(), password: '', role_id: '' }); }}>Login</Button>}
+        </>)}
         columns={[
           { key: 'emp_code', label: 'ID', sortable: true },
           { key: 'name', label: 'Name', sortable: true, render: (r) => <div className="flex items-center gap-3"><Avatar src={r.photo} name={r.name} size="sm" /><div><p className="font-semibold">{r.name}</p><p className="text-xs text-ink-500">{r.relation_type} {r.relation_name}</p></div></div> },
@@ -110,6 +116,7 @@ export default function EmployeesPage() {
           { name: 'remarks', label: 'Remarks', type: 'textarea', span: 'full', rows: 2 },
         ]}
       />
+      <EmployeeFile emp={file} onClose={() => setFile(null)} company={company} canEdit={can('employees', 'edit')} />
       <Drawer open={!!login} onClose={() => setLogin(null)} size="sm" icon={KeyRound} title={`Create login · ${login?.name}`} footer={<Button variant="gold" onClick={createLogin}>Create login (F6)</Button>}>
         <div className="space-y-3">
           <Field label="Username"><Input value={cred.username} onChange={(e) => setCred({ ...cred, username: e.target.value })} /></Field>
@@ -119,5 +126,35 @@ export default function EmployeesPage() {
         </div>
       </Drawer>
     </div>
+  );
+}
+
+/** Employee file: documents + salary history + full details print. */
+function EmployeeFile({ emp, onClose, company, canEdit }) {
+  const [tab, setTab] = useState('salary');
+  const hist = useFetch(emp ? `/desk/employee/${emp.id}/history` : null);
+  const salary = hist.data?.salary || [];
+  const cols = [['pay_month', 'Month', (r) => dayjs(`${r.pay_month}-01`).format('MMM YYYY')], ['present_days', 'Present', (r) => `${r.present_days}/${r.working_days}`], ['basic', 'Basic', (r) => money(r.basic)],
+    ['allowances', 'Allow.', (r) => money(r.allowances)], ['deductions', 'Deduct.', (r) => money(r.deductions)], ['net_pay', 'Net pay', (r) => money(r.net_pay)], ['paid_date', 'Paid on', (r) => (r.paid_date ? date(r.paid_date) : '-')]];
+  const print = () => printElement(<DetailsSheet company={company} title="Employee Details" photo={emp.photo} groups={[
+    ['Personal', [['Employee ID', emp.emp_code], ['Name', `${emp.title || ''} ${emp.name}`], ['Relation', emp.relation_name && `${emp.relation_type || ''} ${emp.relation_name}`], ['Gender', emp.gender], ['Date of birth', emp.dob && date(emp.dob)], ['Mobile', emp.phone], ['Email', emp.email], ['Address', emp.address]]],
+    ['Job', [['Designation', emp.designation], ['Department', emp.department], ['Joined', emp.doj && date(emp.doj)], ['Salary / month', money(emp.salary)], ['Qualification', emp.qualification], ['Experience', emp.experience], ['Status', emp.status]]],
+    ['Bank & KYC', [['Bank account', emp.bank_account], ['IFSC', emp.ifsc], ['PAN', emp.pan], ['Aadhaar', emp.aadhaar], ['Emergency', emp.emergency_name && `${emp.emergency_name} ${emp.emergency_phone || ''}`]]],
+  ]} tables={[{ title: 'Salary history', rows: salary, columns: cols }]} />, { title: 'Employee details' });
+  return (
+    <Drawer open={!!emp} onClose={onClose} size="lg" icon={FolderOpen} title={emp ? `${emp.name} · ${emp.emp_code}` : ''} subtitle={emp?.designation}
+      footer={emp && <Button variant="outline" icon={Printer} onClick={print}>Print full details</Button>}>
+      {emp && (
+        <div className="space-y-3">
+          <Tabs value={tab} onChange={setTab} tabs={[{ value: 'salary', label: 'Salary history', count: salary.length }, { value: 'docs', label: 'Documents' }]} />
+          {tab === 'docs' ? <DocumentsPanel owner="employee" id={emp.id} canEdit={canEdit} /> : (
+            <>
+              <p className="text-sm">Total paid: <b>{money(hist.data?.totalPaid || 0)}</b></p>
+              <DataTable dense loading={hist.isLoading} rows={salary} columns={cols.map(([key, label, render]) => ({ key, label, render }))} />
+            </>
+          )}
+        </div>
+      )}
+    </Drawer>
   );
 }

@@ -6,7 +6,7 @@ import {
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { Badge, Card, Spinner, Stat } from '@/components/ui';
-import { useFetch } from '@/hooks/useApi';
+import { useFetch, useSettings } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { allowed } from '@/config/navigation';
 import { compact, money, amount, grams, date, n } from '@/lib/format';
@@ -36,6 +36,10 @@ export default function DashboardPage() {
   const { data, isLoading } = useFetch('/dashboard', undefined, { refetchInterval: 120_000 });
   const { data: status } = useFetch('/dashboard/status');
   const { data: alerts = [] } = useFetch('/dashboard/alerts');
+  const { data: settings } = useSettings();
+  const { data: billing } = useFetch('/desk/billing-date');
+  const showCharts = settings?.HOME_SHOW_CHARTS !== '0';
+  const showDue = settings?.HOME_SHOW_DUE_SOON !== '0';
   const { user, can, isAllBranches, currentBranch } = useAuth();
   const navigate = useNavigate();
   if (isLoading || !data) return <Spinner label="Preparing your dashboard…" />;
@@ -55,7 +59,7 @@ export default function DashboardPage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold sm:text-3xl">{greet}, {user.full_name.split(' ')[0].toUpperCase()}</h1>
           <p className="mt-1 text-sm text-coral-400 sm:text-base">
-            {dayjs().format('dddd, DD MMMM YYYY')} <span className="mx-2">·</span> Billing date {dayjs().format('DD/MM/YYYY')}
+            {dayjs().format('dddd, DD MMMM YYYY')} <span className="mx-2">·</span> Billing date <span className={clsx(billing?.behind && 'font-bold text-rose-300')}>{dayjs(billing?.billingDate).format('DD/MM/YYYY')}</span>
             <span className="mx-2">·</span> {goldToday ? <span className="text-gold-300">Gold rate entered</span> : 'Gold rate NOT entered'}
             <span className="mx-2">·</span> <span className="text-navy-100">{isAllBranches ? 'All branches' : currentBranch?.name}</span>
           </p>
@@ -113,13 +117,18 @@ export default function DashboardPage() {
           </Card>
           <Card title="Reminders" bodyClassName="space-y-2 p-4">
             {!alerts.length && <p className="text-sm text-ink-500">Nothing pending.</p>}
+            {billing?.behind && (
+              <button type="button" onClick={() => navigate('/accounts/day-report')} className="flex w-full items-center justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-2.5 text-left text-sm text-rose-800">
+                <span>Billing date {dayjs(billing.billingDate).format('DD/MM/YYYY')} is behind today. Finish Day End to move to {dayjs().format('DD/MM/YYYY')}.</span><span className="font-semibold whitespace-nowrap">Day End →</span>
+              </button>
+            )}
             {alerts.map((a) => (
               <button key={a.key} type="button" onClick={() => navigate(a.link)} className="flex w-full items-center justify-between gap-3 rounded-md bg-cream-200 px-4 py-2.5 text-left text-sm hover:bg-gold-100 dark:bg-ink-800">
                 <span>{a.text}</span><span className="font-semibold whitespace-nowrap text-navy-700">Open →</span>
               </button>
             ))}
-            {data.dueSoon.length > 0 && <p className="pt-1 text-xs font-bold tracking-wide text-ink-500 uppercase">Due in next 15 days</p>}
-            {data.dueSoon.slice(0, 5).map((r) => (
+            {showDue && data.dueSoon.length > 0 && <p className="pt-1 text-xs font-bold tracking-wide text-ink-500 uppercase">Due in next 15 days</p>}
+            {showDue && data.dueSoon.slice(0, 5).map((r) => (
               <button key={r.id} type="button" onClick={() => navigate(`/loans/counter?loan=${r.id}`)} className="flex w-full items-center justify-between rounded-md border border-ink-200 px-3 py-2 text-left text-sm hover:border-navy-300 dark:border-ink-700">
                 <span className="truncate">#{r.bill_no} {r.customer_name}</span><span className="text-xs text-rose-600">{date(r.due_date)}</span>
               </button>
@@ -135,7 +144,7 @@ export default function DashboardPage() {
         <Stat tone="green" label="This month lent" value={compact(data.month.loans.principal)} hint={`${data.month.loans.cnt} loans`} />
         <Stat tone="violet" label="Active customers" value={n(data.portfolio.active_customers)} hint="with open loans" />
       </div>
-      <div className="grid gap-4 xl:grid-cols-3">
+      {showCharts && <div className="grid gap-4 xl:grid-cols-3">
         <Card title="Business trend · 6 months" className="xl:col-span-2">
           <div className="h-64">
             <ResponsiveContainer>
@@ -164,7 +173,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </div>
         </Card>
-      </div>
+      </div>}
       {data.branchWise.length > 0 && (
         <Card title="Branch-wise portfolio" bodyClassName="p-0">
           <table className="w-full text-sm">

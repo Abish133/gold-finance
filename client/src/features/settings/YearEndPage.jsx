@@ -66,6 +66,11 @@ export default function YearEndPage() {
         </div>
       </div>
       <div className={clsx('card flex flex-wrap justify-end gap-2 px-3 py-2')}>
+        {[['Own pledge book', '0'], ['Bank pledge book', '1']].map(([t, bank]) => (
+          <Button key={t} variant="outline" icon={Printer} onClick={async () => { const r = await api.get('/loans', { from: fy?.start_date, to: fy?.end_date, bank, pageSize: 200, sort: 'loan_no', order: 'asc' });
+            printTable({ title: `${t} ${fy?.name}`, company, rows: r.data, totals: { principal: r.summary?.principal, net_wt: r.summary?.net_wt },
+              columns: [{ key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items' }, { key: 'net_wt', label: 'Net', type: 'weight' }, { key: 'principal', label: 'Loan', type: 'money' }, { key: 'status', label: 'Status' }, { key: 'close_date', label: 'Released', type: 'date' }] }); }}>{t}</Button>
+        ))}
         <Button variant="outline" icon={Printer} onClick={() => printTable({ title: 'Pending loans carried to new year', company, rows: pending.data?.data || [], columns: [{ key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'net_wt', label: 'Net', type: 'weight' }, { key: 'current_principal', label: 'Outstanding', type: 'money' }] })}>Print Pending Loans</Button>
         <Button variant="outline" icon={Printer} onClick={() => pl.data && printTable({ title: `Profit & Loss ${fy?.name}`, company, rows: [...pl.data.income.map((r) => ({ ...r, side: 'Income' })), ...pl.data.expense.map((r) => ({ ...r, side: 'Expense' }))], columns: [{ key: 'side', label: 'Type' }, { key: 'name', label: 'Account' }, { key: 'amount', label: 'Amount', type: 'money' }] })}>Print Year End (F9)</Button>
         <ExitButton />

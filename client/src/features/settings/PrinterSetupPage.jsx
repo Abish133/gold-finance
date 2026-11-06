@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { printElement } from '@/lib/print';
 import { ExitButton, useKeys } from '@/features/loans/desk';
 import PrintSettingsPage from './PrintSettingsPage';
+import LabelDesigner from './LabelDesigner';
 
 const DOCS = [
   ['LOAN_RECEIPT', 'Loan receipt', 'New loan, re-loan, old loan, duplicate bill'],
@@ -40,9 +41,9 @@ export default function PrinterSetupPage() {
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex items-center gap-3 rounded-md px-5 py-3 text-white">
         <div className="flex-1"><h1 className="text-2xl font-bold">Printer Setup</h1><p className="text-sm text-navy-100">Which paper and how many copies each print uses</p></div>
-        <div className="flex gap-1 rounded-md bg-white/10 p-1">{[['docs', 'Printers & paper'], ['bill', 'Bill content']].map(([k, l]) => <button key={k} type="button" onClick={() => setTab(k)} className={clsx('rounded px-3 py-1.5 text-sm font-semibold', tab === k ? 'bg-white text-navy-900' : 'text-white')}>{l}</button>)}</div>
+        <div className="flex gap-1 rounded-md bg-white/10 p-1">{[['docs', 'Printers & paper'], ['bill', 'Bill content'], ['label', 'Label designer']].map(([k, l]) => <button key={k} type="button" onClick={() => setTab(k)} className={clsx('rounded px-3 py-1.5 text-sm font-semibold', tab === k ? 'bg-white text-navy-900' : 'text-white')}>{l}</button>)}</div>
       </section>
-      {tab === 'bill' ? <PrintSettingsPage /> : (
+      {tab === 'label' ? <LabelDesigner /> : tab === 'bill' ? <PrintSettingsPage /> : (
         <>
           <div className="grid items-start gap-3 xl:grid-cols-[1fr_380px]">
             <div className="card overflow-hidden">

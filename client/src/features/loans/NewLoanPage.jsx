@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks } from 'lucide-react';
+import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Drawer, Field, Input, Select, Spinner, Avatar, Badge, DataTable } from '@/components/ui';
+import { Button, Drawer, ConfirmDrawer, Field, Input, Select, Spinner, Avatar, Badge, DataTable } from '@/components/ui';
+import { LoanEstimate } from '@/features/print/LoanEstimate';
 import { PaymentSplit } from '@/components/common/PaymentSplit';
 import { CustomerFormDrawer } from '@/features/customers/CustomerFormDrawer';
 import { useLookups, useSettings, useFetch, useList } from '@/hooks/useApi';
@@ -115,7 +116,14 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const [done, setDone] = useState(null);
   const [newCust, setNewCust] = useState(false);
   const [markOld, setMarkOld] = useState(false);
+  const [ltvAsk, setLtvAsk] = useState(false);
   const set = (p) => setF((s) => ({ ...s, ...p }));
+  // default for the advance interest switch (Settings > Loan)
+  useEffect(() => { if (settings?.DEFAULT_ADVANCE_INTEREST != null) set({ advance: settings.DEFAULT_ADVANCE_INTEREST !== '0' }); }, [settings?.DEFAULT_ADVANCE_INTEREST]);
+  // customer already has old open loans (Settings > OLD_LOAN_WARN_MONTHS)
+  const custLoans = useFetch(customer && !isOld ? '/loans' : null, { customer_id: customer?.id, status: 'OPEN', pageSize: 50 });
+  const warnMonths = n(settings?.OLD_LOAN_WARN_MONTHS) || 12;
+  const oldOpen = (custLoans.data?.data || []).filter((l) => dayjs().diff(dayjs(l.loan_date), 'month') >= warnMonths);
 
   useEffect(() => { const id = params.get('customer'); if (id) api.get(`/customers/${id}`).then((r) => setCustomer(r.data)).catch(() => {}); }, [params]);
 
@@ -180,10 +188,14 @@ export default function NewLoanPage({ mode = 'NEW' }) {
 
   const clear = () => { setDone(null); setCustomer(null); setItems([]); setPhoto(null); setPayments([]); setEditing(null); set({ principal: '', other_charges: '', manual_bill_no: '', remarks: '', loan_no: '' }); };
   const canSave = customer && scheme && principal > 0 && rows.length && (!isOld || f.manual_bill_no) && !save.isPending;
+  const ltvWarn = n(settings?.LTV_WARN_PERCENT) || 0;
+  const trySave = () => { if (!canSave) return; if (ltvWarn && ltv > ltvWarn) setLtvAsk(true); else save.mutate(); };
+  const printEstimate = () => printElement(<LoanEstimate company={company} customer={customer} scheme={scheme} items={rows} rates={rates}
+    values={{ principal, eligible, value: tot.value, ltv, rate: f.interest_rate, perMonth, advance, doc, netPay, due: f.due_date, loanOn }} />, { title: 'Loan estimate' });
   useKeys({
-    f1: () => setNewCust(true), f2: () => canSave && save.mutate(), f6: () => set({ advance: !f.advance }), 'ctrl+n': clear,
+    f1: () => setNewCust(true), f2: trySave, 'ctrl+e': () => rows.length && printEstimate(), f6: () => set({ advance: !f.advance }), 'ctrl+n': clear,
     f4: () => isOld && document.getElementById('pledge-date')?.focus(), 'ctrl+m': () => isOld && setMarkOld(true), escape: () => navigate('/'),
-  }, [canSave, f.advance, isOld]);
+  }, [canSave, f.advance, isOld, ltv, ltvWarn]);
 
   if (isLoading) return <Spinner />;
   if (isAllBranches) return <div className="card p-6 text-sm">Select a single branch from the header to create loans.</div>;
@@ -207,7 +219,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
             </div>
           </Field>
         </div>
-        <LtvBar value={ltv} max={ltvMax} />
+        <LtvBar value={ltv} max={ltvMax} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} />
         <Line label="Eligible amount" value={money(eligible)} />
         <div className="flex items-center justify-between text-sm"><span>Due date</span><Input type="date" className="h-8 w-40" value={f.due_date} onChange={(e) => set({ due_date: e.target.value })} /></div>
         <Line label="Interest / month" value={perMonth ? amount(perMonth) : '-'} />
@@ -220,7 +232,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
         )}
         {!isOld && netPay > 0 && <PaymentSplit total={netPay} value={payments} onChange={setPayments} label="Paid by" direction="paid" />}
         <BigTotal label={isOld ? 'Opening entry · not in today\'s cash' : 'Amount to pay customer'} value={isOld ? principal : netPay} />
-        <GoldButton disabled={!canSave} loading={save.isPending} onClick={() => save.mutate()}>{isOld ? 'Save Old Loan (F2)' : 'Save Loan (F2)'}</GoldButton>
+        <GoldButton disabled={!canSave} loading={save.isPending} onClick={trySave}>{isOld ? 'Save Old Loan (F2)' : 'Save Loan (F2)'}</GoldButton>
       </div>
     </Panel>
   );
@@ -239,6 +251,11 @@ export default function NewLoanPage({ mode = 'NEW' }) {
           <ItemPhotoPanel value={photo} onChange={setPhoto} customerId={customer?.id} />
         </>}
         center={<>
+          {oldOpen.length > 0 && (
+            <div className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+              <AlertTriangle className="size-5" /> {customer.name} has {oldOpen.length} open loan(s) older than {warnMonths} months: {oldOpen.map((l) => `#${l.bill_no} (${date(l.loan_date)})`).join(', ')}. Collect interest before giving a new loan.
+            </div>
+          )}
           {rateMissing && (
             <div className="flex items-center gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">
               <AlertTriangle className="size-5" /> Today's gold / silver rate is not entered for {dayjs().format('DD/MM/YYYY')}. Please enter the rate first.
@@ -277,14 +294,18 @@ export default function NewLoanPage({ mode = 'NEW' }) {
         right={right}
         footerLeft={<>
           <Button variant="outline" icon={Plus} onClick={clear}>New / Clear (Ctrl+N)</Button>
+          {!isOld && <Button variant="outline" icon={FileText} disabled={!rows.length} onClick={printEstimate}>Estimate (Ctrl+E)</Button>}
           {isOld && <Button variant="outline" icon={ListChecks} onClick={() => setMarkOld(true)}>Mark Old Loans (Ctrl+M)</Button>}
           {!customer && <Button variant="outline" icon={UserPlus} onClick={() => setNewCust(true)}>New customer (F1)</Button>}
         </>}
         footerRight={<ExitButton />}
-        hints={[['F1', 'New customer'], ['F2', 'Save'], ['F3', 'New item name'], ...(isOld ? [['F4', 'Pledge date'], ['Ctrl+M', 'Mark old loans']] : []), ['F5', 'Customer ledger'], ['F6', 'Advance interest'], ['F7', 'Camera'], ['F8', 'Old image'], ['Ctrl+N', 'Clear'], ['Esc', 'Exit']]}
+        hints={[['F1', 'New customer'], ['F2', 'Save'], ['F3', 'New item name'], ...(isOld ? [['F4', 'Pledge date'], ['Ctrl+M', 'Mark old loans']] : []), ['F5', 'Customer ledger'], ['F6', 'Advance interest'], ['F7', 'Camera'], ['F8', 'Old image'], ['Ctrl+E', 'Estimate'], ['Ctrl+N', 'Clear'], ['Esc', 'Exit']]}
       />
       <CustomerFormDrawer open={newCust} onClose={() => setNewCust(false)} onSaved={(c) => setCustomer(c)} />
       <MarkOldDrawer open={markOld} onClose={() => setMarkOld(false)} />
+      <ConfirmDrawer open={ltvAsk} onClose={() => setLtvAsk(false)} tone="primary" confirmText="Yes, save loan" loading={save.isPending}
+        title={`Loan to value is ${ltv.toFixed(1)}%`} message={`This is above the warning limit of ${ltvWarn}% set in Settings. The gold value leaves a small margin. Save this loan anyway?`}
+        onConfirm={() => { setLtvAsk(false); save.mutate(); }} />
       {printerUi}
       <Drawer open={!!done} onClose={clear} title={`Loan #${done?.loan.bill_no} saved`} subtitle={done && `${done.loan.customer_name} · ${money(done.loan.principal)}`} icon={CheckCircle2} size="sm"
         footer={<Button variant="gold" icon={Plus} onClick={clear}>Next loan (Ctrl+N)</Button>}>
