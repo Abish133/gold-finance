@@ -47,7 +47,7 @@ export const MENUS = [
     key: 'auction', label: 'Auction', icon: Gavel,
     items: [
       { label: 'Auction List & Notices', hint: 'Overdue loans, notices', path: '/auction', icon: Gavel, screen: ['auction', 'auction_sale'] },
-      { label: 'Auction Release', hint: 'Close unredeemed loans as auctioned', path: '/auction?tab=release', icon: Gavel, screen: 'auction_sale' },
+      { label: 'Auction Release', hint: 'Close unredeemed loans as auctioned', path: '/auction/release', icon: Gavel, screen: 'auction_sale' },
     ],
   },
   {

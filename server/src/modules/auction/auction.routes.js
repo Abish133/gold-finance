@@ -34,7 +34,7 @@ router.get('/list', permit('auction', 'view'), async (req, res) => {
       (SELECT MAX(notice_date) FROM auction_notices n WHERE n.loan_id = l.id) last_notice,
       (SELECT COALESCE(SUM(postage),0) FROM auction_notices n WHERE n.loan_id = l.id) postage
     FROM loans l JOIN customers c ON c.id = l.customer_id
-    WHERE l.branch_id IN (:b) AND l.status = 'OPEN' AND l.bank_pledge_id IS NULL
+    WHERE l.branch_id IN (:b) AND l.status = 'OPEN' ${req.query.include === 'bank' ? '' : 'AND l.bank_pledge_id IS NULL'}
       AND ${req.query.older_than ? 'l.loan_date <= DATE_SUB(:d, INTERVAL :om MONTH)' : 'DATEDIFF(:d, l.due_date) >= :min'}
       ${req.query.from ? 'AND l.loan_date >= :from' : ''} ${req.query.to ? 'AND l.loan_date <= :to' : ''}
       ${req.query.loan_on ? 'AND l.loan_on = :lon' : ''}

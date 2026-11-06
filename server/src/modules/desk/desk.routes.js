@@ -302,7 +302,7 @@ router.get('/advisory', async (req, res) => {
   if (closedUpTo && dayjs(t).diff(dayjs(closedUpTo), 'day') > 1) items.push({ level: 'high', title: 'Day End pending', text: `Books are closed only up to ${dayjs(closedUpTo).format('DD/MM/YYYY')}.`, link: '/accounts/day-report' });
   if (!counted.c) items.push({ level: 'medium', title: "Yesterday's cash was not counted", text: 'Count the drawer before closing the day.', link: '/accounts/denomination' });
   if (overdue.c) items.push({ level: 'high', title: `${overdue.c} loans are past due date`, text: `Rs ${round2(overdue.a)} outstanding. Send notices or call customers.`, link: '/auction' });
-  if (old.c) items.push({ level: 'medium', title: `${old.c} loans older than ${months} months`, text: `Rs ${round2(old.a)} - candidates for auction release.`, link: '/auction?tab=release' });
+  if (old.c) items.push({ level: 'medium', title: `${old.c} loans older than ${months} months`, text: `Rs ${round2(old.a)} - candidates for auction release.`, link: '/auction/release' });
   if (atRisk) items.push({ level: 'high', title: `${atRisk} loans have less than ${margin}% margin`, text: 'Gold value is close to the loan amount. Ask for part payment.', link: '/stock/current' });
   if (dueSoon.c) items.push({ level: 'low', title: `${dueSoon.c} loans mature in the next 7 days`, text: 'Remind customers to pay interest or renew.', link: '/reports?key=maturity' });
   if (idleBank.c) items.push({ level: 'low', title: `${idleBank.c} bank pledges older than 6 months`, text: 'Check bank interest and release where possible.', link: '/bank/pledges' });

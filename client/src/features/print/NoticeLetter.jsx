@@ -11,7 +11,7 @@ export const NOTICE_FORMATS = [
 const addressLines = (l) => [`${l.customer_title || ''} ${l.customer_name}`.trim(), l.relation_name && `${l.relation_type || ''} ${l.relation_name}`.trim(), l.address, l.area, l.customer_phone && `Ph: ${l.customer_phone}`].filter(Boolean);
 const companyLine = (c) => [c.address1, c.address2, c.address3].filter(Boolean).join(', ');
 
-function Body({ l, company, type, auctionDate }) {
+function Body({ l, company, type, auctionDate, auctionTime }) {
   return (
     <>
       <p className="mt-3 text-center font-bold underline">{TYPE[type]} – Loan No {l.bill_no}</p>
@@ -22,7 +22,7 @@ function Body({ l, company, type, auctionDate }) {
       </p>
       <p className="mt-2 leading-relaxed">
         You are requested to repay the dues or renew the loan within 15 days from the receipt of this notice. Failing which the pledged ornaments will be sold in public
-        auction{auctionDate ? <> on <b>{date(auctionDate)}</b></> : ''} as per the terms of the loan and applicable law, without further notice, at your risk and cost.
+        auction{auctionDate ? <> on <b>{date(auctionDate)}{auctionTime ? ` at ${auctionTime}` : ''}</b></> : ''} as per the terms of the loan and applicable law, without further notice, at your risk and cost.
       </p>
       <p className="mt-8 text-right">For {company.name}</p>
       <p className="mt-8 text-right">Authorised Signatory</p>
@@ -41,7 +41,7 @@ function Head({ company, small }) {
 }
 
 /** Overdue / auction notice letters, one per page: A4 letter, registered post with ack card, or inland letter. */
-export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, format = 'LETTER' }) {
+export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, auctionTime, format = 'LETTER' }) {
   return (
     <div className="mx-auto w-[190mm] text-[13px] text-black">
       {loans.map((l) => (
@@ -59,7 +59,7 @@ export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, for
                   <p className="mt-3 text-[11px]">PIN: ____________</p>
                 </div>
               </div>
-              <div className="p-4"><Head company={company} small /><p className="mt-2 text-right">Date: {date(new Date())}</p><Body l={l} company={company} type={type} auctionDate={auctionDate} /></div>
+              <div className="p-4"><Head company={company} small /><p className="mt-2 text-right">Date: {date(new Date())}</p><Body l={l} company={company} type={type} auctionDate={auctionDate} auctionTime={auctionTime} /></div>
             </div>
           ) : (
             <>
@@ -68,7 +68,7 @@ export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, for
               <p className="mt-3 text-right">Date: {date(new Date())}</p>
               <p className="mt-1 font-bold">To,</p>
               {addressLines(l).map((x) => <p key={x} className="max-w-[90mm]">{x}</p>)}
-              <Body l={l} company={company} type={type} auctionDate={auctionDate} />
+              <Body l={l} company={company} type={type} auctionDate={auctionDate} auctionTime={auctionTime} />
               {format === 'REGISTERED' && (
                 /* Acknowledgement card to be pasted on the postal ack */
                 <div className="mt-8 border-t border-dashed border-black pt-3 text-[11px]">
