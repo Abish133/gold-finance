@@ -15,6 +15,7 @@ import bankRoutes from '#modules/bank/bank.routes.js';
 import auctionRoutes from '#modules/auction/auction.routes.js';
 import toolsRoutes from '#modules/tools/tools.routes.js';
 import deskRoutes from '#modules/desk/desk.routes.js';
+import deskReportRoutes from '#modules/desk/deskReports.routes.js';
 
 const api = Router();
 
@@ -34,6 +35,7 @@ api.use('/employees', employeesRoutes);
 api.use('/bank', bankRoutes);
 api.use('/auction', auctionRoutes);
 api.use('/tools', toolsRoutes);
+api.use('/desk/rep', deskReportRoutes);
 api.use('/desk', deskRoutes);
 
 export default api;
