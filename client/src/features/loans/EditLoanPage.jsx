@@ -8,7 +8,7 @@ import { CustomerPicker } from '@/components/common/CustomerPicker';
 import { useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { amount, n, round2 } from '@/lib/format';
-import { Panel, ExitButton, useKeys, ItemEntry, ItemsTable, CustomerCard, ItemPhotoPanel, useLoan, computeItem, INTEREST_TYPES, loanCustomer } from './desk';
+import { Panel, ExitButton, useKeys, ItemEntry, ItemsTable, CustomerCard, ItemPhotoPanel, useLoan, computeItem, INTEREST_TYPES, loanCustomer, fineRate } from './desk';
 
 /** Edit Pledged Record (desktop: frmPledgeBookEdit) - customer, date, bill book no, amount, interest and items. */
 export default function EditLoanPage() {
@@ -38,7 +38,9 @@ export default function EditLoanPage() {
   const find = async () => {
     try { const r = await api.get('/loans/find', { q: q.trim() }); if (!r.data.length) toast.error('No loan found'); else setSp({ loan: r.data[0].id }); } catch (e) { toast.error(e.message); }
   };
-  const rates = { gold: l?.rate_per_gram, silver: l?.silver_rate };
+  // edited / added items are valued at today's 100% rate (desktop behaviour)
+  const rateOf = (code) => fineRate(lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id));
+  const rates = { gold: rateOf('GOLD') || l?.rate_per_gram, silver: rateOf('SILVER') || l?.silver_rate };
   const value = round2(items.reduce((s, i) => s + n(i.value), 0));
   const net = items.reduce((s, i) => s + n(i.net_wt), 0);
   const save = async () => {

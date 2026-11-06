@@ -145,6 +145,16 @@ export const calculateInterest = ({ loan, scheme = {}, txns = [], asOf, options 
   };
 };
 
+/**
+ * Value of one jewel the way the desktop app shows it: fine weight x 100% rate, rounded down to the nearest 100.
+ * rate is given at purity `basis` (100 = fine rate; 91.6 / 92.5 = ornament rate) and converted to the fine rate.
+ */
+export const itemValue = (netWt, purity, rate, basis = 100) => {
+  const fine = Math.round(((num(netWt) * num(purity, 91.6)) / 100) * 1000) / 1000;
+  const fineRate = (num(rate) * 100) / (num(basis) || 100);
+  return Math.floor((fine * fineRate) / 100) * 100;
+};
+
 /** Eligible loan from items + scheme LTV. Silver items use the silver rate. */
 export const eligibility = ({ items = [], loanRate, silverRate, ltvPercent = 75, roundStep = 100 }) => {
   let gross = 0, stone = 0, net = 0, pcs = 0, value = 0, purityWt = 0, fine = 0;
@@ -154,7 +164,7 @@ export const eligibility = ({ items = [], loanRate, silverRate, ltvPercent = 75,
     const purity = num(it.purity, 91.6);
     const rate = num(it.rate_per_gram, it.metal === 'SILVER' ? silverRate : loanRate);
     gross += g; stone += s; net += n; pcs += num(it.pcs, 1);
-    value += n * rate * (purity / 91.6);
+    value += itemValue(n, purity, rate, it.rate_basis || 91.6);
     purityWt += purity * n; fine += (n * purity) / 100;
   }
   const marketValue = round2(value);

@@ -369,13 +369,18 @@ function CameraDrawer({ open, onClose, onCapture }) {
 /* ------------------------------------------------------------------ items */
 export const blankItem = (metal) => ({ key: crypto.randomUUID(), item_name: '', item_id: null, pcs: 1, gross_wt: '', stone_wt: '', purity: metal === 'SILVER' ? 92.5 : 91.6, metal, remarks: '' });
 
-/** Compute net, fine and value for a jewel row with the current rates. */
+/** 100% (fine) rate from a board rate row: rate at its purity x 100 / purity. */
+export const fineRate = (r) => (r && n(r.market_rate) ? round2((n(r.market_rate) * 100) / (n(r.purity) || 100)) : null);
+
+/** Desktop valuation: fine weight x 100% rate, rounded down to the nearest 100. */
+export const valueOf = (fine, rate) => Math.floor((n(fine) * n(rate)) / 100) * 100;
+
+/** Compute net, fine and value for a jewel row. `rates` are 100% (fine) rates per gram. */
 export const computeItem = (it, rates) => {
   const net = round3(Math.max(0, n(it.gross_wt) - n(it.stone_wt)));
-  const silver = it.metal === 'SILVER';
-  const rate = silver ? n(rates.silver) : n(rates.gold);
-  const basis = silver ? 92.5 : 91.6;
-  return { ...it, net_wt: net, fine_wt: round3((net * n(it.purity)) / 100), rate_per_gram: rate, value: round2(net * rate * (n(it.purity) / basis)) };
+  const rate = it.metal === 'SILVER' ? n(rates.silver) : n(rates.gold);
+  const fine = round3((net * n(it.purity)) / 100);
+  return { ...it, net_wt: net, fine_wt: fine, rate_per_gram: rate, rate_basis: 100, value: valueOf(fine, rate) };
 };
 
 /** Item entry row (desktop: Item (F3 new), Pcs, Gross, Less, Net auto, Remark, Purity, Metal, Value, Add Item). */

@@ -10,7 +10,7 @@ import { useFetch, useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, ItemEntry, LtvBar, useLoan, useApproval, PayDrawer, LoanHead, Chip, loanCustomer, INTEREST_TYPES } from './desk';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, ItemEntry, LtvBar, useLoan, useApproval, PayDrawer, LoanHead, Chip, loanCustomer, INTEREST_TYPES, fineRate, valueOf } from './desk';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
 
@@ -43,9 +43,9 @@ export default function ReLoanPage() {
   }, [l?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scheme = (lk?.schemes || []).find((s) => String(s.id) === String(f.scheme_id));
-  const goldRate = lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === 'GOLD')?.id)?.loan_rate;
+  const goldRate = fineRate(lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === 'GOLD')?.id));
   const oldTotal = c ? round2(c.principalOutstanding + c.interestDue + c.penalDue) : 0;
-  const valueToday = useMemo(() => round2((full?.items || []).reduce((s, i) => s + n(i.net_wt) * n(goldRate) * (n(i.purity) / 91.6), 0) + extra.reduce((s, i) => s + n(i.value), 0)), [full, extra, goldRate]);
+  const valueToday = useMemo(() => round2((full?.items || []).reduce((s, i) => s + valueOf(n(i.net_wt) * n(i.purity) / 100, goldRate), 0) + extra.reduce((s, i) => s + n(i.value), 0)), [full, extra, goldRate]);
   const np = n(f.new_principal);
   const monthly = scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) / 100 : n(f.interest_rate) / 1200;
   const adv = f.advance ? Math.round(np * monthly * (n(scheme?.advance_interest_months) || 1)) : 0;
@@ -61,7 +61,7 @@ export default function ReLoanPage() {
     try {
       const r = await approval.run((ap) => api.post(`/loans/${l.id}/renew`, {
         date: today(), new_principal: np, scheme_id: f.scheme_id, interest_rate: f.interest_rate, interest_type: f.interest_type, doc_charges: f.doc_charges, advance_interest: adv,
-        discount: f.discount, add_items: extra.map(({ key, metal, ...i }) => i), item_photo: photo, payments, rate_per_gram: goldRate, approval: ap,
+        discount: f.discount, add_items: extra.map(({ key, metal, ...i }) => i), item_photo: photo, payments, rate_per_gram: goldRate, rate_basis: 100, approval: ap,
       }));
       setPayOpen(false);
       toast.success(`Re-loan saved as #${r.data.loan.bill_no}`);
@@ -88,7 +88,7 @@ export default function ReLoanPage() {
               cells={[['Loan date', l && date(l.loan_date)], ['Loan amount', c && amount(c.principalOutstanding)], [`Interest · ${c ? `${Math.max(1, c.monthsDue)} M` : ''}`, c && amount(c.totalInterest + c.penalDue)], ['Paid before', c && amount(c.interestPaid)], ['Old loan total', amount(oldTotal)]]} />
             <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">#</th><th className="px-3 text-left">Item</th><th className="px-3 text-right">Pcs</th><th className="px-3 text-right">Gross</th><th className="px-3 text-right">Less</th><th className="px-3 text-right">Net wt</th><th className="px-3 text-right">Purity</th><th className="px-3 text-right">Value today</th><th className="w-20" /></tr></thead>
               <tbody className="divide-y divide-ink-200">
-                {(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1.5">{k + 1}</td><td className="px-3 font-semibold">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="num px-3 text-right">{amount(n(i.net_wt) * n(goldRate) * n(i.purity) / 91.6)}</td><td className="px-3 text-center"><Chip tone="green">Keep</Chip></td></tr>)}
+                {(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1.5">{k + 1}</td><td className="px-3 font-semibold">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="num px-3 text-right">{amount(valueOf(n(i.net_wt) * n(i.purity) / 100, goldRate))}</td><td className="px-3 text-center"><Chip tone="green">Keep</Chip></td></tr>)}
                 {extra.map((i, k) => <tr key={i.key} className="bg-emerald-50"><td className="px-3 py-1.5">+{k + 1}</td><td className="px-3 font-semibold">{i.item_name} <span className="text-xs text-emerald-700">(new)</span></td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="num px-3 text-right">{amount(i.value)}</td><td className="px-3 text-center"><button type="button" className="text-xs font-bold text-rose-600" onClick={() => setExtra(extra.filter((x) => x.key !== i.key))}>Remove</button></td></tr>)}
               </tbody></table>
             <div className="flex-1" />

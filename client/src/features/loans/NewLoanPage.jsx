@@ -16,7 +16,7 @@ import { printElement } from '@/lib/print';
 import { Stickers } from '@/features/print/Sticker';
 import { api } from '@/lib/api';
 import { money, amount, n, round2, today, weight, date } from '@/lib/format';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES } from './desk';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate } from './desk';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
 
@@ -180,7 +180,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const oldOpen = (custLoans.data?.data || []).filter((l) => dayjs().diff(dayjs(l.loan_date), 'month') >= warnMonths);
 
   // old loans: rates come from the Rate Master, can be changed
-  useEffect(() => { if (isOld && lk && !f.gold_rate && !f.silver_rate) set({ gold_rate: todayGold?.loan_rate ? String(n(todayGold.loan_rate)) : '', silver_rate: todaySilver?.loan_rate ? String(n(todaySilver.loan_rate)) : '' }); }, [isOld, lk]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (isOld && lk && !f.gold_rate && !f.silver_rate) set({ gold_rate: fineRate(todayGold) ? String(fineRate(todayGold)) : '', silver_rate: fineRate(todaySilver) ? String(fineRate(todaySilver)) : '' }); }, [isOld, lk]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const id = params.get('customer'); if (id) api.get(`/customers/${id}`).then((r) => setCustomer(r.data)).catch(() => {}); }, [params]);
 
   const metals = lk?.metals || [];
@@ -190,7 +190,8 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const todayGold = rateOf(goldM);
   const todaySilver = rateOf(silverM);
   const rateMissing = !isOld && [loanOn !== 'SILVER' && todayGold, loanOn !== 'GOLD' && todaySilver].some((r) => r === undefined || (r && !dayjs(r.rate_date).isSame(dayjs(), 'day')));
-  const rates = { gold: isOld ? f.gold_rate : todayGold?.loan_rate, silver: isOld ? f.silver_rate : todaySilver?.loan_rate };
+  // 100% (fine) rates, like the desktop Rate Master top row
+  const rates = { gold: isOld ? f.gold_rate : fineRate(todayGold), silver: isOld ? f.silver_rate : fineRate(todaySilver) };
 
   const schemes = (lk?.schemes || []).filter((s) => loanOn === 'MIX' || !s.metal_id || s.metal_id === (loanOn === 'SILVER' ? silverM?.id : goldM?.id));
   const scheme = schemes.find((s) => String(s.id) === String(schemeId)) || schemes[0];
@@ -230,7 +231,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
     mutationFn: ({ payments = [], book } = {}) => api.post(isOld ? '/loans/old' : '/loans', {
       customer_id: customer?.id, scheme_id: Number(schemeId), loan_on: loanOn, interest_type: f.interest_type,
       rate_per_gram: n(rates.gold), silver_rate: n(rates.silver),
-      items: rows.map(({ key, metal, ...r }) => ({ ...r, metal_id: metal === 'SILVER' ? silverM?.id : goldM?.id, rate_basis: metal === 'SILVER' ? 92.5 : 91.6 })),
+      items: rows.map(({ key, metal, ...r }) => ({ ...r, metal_id: metal === 'SILVER' ? silverM?.id : goldM?.id, rate_basis: 100 })),
       principal, interest_rate: n(f.interest_rate), doc_charges: doc, advance_interest: advance, other_charges: n(f.other_charges),
       loan_date: f.loan_date, due_date: f.due_date, manual_bill_no: book ?? f.manual_bill_no, remarks: f.remarks, item_photo: photo, loan_no: f.loan_no, payments: isOld ? [] : payments,
     }),
@@ -314,7 +315,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
         tiles={isOld
           ? [{ label: 'Opening entry', value: '', gold: true }, { label: 'Loan no (auto)', value: next.data?.loan_no }, { label: 'Billing date', value: dayjs().format('DD/MM/YYYY') }, { label: 'Last date', value: next.data?.last_date ? date(next.data.last_date) : '-' }]
           : [{ label: 'Loan no', value: next.data?.bill_no }, { label: 'Bill book', value: f.manual_bill_no || next.data?.bill_book_next || '-' }, { label: 'Billing date', value: dayjs().format('DD/MM/YYYY') },
-            { label: 'Gold · Silver', value: `${todayGold ? amount(todayGold.market_rate) : '-'} · ${todaySilver ? amount(todaySilver.market_rate) : '-'}`, gold: true }]}
+            { label: 'Gold · Silver', value: `${rates.gold ? amount(rates.gold) : '-'} · ${rates.silver ? amount(rates.silver) : '-'}`, gold: true }]}
         left={<>
           <CustomerSearch value={customer} onChange={setCustomer} onNew={() => setNewCust(true)} />
           <ItemPhotoPanel value={photo} onChange={setPhoto} customerId={customer?.id} />

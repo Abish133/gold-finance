@@ -9,7 +9,7 @@ import { audit } from '#services/audit.service.js';
 import { nextNumber } from '#services/sequence.service.js';
 import { getSettings, getCurrentFy } from '#services/settings.service.js';
 import { ensureDateOpen } from '#services/daycontrol.service.js';
-import { calculateInterest, eligibility, parseSlabs } from '#services/interest.service.js';
+import { calculateInterest, eligibility, parseSlabs, itemValue } from '#services/interest.service.js';
 import { LEDGER, postVoucher, paymentLines, normalisePayments, voidSourceVouchers } from '#services/accounting.service.js';
 import { queueMessage } from '#services/message.service.js';
 
@@ -159,7 +159,7 @@ const prepareItems = (items, loanRate) => {
     return {
       item_id: it.item_id || null, metal_id: it.metal_id || null, item_name: String(it.item_name).slice(0, 80), pcs: Math.max(1, num(it.pcs, 1)),
       gross_wt: gross, stone_wt: round3(gross - net), net_wt: net, purity, fine_wt: round3((net * purity) / 100), rate_per_gram: rate,
-      value: round2(it.value != null && it.value !== '' && it.value_manual ? it.value : net * rate * (purity / basis)), remarks: it.remarks || null,
+      value: round2(it.value != null && it.value !== '' && it.value_manual ? it.value : itemValue(net, purity, rate, basis)), remarks: it.remarks || null,
     };
   });
 };
@@ -493,7 +493,8 @@ export const renewLoan = async (req, id, body) => {
     const slabs = parseSlabs(scheme.slabs);
     const rate = num(body.interest_rate, slabs[0].rate);
     const loanRate = num(body.rate_per_gram, loan.rate_per_gram);
-    const marketValue = round2(old.items.reduce((s, i) => s + num(i.net_wt) * loanRate * (num(i.purity, 91.6) / 91.6), 0));
+    const basis = num(body.rate_basis, 91.6) || 91.6;
+    const marketValue = round2(old.items.reduce((s, i) => s + itemValue(i.net_wt, i.purity, loanRate, basis), 0));
     const step = num(settings.ROUND_LOAN_TO, 100) || 1;
     const eligible = Math.floor((marketValue * num(scheme.ltv_percent)) / 100 / step) * step;
     if (newPrincipal > eligible && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1') throw ApiError.badRequest(`New loan exceeds eligible amount ₹${eligible}`);
@@ -511,8 +512,8 @@ export const renewLoan = async (req, id, body) => {
     );
     const newLoanId = r.insertId;
     await tx.query(`INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks)
-      SELECT :n, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, :lr, ROUND(net_wt * :lr * purity / 91.6, 2), remarks FROM loan_items WHERE loan_id = :o`,
-    { n: newLoanId, o: loan.id, lr: loanRate });
+      SELECT :n, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, :lr, FLOOR(net_wt * purity / 100 * :lr * 100 / :basis / 100) * 100, remarks FROM loan_items WHERE loan_id = :o`,
+    { n: newLoanId, o: loan.id, lr: loanRate, basis });
     if (Array.isArray(body.add_items) && body.add_items.length) {
       const extra = prepareItems(body.add_items, loanRate);
       await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks) VALUES ?',
