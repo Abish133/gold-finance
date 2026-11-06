@@ -7,6 +7,7 @@ import { Button, Card, ImageCapture, PageHeader, Spinner } from '@/components/ui
 import { FormFields } from '@/components/form/FormFields';
 import { useCompany } from '@/hooks/useApi';
 import { api } from '@/lib/api';
+import { CompanyInfoList } from './CompanyInfoList';
 
 const FIELDS = [
   { name: 'name', label: 'Company name (printed)', required: true, span: 2 }, { name: 'local_name', label: 'Name in Tamil (promissory note)' },
@@ -15,7 +16,7 @@ const FIELDS = [
   { name: 'mobile', label: 'Mobile numbers' }, { name: 'phone', label: 'Phone' }, { name: 'email', label: 'Email', type: 'email' }, { name: 'website', label: 'Website' },
 ];
 
-export default function CompanyPage() {
+export function CompanyForm({ embedded }) {
   const { data, isLoading } = useCompany();
   const qc = useQueryClient();
   const form = useForm();
@@ -24,11 +25,17 @@ export default function CompanyPage() {
   if (isLoading) return <Spinner />;
   return (
     <div className="animate-rise">
-      <PageHeader icon={Building} title="Company Information" subtitle="Printed on every bill, receipt and notice" actions={<Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save</Button>} />
+      {embedded ? <div className="mb-3 flex justify-end"><Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save (F2)</Button></div>
+        : <PageHeader icon={Building} title="Company Information" subtitle="Printed on every bill, receipt and notice" actions={<Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save</Button>} />}
       <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
         <Card><FormFields fields={FIELDS} form={form} cols={3} /></Card>
         <Card title="Logo"><ImageCapture label="Company logo" value={data?.logo_path} upload={async (f) => { const r = await api.upload('/admin/company/logo', f); qc.invalidateQueries({ queryKey: ['/admin/company'] }); return r.data.logo_path; }} /></Card>
       </div>
     </div>
   );
+}
+
+/** Company Information (desktop): company list with tiles; Edit Company opens the form, Receipt Header the bill content. */
+export default function CompanyPage() {
+  return <CompanyInfoList />;
 }

@@ -88,6 +88,21 @@ const run = async () => {
     await pool.query('INSERT IGNORE INTO items (category_id, name) VALUES ?', [['Silver Anklet', 'Silver Plate', 'Silver Glass', 'Silver Lamp'].map((n) => [cat2, n])]);
   }
 
+  /* pawn-shop item names in common use (same list as the desktop item master); added once, never duplicated */
+  {
+    const tc = (x) => x.toLowerCase().replace(/(^|\s)\w/g, (c) => c.toUpperCase());
+    const g = await queryOne("SELECT c.id FROM item_categories c JOIN metals m ON m.id = c.metal_id WHERE m.code = 'GOLD' ORDER BY c.id LIMIT 1");
+    const sv = await queryOne("SELECT c.id FROM item_categories c JOIN metals m ON m.id = c.metal_id WHERE m.code = 'SILVER' ORDER BY c.id LIMIT 1");
+    const GOLD_ITEMS = ['ARANAKAYAR', 'ARTICLE', 'BABY BANGLE', 'BABY KAMAL', 'BABY RING', 'BANGLE', 'BARSS', 'BESAR', 'BLACK MANI CHAIN', 'BRACELET', 'CAP', 'CASS', 'CHAIN', 'CHAIN WITH DOLLAR',
+      'COINS', 'COVERING CHAIN', 'DILLI CHAIN', 'DILLI MATTAL', 'DISKO KAMAL', 'DISKO MATTAL', 'DOLLAR', 'FAIR RING', 'GULESH', 'GUNDU', 'HARAM', 'JIMIKHI', 'KAMAL', 'KAMAL WITH JIMIKHI',
+      'KAMAL WITH THONGLE', 'KINI BOTHU', 'KOLAS', 'LADIES RING', 'LAXSHMI BOTTU', 'MANGA BOTTHU', 'MATTAL', 'MOGATHI', 'MOP', 'NANCOLLA', 'NECKLACE', 'NITHI CHITY', 'RATTAI PATTAI CHAIN', 'RING',
+      'SARAD', 'STONE KAMAL', 'STONE KAMAL WITH STONE JIMIKHI', 'STONE KAMAL WITH STONE THONGLE', 'STONE NECKLACE', 'STONE RING', 'TALI', 'TANGOTAM', 'THAYAT'];
+    const SILVER_ITEMS = ['ARNA', 'ARNAKAYAR', 'ARTICLE', 'BRACELET', 'CAP', 'CHAIN', 'CHAIN PATTI', 'COINS', 'DEEPAK', 'DOLLAR', 'GULAS', 'KEY CHAIN', 'KINAM', 'KUNGAM BOX', 'MITTI', 'PLATE', 'RING',
+      'TAMLAR', 'TANDAI', 'THAT', 'VALAG'];
+    if (g) await pool.query('INSERT IGNORE INTO items (category_id, name) VALUES ?', [GOLD_ITEMS.map((x) => [g.id, tc(x)])]);
+    if (sv) await pool.query('INSERT IGNORE INTO items (category_id, name) VALUES ?', [SILVER_ITEMS.map((x) => [sv.id, GOLD_ITEMS.includes(x) || x === 'PLATE' ? `Silver ${tc(x)}` : tc(x)])]);
+  }
+
   /* schemes (slabs identical to the printed receipt) */
   if (!(await queryOne('SELECT id FROM schemes LIMIT 1'))) {
     const s75 = JSON.stringify([{ upto_months: 3, rate: 15 }, { upto_months: 6, rate: 18 }, { upto_months: 12, rate: 20 }, { upto_months: null, rate: 24 }]);
