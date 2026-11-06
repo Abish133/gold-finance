@@ -39,7 +39,7 @@ export default function LoginPage() {
           <div className="mt-10 grid grid-cols-2 gap-4">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                <f.icon className="size-5 text-gold-400" />
+                <f.icon className="size-5 text-white" />
                 <p className="mt-3 text-sm font-semibold">{f.title}</p>
                 <p className="mt-1 text-xs text-ink-400">{f.text}</p>
               </div>

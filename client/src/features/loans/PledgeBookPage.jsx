@@ -70,7 +70,7 @@ export default function PledgeBookPage() {
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex items-center gap-4 rounded-md px-5 py-3 text-white">
         <div className="flex-1"><h1 className="text-2xl font-bold">Pledge Book</h1><p className="text-sm text-navy-100">Complete register of loans - pending, released, in bank, auctioned and cancelled</p></div>
-        <div className="rounded-md bg-gold-500 px-5 py-1.5 text-center text-navy-950"><p className="text-xs font-bold">LOANS</p><p className="font-bold">{totalCnt}</p></div>
+        <div className="rounded-md bg-white px-5 py-1.5 text-center text-ink-900"><p className="text-xs font-bold">LOANS</p><p className="font-bold">{totalCnt}</p></div>
       </section>
       <div className="card flex flex-wrap items-end gap-4 px-4 py-3">
         <div><p className="label">Date on</p><div className="flex gap-1">{seg('loan', dateOn, setDateOn, 'Loan Date')}{seg('release', dateOn, setDateOn, 'Release Date')}</div></div>

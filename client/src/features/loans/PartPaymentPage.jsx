@@ -86,7 +86,7 @@ export default function PartPaymentPage() {
   }, [l, months, tab, partAmt, lines, pay, total]);
 
   const banks = (lk?.banks || []).map((b) => ({ value: b.id, label: b.bank_name }));
-  const cell = { adv: 'bg-violet-200 text-violet-900', paid: 'bg-emerald-200 text-emerald-900', now: 'bg-gold-400 text-navy-950', due: 'bg-rose-100 text-rose-800', not: 'bg-ink-100 text-ink-400' };
+  const cell = { adv: 'bg-violet-200 text-violet-900', paid: 'bg-emerald-200 text-emerald-900', now: 'bg-ink-900 text-white', due: 'bg-rose-100 text-rose-800', not: 'bg-ink-100 text-ink-400' };
 
   return (
     <div className="animate-rise space-y-3">

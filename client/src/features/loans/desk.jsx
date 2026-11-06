@@ -26,7 +26,7 @@ export function DeskScreen({ title, subtitle, tiles = [], left, center, right, f
         </div>
         {headerExtra}
         {tiles.map((t) => (
-          <div key={t.label} className={clsx('min-w-28 rounded-md px-4 py-1.5 text-center', t.gold ? 'bg-gold-500 text-navy-950' : 'bg-white/10')}>
+          <div key={t.label} className={clsx('min-w-28 rounded-md px-4 py-1.5 text-center', t.gold ? 'bg-white text-ink-900' : 'bg-white/10')}>
             <p className="text-[11px] font-bold tracking-wide uppercase opacity-90">{t.label}</p>
             <p className="num text-sm font-bold">{t.value ?? '-'}</p>
           </div>
@@ -74,7 +74,7 @@ export function BigTotal({ label, value, tone = 'navy' }) {
 }
 
 export const GoldButton = ({ children, ...p }) => (
-  <Button {...p} size="lg" className="h-14 w-full rounded-md !bg-gold-500 text-lg !text-navy-950 hover:!bg-gold-400 border-0">{children}</Button>
+  <Button {...p} size="lg" className="h-14 w-full rounded-md !bg-ink-900 text-lg !text-white hover:!bg-ink-700 border-0">{children}</Button>
 );
 
 /* ------------------------------------------------------------------ keys */

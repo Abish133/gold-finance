@@ -43,7 +43,7 @@ export default function YearEndPage() {
             <li key={t} className="flex gap-3 rounded-md p-2"><span className="grid size-7 shrink-0 place-items-center rounded-md bg-navy-100 text-sm font-bold text-navy-800">{i + 1}</span><span><p className="font-semibold">{t}</p><p className="text-xs text-ink-500">{h}</p></span></li>
           ))}</ol>
           <div className="space-y-2 p-3 pt-0">
-            <Button variant="gold" size="lg" className="w-full !bg-gold-500 !text-navy-950" disabled={!user.is_super_admin || fy?.is_closed} onClick={() => setConfirm(true)}>Start Year End (Admin)</Button>
+            <Button variant="gold" size="lg" className="w-full !bg-ink-900 !text-white" disabled={!user.is_super_admin || fy?.is_closed} onClick={() => setConfirm(true)}>Start Year End (Admin)</Button>
             <Button variant="outline" className="w-full" icon={RefreshCw} onClick={() => refetch()}>Check Again (F5)</Button>
           </div>
         </div>
@@ -55,7 +55,7 @@ export default function YearEndPage() {
             ))}
           </div>
           <div className="card p-3"><p className="mb-1 text-xs font-bold text-ink-600 uppercase">Loans given - month-wise (amount)</p>
-            <div className="h-44"><ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" stroke="#dfe4ea" /><XAxis dataKey="m" fontSize={11} /><YAxis fontSize={10} width={60} tickFormatter={(x) => compact(x)} /><Tooltip /><Bar dataKey="given" fill="#1f3a5f" /></BarChart></ResponsiveContainer></div>
+            <div className="h-44"><ResponsiveContainer><BarChart data={chart}><CartesianGrid strokeDasharray="3 3" stroke="#dfe4ea" /><XAxis dataKey="m" fontSize={11} /><YAxis fontSize={10} width={60} tickFormatter={(x) => compact(x)} /><Tooltip /><Bar dataKey="given" fill="#18181b" /></BarChart></ResponsiveContainer></div>
           </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="w-12 px-3 py-2" /><th className="px-3 text-left">Check</th><th className="px-3 text-left">Detail</th></tr></thead>

@@ -40,7 +40,7 @@ export default function BankRecoPage() {
       <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
         <div className="flex-1"><h1 className="text-2xl font-bold">Bank Reconciliation</h1><p className="text-sm text-navy-100">Match book entries with the bank statement</p></div>
         {[['As per books', st?.asPerBooks], ['Not in bank yet', st ? n(st.depositsNotInBank) - n(st.withdrawalsNotInBank) : null], ['Should be in bank', st?.shouldBeInBank]].map(([l, v], i) => (
-          <div key={l} className={clsx('rounded-md px-4 py-1.5 text-center', i === 2 ? 'bg-gold-500 text-navy-950' : 'bg-white/10')}><p className="text-[11px] font-bold uppercase">{l}</p><p className="num font-bold">{v != null ? amount(v) : '0.00'}</p></div>
+          <div key={l} className={clsx('rounded-md px-4 py-1.5 text-center', i === 2 ? 'bg-white text-ink-900' : 'bg-white/10')}><p className="text-[11px] font-bold uppercase">{l}</p><p className="num font-bold">{v != null ? amount(v) : '0.00'}</p></div>
         ))}
       </section>
       <div className="card flex flex-wrap items-end gap-4 px-4 py-3">

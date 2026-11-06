@@ -24,50 +24,51 @@
   --font-tamil: 'Noto Sans Tamil', 'Segoe UI', sans-serif;
   --font-brand: Georgia, Cambria, 'Times New Roman', serif;
 
-  --color-navy-50: #eef3fa;
-  --color-navy-100: #dbe5f3;
-  --color-navy-200: #b7cbe6;
-  --color-navy-300: #8aa9d3;
-  --color-navy-400: #5b82bb;
-  --color-navy-500: #3c64a0;
-  --color-navy-600: #2d5085;
-  --color-navy-700: #26446f;
-  --color-navy-800: #1f3a5f;
-  --color-navy-900: #182e4c;
-  --color-navy-950: #0f1f35;
+  /* white & black theme: "navy" = black / charcoal, "gold" = neutral accent, "ink" = neutral greys */
+  --color-navy-50: #f4f4f5;
+  --color-navy-100: #e4e4e7;
+  --color-navy-200: #d4d4d8;
+  --color-navy-300: #a1a1aa;
+  --color-navy-400: #71717a;
+  --color-navy-500: #52525b;
+  --color-navy-600: #3f3f46;
+  --color-navy-700: #27272a;
+  --color-navy-800: #18181b;
+  --color-navy-900: #111111;
+  --color-navy-950: #09090b;
 
-  --color-cream-50: #fffdf7;
-  --color-cream-100: #fdf8ea;
-  --color-cream-200: #f8efd2;
+  --color-cream-50: #ffffff;
+  --color-cream-100: #fafafa;
+  --color-cream-200: #f1f1f2;
 
-  --color-coral-400: #f39a7f;
-  --color-coral-500: #ef7f5f;
+  --color-coral-400: #d4d4d8;
+  --color-coral-500: #a1a1aa;
 
-  --color-gold-50: #fffbeb;
-  --color-gold-100: #fef3c7;
-  --color-gold-200: #fde68a;
-  --color-gold-300: #fcd34d;
-  --color-gold-400: #e9b949;
-  --color-gold-500: #d4a017;
-  --color-gold-600: #b88a10;
-  --color-gold-700: #94700d;
-  --color-gold-800: #745709;
-  --color-gold-900: #573f05;
+  --color-gold-50: #fafafa;
+  --color-gold-100: #f4f4f5;
+  --color-gold-200: #e4e4e7;
+  --color-gold-300: #d4d4d8;
+  --color-gold-400: #3f3f46;
+  --color-gold-500: #18181b;
+  --color-gold-600: #27272a;
+  --color-gold-700: #3f3f46;
+  --color-gold-800: #27272a;
+  --color-gold-900: #18181b;
 
-  --color-ink-50: #f6f8fb;
-  --color-ink-100: #eef1f5;
-  --color-ink-200: #dfe4ea;
-  --color-ink-300: #c7cfd9;
-  --color-ink-400: #95a1b1;
-  --color-ink-500: #667386;
-  --color-ink-600: #4a5668;
-  --color-ink-700: #364152;
-  --color-ink-800: #222c3b;
-  --color-ink-900: #141c28;
-  --color-ink-950: #0a0f17;
+  --color-ink-50: #fafafa;
+  --color-ink-100: #f4f4f5;
+  --color-ink-200: #e4e4e7;
+  --color-ink-300: #d4d4d8;
+  --color-ink-400: #a1a1aa;
+  --color-ink-500: #71717a;
+  --color-ink-600: #52525b;
+  --color-ink-700: #3f3f46;
+  --color-ink-800: #27272a;
+  --color-ink-900: #18181b;
+  --color-ink-950: #09090b;
 
-  --shadow-soft: 0 1px 2px rgb(24 46 76 / 0.06);
-  --shadow-drawer: -16px 0 40px rgb(15 31 53 / 0.22);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-drawer: -16px 0 40px rgb(0 0 0 / 0.25);
 
   --animate-slide-in: slide-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-fade-in: fade-in 0.18s ease-out;
@@ -82,8 +83,8 @@
 
 @layer base {
   html { -webkit-font-smoothing: antialiased; }
-  body { @apply bg-[#eef1f5] text-ink-800 dark:bg-ink-950 dark:text-ink-100; }
-  ::selection { @apply bg-gold-200 text-ink-900; }
+  body { @apply bg-[#f2f2f3] text-ink-800 dark:bg-ink-950 dark:text-ink-100; }
+  ::selection { @apply bg-ink-900 text-white; }
   input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; }
   input[type='number'] { -moz-appearance: textfield; }
   * { scrollbar-width: thin; scrollbar-color: var(--color-ink-300) transparent; }
@@ -97,8 +98,8 @@
       dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100 dark:disabled:bg-ink-800;
   }
   .label { @apply mb-1 block text-[11px] font-semibold tracking-wide text-ink-500 uppercase dark:text-ink-400; }
-  .gold-gradient { background-image: linear-gradient(135deg, #f3d27a 0%, #d4a017 55%, #a87d0c 100%); }
-  .navy-gradient { background-image: linear-gradient(180deg, #23426b 0%, #1f3a5f 100%); }
+  .gold-gradient { background-color: #111111; color: #ffffff; }
+  .navy-gradient { background-color: #111111; }
   .brand { font-family: var(--font-brand); font-style: italic; font-weight: 700; }
   .num { font-variant-numeric: tabular-nums; }
   .tamil { font-family: var(--font-tamil); }

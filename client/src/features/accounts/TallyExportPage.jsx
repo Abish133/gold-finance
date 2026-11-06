@@ -37,7 +37,7 @@ export default function TallyExportPage() {
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
         <div className="flex-1"><h1 className="text-2xl font-bold">Tally Export</h1><p className="text-sm text-navy-100">MyBook accounts to Tally / TallyPrime - ledgers + vouchers</p></div>
-        <div className="rounded-md bg-gold-500 px-4 py-1.5 text-center text-navy-950"><p className="text-[11px] font-bold uppercase">Last sent</p><p className="text-sm font-bold">{data?.lastSent ? dateTime(data.lastSent.created_at) : 'never'}</p></div>
+        <div className="rounded-md bg-white px-4 py-1.5 text-center text-ink-900"><p className="text-[11px] font-bold uppercase">Last sent</p><p className="text-sm font-bold">{data?.lastSent ? dateTime(data.lastSent.created_at) : 'never'}</p></div>
       </section>
       <div className="card flex flex-wrap items-end gap-3 px-4 py-3">
         <Field label="From"><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Field>

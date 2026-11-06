@@ -145,8 +145,8 @@ export default function DashboardPage() {
                 <YAxis tickFormatter={(v) => compact(v)} tickLine={false} axisLine={false} fontSize={11} width={70} />
                 <Tooltip formatter={(v) => money(v)} />
                 <Legend />
-                <Area type="monotone" dataKey="lent" name="Lent" stroke="#1f3a5f" strokeWidth={2} fill="#1f3a5f" fillOpacity={0.12} />
-                <Area type="monotone" dataKey="released" name="Recovered" stroke="#d4a017" strokeWidth={2} fill="#d4a017" fillOpacity={0.12} />
+                <Area type="monotone" dataKey="lent" name="Lent" stroke="#18181b" strokeWidth={2} fill="#18181b" fillOpacity={0.12} />
+                <Area type="monotone" dataKey="released" name="Recovered" stroke="#71717a" strokeWidth={2} fill="#71717a" fillOpacity={0.12} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

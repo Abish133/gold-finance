@@ -52,7 +52,7 @@ export function PaymentSplit({ total, value, onChange, label = 'Payment mode', d
               {MODES.map((m) => (
                 <button key={m.value} type="button" onClick={() => update(i, { mode: m.value })}
                   className={clsx('inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition',
-                    l.mode === m.value ? 'bg-ink-900 text-white dark:bg-gold-500 dark:text-ink-950' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-800 dark:text-ink-300')}>
+                    l.mode === m.value ? 'bg-ink-900 text-white dark:bg-white dark:text-ink-950' : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-800 dark:text-ink-300')}>
                   <m.icon className="size-3.5" /> {m.label}
                 </button>
               ))}

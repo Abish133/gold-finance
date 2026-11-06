@@ -160,7 +160,7 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
       <Link to="/" className="flex min-w-0 items-center gap-3">
         {company?.logo_path
           ? <img src={company.logo_path} alt="" className="size-11 rounded-md bg-white object-contain p-0.5 ring-1 ring-ink-200" />
-          : <div className="brand grid size-11 shrink-0 place-items-center rounded-md bg-navy-800 text-2xl text-gold-400 shadow-sm">{name.replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</div>}
+          : <div className="brand grid size-11 shrink-0 place-items-center rounded-md bg-navy-900 text-2xl text-white shadow-sm">{name.replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</div>}
         <div className="min-w-0 leading-tight">
           <p className="brand truncate text-2xl text-navy-900 dark:text-white">{name}</p>
           {fy && <p className="truncate text-xs text-ink-500">A/c Year <b className="text-gold-700">{fy.name}</b> <span className="mx-1.5">·</span> Books {dayjs(fy.start_date).format('DD/MM/YYYY')} to {dayjs(fy.end_date).format('DD/MM/YYYY')}</p>}
@@ -208,7 +208,7 @@ function StatusBar() {
   const { data: company } = useCompany();
   const month = dayjs().format('MMMM');
   const Item = ({ label, value, warn }) => (
-    <span className="whitespace-nowrap">{label} <b className={clsx('num ml-1.5 text-base', warn ? 'text-coral-400' : 'text-gold-400')}>{value ?? 0}</b></span>
+    <span className="whitespace-nowrap">{label} <b className={clsx('num ml-1.5 text-base', warn ? 'text-rose-300' : 'text-white')}>{value ?? 0}</b></span>
   );
   return (
     <footer className="navy-gradient no-print flex items-center gap-8 overflow-x-auto border-t-[3px] border-gold-500 px-5 py-2 text-sm text-navy-100">
@@ -302,7 +302,7 @@ export function AppLayout() {
         <MenuBar onAction={setPanel} onExit={() => setPanel('exit')} />
         <HeaderStrip dark={dark} setDark={setDark} onSearch={() => setPanel('search')} onProfile={() => setPanel('profile')} onAlerts={() => setPanel('alerts')} alertCount={alerts.length} />
       </div>
-      <main className="mx-auto w-full max-w-[1680px] flex-1 p-3 sm:p-5">
+      <main className="w-full flex-1 p-2 sm:p-3">
         <Suspense fallback={<Spinner label="Loading screen…" />}><Outlet /></Suspense>
       </main>
       <div className="sticky bottom-0 z-20"><StatusBar /></div>

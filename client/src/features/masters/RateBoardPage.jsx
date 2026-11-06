@@ -83,7 +83,7 @@ export default function RateBoardPage() {
           <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Rate history · last 30 days · {hist === 'GOLD' ? 'Gold' : 'Silver'}</p>
           <div className="flex gap-1 p-2">{['GOLD', 'SILVER'].map((m) => <button key={m} type="button" onClick={() => setHist(m)} className={clsx('h-8 rounded-md border px-3 text-xs font-semibold', hist === m ? 'border-navy-200 bg-navy-50' : 'border-ink-300')}>{m === 'GOLD' ? 'Gold' : 'Silver'}</button>)}</div>
           <div className="h-48 px-2">{chart.length > 1 ? (
-            <ResponsiveContainer><LineChart data={chart}><CartesianGrid strokeDasharray="3 3" stroke="#dfe4ea" /><XAxis dataKey="d" fontSize={10} /><YAxis fontSize={10} width={60} domain={['auto', 'auto']} /><Tooltip /><RLine dataKey="rate" stroke="#d4a017" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer>
+            <ResponsiveContainer><LineChart data={chart}><CartesianGrid strokeDasharray="3 3" stroke="#dfe4ea" /><XAxis dataKey="d" fontSize={10} /><YAxis fontSize={10} width={60} domain={['auto', 'auto']} /><Tooltip /><RLine dataKey="rate" stroke="#71717a" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer>
           ) : <p className="pt-16 text-center text-xs text-ink-400">Not enough rate history to draw a chart</p>}</div>
           <table className="w-full text-sm">
             <thead className="navy-gradient text-white"><tr><th className="px-3 py-1.5 text-left">Date</th><th className="px-3 text-right">Gold (top purity)</th><th className="px-3 text-right">Silver (top purity)</th></tr></thead>

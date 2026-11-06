@@ -67,7 +67,7 @@ export default function CustomersPage() {
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex items-center gap-4 rounded-md px-5 py-3 text-white">
         <div className="flex-1"><h1 className="text-2xl font-bold">Customers</h1><p className="text-sm text-navy-100">All customers of this shop - search and open the customer ledger</p></div>
-        <div className="rounded-md bg-gold-500 px-5 py-1.5 text-center text-navy-950"><p className="text-xs font-bold">CUSTOMERS</p><p className="font-bold">{tiles.total || 0}</p></div>
+        <div className="rounded-md bg-white px-5 py-1.5 text-center text-ink-900"><p className="text-xs font-bold">CUSTOMERS</p><p className="font-bold">{tiles.total || 0}</p></div>
       </section>
       <div className="card flex flex-wrap items-end gap-4 px-4 py-3">
         <div id="cust-search" className="min-w-72 flex-1"><p className="label">Search</p><Input autoFocus className="bg-gold-50" value={state.search} onChange={(e) => set({ search: e.target.value })} placeholder="Name, mobile, A/c no, ID no…" /></div>

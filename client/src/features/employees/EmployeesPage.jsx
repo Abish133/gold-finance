@@ -19,7 +19,7 @@ function IdCards({ list, company }) {
     <div className="flex flex-wrap gap-[4mm] text-black">
       {list.map((e) => (
         <div key={e.id} className="w-[86mm] overflow-hidden rounded-[3mm] border border-black" style={{ height: '54mm' }}>
-          <div className="bg-[#1f3a5f] px-3 py-1.5 text-center text-white"><p className="text-[12px] font-bold">{company?.name}</p><p className="text-[8px]">{company?.address1}</p></div>
+          <div className="bg-[#18181b] px-3 py-1.5 text-center text-white"><p className="text-[12px] font-bold">{company?.name}</p><p className="text-[8px]">{company?.address1}</p></div>
           <div className="flex gap-3 p-2.5">
             <div className="h-[28mm] w-[22mm] overflow-hidden border border-black bg-gray-100">{e.photo && <img src={e.photo} alt="" className="size-full object-cover" />}</div>
             <div className="text-[10px] leading-relaxed">
