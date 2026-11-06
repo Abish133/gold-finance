@@ -71,6 +71,15 @@ export const DEFAULTS = {
   SMS_ON_RELEASE: '1',
   SMS_ON_INTEREST: '1',
   SMS_ON_DUE_REMINDER: '1',
+  SMS_AUTO_REMINDER: '0',                  // daily due-reminder job
+  SMS_REMINDER_TIME: '10:00',
+  SMS_REMINDER_MONTHS: '3',                // no interest paid for this many months
+  SMS_REMINDER_OVERDUE: '1',               // also remind loans past the settle-before date
+  SMS_REMINDER_GAP_DAYS: '15',             // do not remind the same loan again within these days
+  // auto backup (server folder)
+  AUTO_BACKUP_ENABLED: '1',
+  AUTO_BACKUP_TIME: '21:00',
+  AUTO_BACKUP_KEEP: '30',
   // day control
   ENFORCE_DAY_CLOSE: '1',
 };

@@ -76,6 +76,23 @@ npm run build         # builds client into client/dist
 npm start             # server serves API + built client on PORT
 ```
 
+### Backup & restore
+- **Settings → Backup Database → Take Full Backup Now** downloads a `.json.gz` of every table (super admin). Only full backups can be restored.
+- **Auto Backup**: every day after the set time (default 21:00) the server writes a full backup to `server/backups/` and keeps the newest 30. Set `BACKUP_DIR` in `server/.env` to use another folder; copy it to a pen drive / cloud drive now and then.
+- **Restore** (super admin, password, type RESTORE) puts a server backup file or an uploaded full backup back over all data. A safety backup is saved first; the audit trail is never overwritten.
+- Start Fresh also saves a full backup on the server before removing practice entries.
+
+### SMS due reminders
+Settings → SMS Settings → Auto SMS Rules: once SMS is on and a provider URL is set, the server sends due-reminder SMS every day after the set time to loans past their settle-before date or with no interest paid for N months, and not to the same loan again within the set days. "Send Reminders Now" runs it for the current branch.
+
+### Tests
+With the dev server running (`npm run dev:server`), on the **dev database**:
+```bash
+npm test                  # all API tests (smoke, parity, desk, flows, sweep, backup)
+npm test -- flows sweep   # only some
+```
+The tests make their own test branches, customers and loans. `backup.test` restores the data it changed when it ends.
+
 ---
 
 ## Project structure

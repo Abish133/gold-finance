@@ -11,6 +11,11 @@ import { SCREENS, SCREEN_KEYS } from '#config/screens.js';
 import { audit } from '#services/audit.service.js';
 import { getSettings, saveSettings, DEFAULTS } from '#services/settings.service.js';
 import { peekNumber, setNumber } from '#services/sequence.service.js';
+import multer from 'multer';
+import zlib from 'node:zlib';
+import { buildFullBackup, writeBackupFile, listBackupFiles, backupFilePath, parseBackup, restoreBackup } from '#services/backup.service.js';
+import { runDueReminders, dueReminderLoans } from '#services/reminder.service.js';
+import fs from 'node:fs';
 
 const router = Router();
 const superOnly = (req, _res, next) => { if (!req.user.is_super_admin) throw ApiError.forbidden('Only the super admin can do this'); next(); };
@@ -258,6 +263,72 @@ router.get('/backup-history', permit('s_backup', 'view'), async (req, res) => {
     WHERE a.action = 'BACKUP' ORDER BY a.id DESC LIMIT 50`);
   const size = await queryOne('SELECT ROUND(SUM(data_length + index_length) / 1024) kb, COUNT(*) tables FROM information_schema.tables WHERE table_schema = DATABASE()');
   res.json({ data: { rows, sizeKb: Number(size?.kb || 0), tables: Number(size?.tables || 0) } });
+});
+
+/* full backup (every table, every branch) - the kind that can be restored */
+router.get('/backup/full', permit('s_backup', 'export'), async (req, res) => {
+  if (!req.user.is_super_admin) throw ApiError.forbidden('Only the super admin can take a full backup');
+  const data = await buildFullBackup();
+  const gz = zlib.gzipSync(JSON.stringify(data));
+  audit(req, 'BACKUP', 'database', null, { type: req.query.type || 'Full', scope: 'FULL', rows: Object.values(data.tables).reduce((t, r) => t + r.length, 0), kb: Math.round(gz.length / 1024) });
+  res.setHeader('Content-Type', 'application/gzip');
+  res.setHeader('Content-Disposition', `attachment; filename="gold-finance-full-${new Date().toISOString().slice(0, 10)}.json.gz"`);
+  res.send(gz);
+});
+
+/* server backup files (auto backup folder) */
+router.get('/backup-files', permit('s_backup', 'view'), async (req, res) => {
+  const s = await getSettings(0);
+  res.json({ data: { files: listBackupFiles(), settings: { AUTO_BACKUP_ENABLED: s.AUTO_BACKUP_ENABLED, AUTO_BACKUP_TIME: s.AUTO_BACKUP_TIME, AUTO_BACKUP_KEEP: s.AUTO_BACKUP_KEEP } } });
+});
+router.post('/backup-files', permit('s_backup', 'export'), async (req, res) => {
+  if (!req.user.is_super_admin) throw ApiError.forbidden('Only the super admin can do this');
+  res.status(201).json({ data: await writeBackupFile({ type: 'Server', userId: req.user.id, keep: 30 }) });
+});
+router.get('/backup-files/:name', permit('s_backup', 'export'), async (req, res) => {
+  if (!req.user.is_super_admin) throw ApiError.forbidden('Only the super admin can do this');
+  const p = backupFilePath(req.params.name);
+  if (!p) throw ApiError.notFound('Backup file not found');
+  res.download(p, req.params.name);
+});
+router.put('/backup-settings', permit('s_backup', 'edit'), async (req, res) => {
+  const b = req.body || {};
+  if (b.AUTO_BACKUP_TIME && !/^([01]\d|2[0-3]):[0-5]\d$/.test(b.AUTO_BACKUP_TIME)) throw ApiError.badRequest('Time must be HH:MM');
+  const values = Object.fromEntries(['AUTO_BACKUP_ENABLED', 'AUTO_BACKUP_TIME', 'AUTO_BACKUP_KEEP'].filter((k) => b[k] != null).map((k) => [k, String(b[k])]));
+  if (values.AUTO_BACKUP_KEEP && !(Number(values.AUTO_BACKUP_KEEP) >= 1)) throw ApiError.badRequest('Keep at least 1 file');
+  await saveSettings(values, 0);
+  audit(req, 'UPDATE', 'settings', 0, values);
+  res.json({ ok: true });
+});
+
+/* restore a full backup: super admin + password + type RESTORE; a safety backup is written first */
+const restoreUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+router.post('/restore', permit('s_backup', 'edit'), restoreUpload.single('file'), async (req, res) => {
+  if (!req.user.is_super_admin) throw ApiError.forbidden('Only the super admin can restore');
+  if (req.body.confirm !== 'RESTORE') throw ApiError.badRequest('Type RESTORE to confirm');
+  const me = await queryOne('SELECT password_hash FROM users WHERE id = :id', { id: req.user.id });
+  if (!(await bcrypt.compare(req.body.password || '', me.password_hash))) throw ApiError.forbidden('Password is wrong');
+  let buf;
+  if (req.file) buf = req.file.buffer;
+  else { const p = backupFilePath(req.body.file); if (!p) throw ApiError.badRequest('Choose a backup file'); buf = fs.readFileSync(p); }
+  let data;
+  try { data = parseBackup(buf); } catch (e) { throw ApiError.badRequest(e.message); }
+  const safety = await writeBackupFile({ type: 'Before restore', userId: req.user.id, keep: 10 });
+  const done = await restoreBackup(data);
+  invalidateUserCache?.();
+  audit(req, 'RESTORE', 'database', null, { from: req.file?.originalname || req.body.file, taken: data.generated_at, tables: done.length, rows: done.reduce((t, x) => t + x.rows, 0), safety: safety.file });
+  res.json({ data: { tables: done.length, rows: done.reduce((t, x) => t + x.rows, 0), taken: data.generated_at, safety: safety.file } });
+});
+
+/* due-reminder SMS: who gets one today, and run now */
+router.get('/reminders/preview', permit('s_messages', 'view'), requireBranch, async (req, res) => {
+  const s = await getSettings(req.branchId);
+  res.json({ data: { loans: await dueReminderLoans(req.branchId, s), smsEnabled: s.SMS_ENABLED === '1', templateOn: s.SMS_ON_DUE_REMINDER === '1' } });
+});
+router.post('/reminders/run', permit('s_messages', 'edit'), requireBranch, async (req, res) => {
+  const r = await runDueReminders(req.branchId);
+  audit(req, 'SMS_REMINDERS', 'message_queue', null, r);
+  res.json({ data: r });
 });
 
 router.get('/backup', permit('s_backup', 'export'), async (req, res) => {

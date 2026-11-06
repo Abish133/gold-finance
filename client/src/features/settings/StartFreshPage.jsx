@@ -27,10 +27,9 @@ export default function StartFreshPage() {
     if (!ready) return;
     setBusy(true);
     try {
-      // a full backup is taken first
-      await api.download('/admin/backup', { type: 'Start Fresh' }, `gold-finance-before-start-fresh-${today()}.json`);
-      await api.post('/tools/start-fresh', f);
-      toast.success('Practice entries removed - the shop can start real work');
+      // the server saves a full backup first (it can be restored from Settings > Backup)
+      const r = await api.post('/tools/start-fresh', f);
+      toast.success(`Practice entries removed - the shop can start real work. Safety backup: ${r.safety}`);
       qc.clear(); setF(blank); preview.refetch();
     } catch (e) { toast.error(e.message); }
     setBusy(false);

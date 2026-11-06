@@ -8,6 +8,7 @@ import { ApiError } from '#utils/ApiError.js';
 import { round2, num } from '#utils/money.js';
 import { audit } from '#services/audit.service.js';
 import { nextNumber, setNumber } from '#services/sequence.service.js';
+import { writeBackupFile } from '#services/backup.service.js';
 import { createLoan } from '#modules/loans/loans.service.js';
 import { openingBalance } from '#modules/accounts/accounts.service.js';
 
@@ -127,6 +128,8 @@ router.post('/start-fresh', permit('s_start_fresh', 'delete'), requireBranch, as
   if (req.body.confirm !== 'START FRESH') throw ApiError.badRequest('Type START FRESH to confirm');
   const me = await queryOne('SELECT password_hash FROM users WHERE id = :id', { id: req.user.id });
   if (!(await bcrypt.compare(req.body.password || '', me.password_hash))) throw ApiError.forbidden('Password is wrong');
+  // a full safety backup is saved on the server first (Settings > Backup > Restore can bring it back)
+  const safety = await writeBackupFile({ type: 'Before start fresh', userId: req.user.id, keep: 10 });
   const b = req.branchId;
   const nextLoanNo = Math.max(1, parseInt(req.body.next_loan_no, 10) || 1);
   const start = req.body.start_date ? dayjs(req.body.start_date) : null;
@@ -157,8 +160,8 @@ router.post('/start-fresh', permit('s_start_fresh', 'delete'), requireBranch, as
         { b, d: start.subtract(1, 'day').format('YYYY-MM-DD'), s: JSON.stringify({ startFresh: true }), u: req.user.id });
     }
   });
-  audit(req, 'START_FRESH', 'branches', b, { customers: !!req.body.customers, next_loan_no: nextLoanNo, start_date: start?.format('YYYY-MM-DD') || null });
-  res.json({ ok: true });
+  audit(req, 'START_FRESH', 'branches', b, { customers: !!req.body.customers, next_loan_no: nextLoanNo, start_date: start?.format('YYYY-MM-DD') || null, safety: safety.file });
+  res.json({ ok: true, safety: safety.file });
 });
 
 /* ============================================================ Import (database migration) */
