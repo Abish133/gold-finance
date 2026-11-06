@@ -9,13 +9,14 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printElement } from '@/lib/print';
 import { NoticeLetters } from '@/features/print/NoticeLetter';
+import { AuctionReleaseTab } from './AuctionReleaseTab';
 import { money, today, date, monthStart } from '@/lib/format';
 
 export default function AuctionPage() {
   const { can, isAllBranches } = useAuth();
   const qc = useQueryClient();
   const { data: company } = useCompany();
-  const [tab, setTab] = useState('list');
+  const [tab, setTab] = useState(new URLSearchParams(window.location.search).get('tab') || 'list');
   const [days, setDays] = useState('');
   const list = useFetch(tab === 'list' ? '/auction/list' : null, { days });
   const notices = useFetch(tab === 'notices' ? '/auction/notices' : null, { from: monthStart(), to: today() });
@@ -50,7 +51,8 @@ export default function AuctionPage() {
           {can('auction', 'add') && !isAllBranches && <Button variant="gold" icon={Send} disabled={!sel.length} onClick={() => setNotice({ notice_type: 'FIRST', sent_via: 'REGISTERED', notice_date: today(), print: true })}>Record notice ({sel.length})</Button>}
         </>
       )} />
-      <Tabs className="mb-4" value={tab} onChange={setTab} tabs={[{ value: 'list', label: 'Overdue list', count: rows.length || undefined }, { value: 'notices', label: 'Notices sent' }, can('auction_sale') && { value: 'sales', label: 'Auction sales' }].filter(Boolean)} />
+      <Tabs className="mb-4" value={tab} onChange={setTab} tabs={[{ value: 'list', label: 'Overdue list', count: rows.length || undefined }, { value: 'notices', label: 'Notices sent' }, can('auction_sale', 'add') && { value: 'release', label: 'Auction Release' }, can('auction_sale') && { value: 'sales', label: 'Auctioned' }].filter(Boolean)} />
+      {tab === 'release' && <AuctionReleaseTab />}
       {tab === 'list' && (
         <>
           <div className="mb-3 flex items-end gap-3"><Field label="Min. overdue days (blank = setting)"><Input type="number" className="w-48" value={days} onChange={(e) => setDays(e.target.value)} /></Field></div>

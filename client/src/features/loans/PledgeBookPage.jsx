@@ -1,69 +1,109 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BookOpen, Download, FilePlus2 } from 'lucide-react';
-import { Button, DataTable, Input, PageHeader, SearchInput, Segmented, Select, Stat } from '@/components/ui';
-import { useList, useLookups } from '@/hooks/useApi';
-import { useDebounce, useTableState } from '@/hooks/useUtils';
+import { RefreshCw, Eye, FileDown, FileSpreadsheet } from 'lucide-react';
+import clsx from 'clsx';
+import dayjs from 'dayjs';
+import { Button, DataTable, Field, Input, SearchInput } from '@/components/ui';
+import { useList, useCompany } from '@/hooks/useApi';
+import { useDebounce } from '@/hooks/useUtils';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
-import { money, grams, compact } from '@/lib/format';
+import { printTable } from '@/lib/printTable';
+import { amount, n, today } from '@/lib/format';
+import { ExitButton, useKeys } from './desk';
+
+const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+const QUICK = { today: () => [today(), today()], month: () => [dayjs().startOf('month').format('YYYY-MM-DD'), today()], year: () => [fyStart(), today()], all: () => ['', ''] };
+const TILES = [['', 'Total loans', 'border-t-navy-700 bg-cream-100'], ['PENDING', 'Pending', 'border-t-navy-500'], ['RELEASED', 'Released', 'border-t-rose-600'],
+  ['IN_BANK', 'In bank', 'border-t-violet-600'], ['AUCTIONED', 'Auctioned', 'border-t-emerald-700'], ['CANCELLED', 'Cancelled', 'border-t-fuchsia-600']];
+const STATUS_PARAM = { PENDING: { status: 'OPEN', bank: '0' }, RELEASED: { status: 'CLOSED,RENEWED' }, IN_BANK: { status: 'OPEN', bank: '1' }, AUCTIONED: { status: 'AUCTIONED' }, CANCELLED: { status: 'CANCELLED' } };
 
 const columns = [
-  { key: 'bill_no', label: 'Loan no', sortable: true, render: (r) => <span className="font-bold text-ink-900 dark:text-white">#{r.bill_no}</span> },
-  { key: 'loan_date', label: 'Date', type: 'date', sortable: true },
-  { key: 'customer_name', label: 'Customer', sortable: true, render: (r) => <div><p className="font-semibold">{r.customer_name}</p><p className="text-xs text-ink-500">{r.customer_phone}</p></div> },
-  { key: 'item_summary', label: 'Items', className: 'max-w-56 truncate' },
-  { key: 'net_wt', label: 'Net wt', type: 'weight', sortable: true },
-  { key: 'principal', label: 'Loan', type: 'money', sortable: true },
-  { key: 'current_principal', label: 'Balance', type: 'money' },
-  { key: 'due_date', label: 'Due', type: 'date', sortable: true },
+  { key: 'sno', label: 'S.No', render: (r) => r.__i, print: (r, i) => i + 1 },
+  { key: 'bill_no', label: 'Loan No', sortable: true, render: (r) => <b>{r.bill_no}</b> },
+  { key: 'loan_date', label: 'Loan Date', type: 'date', sortable: true },
+  { key: 'customer_name', label: 'Customer', sortable: true },
+  { key: 'loan_on', label: 'Metal', render: (r) => r.loan_on || r.metal_name },
+  { key: 'item_summary', label: 'Pledged Items', className: 'max-w-56 truncate' },
+  { key: 'gross_wt', label: 'Gross Wt', type: 'weight' },
+  { key: 'net_wt', label: 'Net Wt', type: 'weight', sortable: true },
+  { key: 'principal', label: 'Loan Amount', type: 'money', sortable: true },
+  { key: 'interest_rate', label: 'ROI %', type: 'number' },
+  { key: 'advance_interest', label: 'Adv. Int.', type: 'money' },
+  { key: 'market_value', label: 'Item Value', type: 'money' },
+  { key: 'due_date', label: 'Settle Before', type: 'date', sortable: true },
   { key: 'status', label: 'Status', type: 'status' },
+  { key: 'release_no', label: 'Release No', type: 'number' },
+  { key: 'close_date', label: 'Release Date', type: 'date' },
 ];
 
-const EXPORT = [
-  { key: 'bill_no', label: 'Loan No' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'customer_phone', label: 'Phone' },
-  { key: 'item_summary', label: 'Items' }, { key: 'gross_wt', label: 'Gross' }, { key: 'net_wt', label: 'Net' }, { key: 'principal', label: 'Loan' },
-  { key: 'current_principal', label: 'Balance' }, { key: 'due_date', label: 'Due', type: 'date' }, { key: 'status', label: 'Status' }, { key: 'branch_name', label: 'Branch' },
-];
-
+/** Pledge Book (desktop: frmPledgeBook) - complete loan register. */
 export default function PledgeBookPage() {
   const navigate = useNavigate();
-  const { can, isAllBranches } = useAuth();
-  const { data: lk } = useLookups();
-  const [state, set] = useTableState({ status: 'OPEN', sort: 'loan_date', order: 'desc' });
-  const search = useDebounce(state.search);
-  const params = { ...state, search };
+  const { isAllBranches } = useAuth();
+  const { data: company } = useCompany();
+  const [dateOn, setDateOn] = useState('loan');
+  const [[from, to], setRange] = useState(QUICK.year());
+  const [metal, setMetal] = useState('');
+  const [amt, setAmt] = useState({ from: '', to: '' });
+  const [tile, setTile] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState({ page: 1, pageSize: 50, sort: 'loan_date', order: 'desc' });
+  const ds = useDebounce(search);
+  const params = { ...page, date_on: dateOn, from, to, loan_on: metal, amount_from: amt.from, amount_to: amt.to, search: ds, ...(STATUS_PARAM[tile] || {}) };
   const list = useList('/loans', params);
-  const sm = list.data?.summary;
+  const rows = (list.data?.data || []).map((r, i) => ({ ...r, __i: (page.page - 1) * page.pageSize + i + 1 }));
+  const tiles = list.data?.tiles || {};
+  const totalCnt = Object.values(tiles).reduce((s, t) => s + t.cnt, 0);
+  const totalAmt = Object.values(tiles).reduce((s, t) => s + n(t.amount), 0);
   const cols = isAllBranches ? [...columns, { key: 'branch_name', label: 'Branch' }] : columns;
+  const all = async () => (await api.get('/loans', { ...params, page: 1, pageSize: 200 })).data;
+  const title = `Pledge Book · ${from ? `${dayjs(from).format('DD/MM/YYYY')} to ${dayjs(to).format('DD/MM/YYYY')}` : 'All years'}`;
+  const preview = async () => printTable({ title, company, columns: cols, rows: await all() });
+  const excel = async () => exportCsv('pledge-book', cols.filter((c) => c.key !== 'sno'), await all());
+  useKeys({ f5: () => list.refetch(), 'ctrl+r': () => list.refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': excel, f3: () => document.querySelector('#pb-search input')?.focus(), escape: () => navigate('/') }, [params]);
+
+  const seg = (val, cur, set, label) => <button type="button" onClick={() => set(val)} className={clsx('h-9 rounded-md border px-3 text-sm font-semibold', cur === val ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800')}>{label}</button>;
 
   return (
-    <div className="animate-rise">
-      <PageHeader title="Pledge Book" subtitle="Every loan with filters, search and export" icon={BookOpen} actions={(
-        <>
-          {can('loan_list', 'export') && <Button variant="outline" icon={Download} onClick={async () => { const r = await api.get('/loans', { ...params, page: 1, pageSize: 200 }); exportCsv('pledge-book', EXPORT, r.data); }}>Export</Button>}
-          {can('loan_new', 'add') && <Button variant="gold" icon={FilePlus2} onClick={() => navigate('/loans/new')}>New loan</Button>}
-        </>
-      )} />
-      <div className="mb-5 grid gap-3 sm:grid-cols-4">
-        <Stat label="Loans" value={(sm?.total || 0).toLocaleString('en-IN')} />
-        <Stat label="Loan amount" value={compact(sm?.principal)} tone="blue" />
-        <Stat label="Outstanding" value={compact(sm?.outstanding)} tone="red" />
-        <Stat label="Net weight" value={grams(sm?.net_wt)} tone="gold" />
+    <div className="animate-rise space-y-3">
+      <section className="navy-gradient flex items-center gap-4 rounded-md px-5 py-3 text-white">
+        <div className="flex-1"><h1 className="text-2xl font-bold">Pledge Book</h1><p className="text-sm text-navy-100">Complete register of loans - pending, released, in bank, auctioned and cancelled</p></div>
+        <div className="rounded-md bg-gold-500 px-5 py-1.5 text-center text-navy-950"><p className="text-xs font-bold">LOANS</p><p className="font-bold">{totalCnt}</p></div>
+      </section>
+      <div className="card flex flex-wrap items-end gap-4 px-4 py-3">
+        <div><p className="label">Date on</p><div className="flex gap-1">{seg('loan', dateOn, setDateOn, 'Loan Date')}{seg('release', dateOn, setDateOn, 'Release Date')}</div></div>
+        <Field label="Pledged from"><Input type="date" value={from} onChange={(e) => setRange([e.target.value, to])} /></Field>
+        <Field label="To"><Input type="date" value={to} onChange={(e) => setRange([from, e.target.value])} /></Field>
+        <div><p className="label">Quick</p><div className="flex gap-1">{[['today', 'Today'], ['month', 'This Month'], ['year', 'A/c Year'], ['all', 'All Years']].map(([k, l]) => <button key={k} type="button" onClick={() => setRange(QUICK[k]())} className="h-9 rounded-md border border-ink-300 bg-white px-3 text-sm font-semibold text-navy-800 hover:bg-navy-50">{l}</button>)}</div></div>
+        <div><p className="label">Metal</p><div className="flex gap-1">{[['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']].map(([k, l]) => <span key={k}>{seg(k, metal, setMetal, l)}</span>)}</div></div>
+        <div><p className="label">Loan amount · from - to</p><div className="flex gap-1"><Input type="number" className="w-28" value={amt.from} onChange={(e) => setAmt({ ...amt, from: e.target.value })} /><Input type="number" className="w-28" value={amt.to} onChange={(e) => setAmt({ ...amt, to: e.target.value })} /></div></div>
+        <Button className="ml-auto" icon={RefreshCw} onClick={() => list.refetch()}>Load (F5)</Button>
+        <div id="pb-search" className="w-full"><SearchInput value={search} onChange={setSearch} className="max-w-md" placeholder="Search (F3) · loan / customer / item" /></div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <SearchInput value={state.search} onChange={(v) => set({ search: v })} className="w-full sm:w-80" placeholder="Loan no, name, mobile, barcode…" />
-        <Segmented value={state.status} onChange={(v) => set({ status: v })} options={[{ value: 'OPEN', label: 'Open' }, { value: 'CLOSED,RENEWED', label: 'Closed' }, { value: 'AUCTIONED', label: 'Auctioned' }, { value: 'CANCELLED', label: 'Cancelled' }, { value: '', label: 'All' }]} />
-        <Input type="date" className="w-40" value={state.from || ''} onChange={(e) => set({ from: e.target.value })} />
-        <Input type="date" className="w-40" value={state.to || ''} onChange={(e) => set({ to: e.target.value })} />
-        <Select className="w-40" value={state.scheme_id || ''} onChange={(e) => set({ scheme_id: e.target.value })} placeholder="All schemes" options={(lk?.schemes || []).map((s) => ({ value: s.id, label: s.code }))} />
-        <Segmented size="sm" value={state.overdue || ''} onChange={(v) => set({ overdue: v })} options={[{ value: '', label: 'Any due' }, { value: '1', label: 'Overdue' }]} />
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {TILES.map(([k, label, cls]) => {
+          const t = k ? tiles[k] : { cnt: totalCnt, amount: totalAmt };
+          return (
+            <button key={k} type="button" onClick={() => setTile(k)} className={clsx('card border-t-4 px-4 py-3 text-left transition hover:shadow-md', cls, tile === k && 'ring-2 ring-navy-500')}>
+              <p className="text-xs font-bold text-ink-700 uppercase">{label}</p><p className="num text-2xl font-bold text-navy-900">{t?.cnt || 0}</p><p className="num text-xs text-ink-500">Rs. {amount(t?.amount || 0)}</p>
+            </button>
+          );
+        })}
       </div>
-      <DataTable columns={cols} rows={list.data?.data} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
-        sort={state.sort} order={state.order} onSort={(sort, order) => set({ sort, order })} onPage={(page) => set({ page })} onPageSize={(pageSize) => set({ pageSize })}
-        onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)} rowClassName={(r) => (r.status === 'OPEN' && r.due_date < new Date().toISOString().slice(0, 10) ? 'bg-rose-50/40 dark:bg-rose-500/5' : '')}
-        totals={list.data?.data?.length ? { principal: list.data.data.reduce((s, r) => s + Number(r.principal), 0), current_principal: list.data.data.reduce((s, r) => s + Number(r.current_principal), 0), net_wt: list.data.data.reduce((s, r) => s + Number(r.net_wt), 0) } : undefined} />
-      <p className="mt-2 text-xs text-ink-400">Totals row covers this page; summary cards cover all filtered loans.</p>
+      <DataTable dense columns={cols} rows={rows} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
+        sort={page.sort} order={page.order} onSort={(sort, order) => setPage({ ...page, sort, order })} onPage={(p) => setPage({ ...page, page: p })} onPageSize={(s) => setPage({ ...page, pageSize: s, page: 1 })}
+        onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}
+        totals={rows.length ? { gross_wt: rows.reduce((s, r) => s + n(r.gross_wt), 0), net_wt: rows.reduce((s, r) => s + n(r.net_wt), 0), principal: rows.reduce((s, r) => s + n(r.principal), 0), market_value: rows.reduce((s, r) => s + n(r.market_value), 0) } : undefined} />
+      <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
+        <Button variant="outline" icon={RefreshCw} onClick={() => list.refetch()}>Refresh (Ctrl+R)</Button>
+        <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
+        <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
+        <Button variant="outline" icon={FileSpreadsheet} onClick={excel}>Excel (Ctrl+E)</Button>
+        <ExitButton />
+      </div>
+      <p className="px-1 text-xs text-ink-500">F5 = load · F3 = search · Enter / double-click = loan details · Ctrl+R = refresh · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
     </div>
   );
 }

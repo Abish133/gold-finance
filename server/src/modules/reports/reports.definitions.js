@@ -31,7 +31,7 @@ const withInterest = async (rows, asOn) => {
   for (const t of txns) (tMap[t.loan_id] ||= []).push(t);
   return rows.map((r) => {
     const calc = calculateInterest({ loan: r, scheme: sMap[r.scheme_id], txns: tMap[r.id] || [], asOf: asOn,
-      options: { monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15), roundInterestTo: num(settings.ROUND_INTEREST_TO, 1) } });
+      options: { monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15), roundInterestTo: num(settings.ROUND_INTEREST_TO, 1), compoundMonths: num(settings.COMPOUND_PERIOD_MONTHS, 12) } });
     return { ...r, days: calc.elapsedDays, rate_now: calc.rate, interest_due: calc.interestDue + calc.penalDue, total_due: calc.totalPayable };
   });
 };
@@ -125,11 +125,11 @@ export const REPORTS = [
   /* ------------------------------------------------ RELEASE */
   {
     key: 'daywise_releases', title: 'Day-wise Release Report', group: 'Release Reports', screen: 'reports_release', params: ['from', 'to'],
-    columns: [C('txn_date', 'Release Date', 'date'), C('receipt_no', 'Receipt'), C('bill_no', 'Loan No'), C('loan_date', 'Loan Date', 'date'), C('customer_name', 'Customer'),
+    columns: [C('txn_date', 'Release Date', 'date'), C('release_no', 'Release No', 'number'), C('receipt_no', 'Receipt'), C('bill_no', 'Loan No'), C('loan_date', 'Loan Date', 'date'), C('customer_name', 'Customer'),
       C('net_wt', 'Net Wt', 'weight'), C('principal', 'Principal', 'money'), C('interest', 'Interest', 'money'), C('penal', 'Penal', 'money'), C('discount', 'Discount', 'money'),
       C('total', 'Received', 'money'), C('days', 'Days', 'number'), C('remarks', 'Remarks')],
     totals: ['net_wt', 'principal', 'interest', 'penal', 'discount', 'total'],
-    run: ({ b, from, to }) => query(`SELECT t.txn_date, t.receipt_no, l.bill_no, l.loan_date, c.name customer_name, l.net_wt, ABS(t.principal_amount) principal,
+    run: ({ b, from, to }) => query(`SELECT t.txn_date, t.release_no, t.receipt_no, l.bill_no, l.loan_date, c.name customer_name, l.net_wt, ABS(t.principal_amount) principal,
       t.interest_amount interest, t.penal_amount penal, t.discount, t.total_amount total, DATEDIFF(t.txn_date, l.loan_date) days, t.remarks
       FROM loan_transactions t JOIN loans l ON l.id = t.loan_id JOIN customers c ON c.id = l.customer_id
       WHERE t.branch_id IN (:b) AND t.txn_type = 'RELEASE' AND t.is_void = 0 AND t.txn_date BETWEEN :from AND :to ORDER BY t.txn_date, t.id`, { b, from, to }),
@@ -271,8 +271,41 @@ export const REPORTS = [
     run: ({ b, from, to }) => query(`SELECT COALESCE(u.full_name, '-') user_name, t.txn_type, COUNT(*) count, SUM(t.total_amount) amount FROM loan_transactions t
       LEFT JOIN users u ON u.id = t.created_by WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :from AND :to GROUP BY u.id, t.txn_type ORDER BY user_name`, { b, from, to }),
   },
+  /* ------------------------------------------------ BANK & AUCTION */
+  {
+    key: 'bank_loans_taken', title: 'Bank Loans Taken', group: 'Bank Reports', screen: 'reports_summary', params: ['from', 'to'],
+    columns: [C('pledge_no', 'Bank Loan No'), C('pledge_date', 'Date', 'date'), C('bank_name', 'Bank'), C('loans', 'Loans', 'number'), C('total_wt', 'Weight', 'weight'),
+      C('amount', 'Amount', 'money'), C('charges', 'Charges', 'money'), C('cash_received', 'Cash Received', 'money'), C('interest_rate', '% / Year', 'number'), C('status', 'Status'), C('release_date', 'Released On', 'date')],
+    totals: ['loans', 'total_wt', 'amount', 'charges', 'cash_received'],
+    run: ({ b, from, to }) => query(`SELECT bp.*, ba.bank_name, (SELECT COUNT(*) FROM bank_pledge_loans x WHERE x.bank_pledge_id = bp.id) loans FROM bank_pledges bp
+      JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE bp.branch_id IN (:b) AND bp.pledge_date BETWEEN :from AND :to ORDER BY bp.pledge_date`, { b, from, to }),
+  },
+  {
+    key: 'bank_loans_released', title: 'Bank Loans Released', group: 'Bank Reports', screen: 'reports_summary', params: ['from', 'to'],
+    columns: [C('pledge_no', 'Bank Loan No'), C('pledge_date', 'Loan Date', 'date'), C('release_date', 'Released', 'date'), C('bank_name', 'Bank'), C('amount', 'Amount', 'money'),
+      C('interest_paid', 'Interest Paid', 'money'), C('total_paid', 'Total Paid', 'money'), C('days', 'Days', 'number')],
+    totals: ['amount', 'interest_paid', 'total_paid'],
+    run: ({ b, from, to }) => query(`SELECT bp.*, ba.bank_name, DATEDIFF(bp.release_date, bp.pledge_date) days FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id
+      WHERE bp.branch_id IN (:b) AND bp.status = 'CLOSED' AND bp.release_date BETWEEN :from AND :to ORDER BY bp.release_date`, { b, from, to }),
+  },
+  {
+    key: 'bank_monthwise', title: 'Bank Month-wise Summary', group: 'Bank Reports', screen: 'reports_summary', params: ['from', 'to'],
+    columns: [C('month', 'Month'), C('taken', 'Taken', 'money'), C('released', 'Released', 'money'), C('interest', 'Interest Paid', 'money')],
+    totals: ['taken', 'released', 'interest'],
+    run: ({ b, from, to }) => query(`SELECT m month, SUM(taken) taken, SUM(released) released, SUM(interest) interest FROM (
+        SELECT DATE_FORMAT(pledge_date, '%Y-%m') m, SUM(amount) taken, 0 released, 0 interest FROM bank_pledges WHERE branch_id IN (:b) AND pledge_date BETWEEN :from AND :to GROUP BY m
+        UNION ALL SELECT DATE_FORMAT(release_date, '%Y-%m'), 0, SUM(amount), SUM(interest_paid) FROM bank_pledges WHERE branch_id IN (:b) AND status = 'CLOSED' AND release_date BETWEEN :from AND :to GROUP BY 1
+      ) x GROUP BY m ORDER BY m`, { b, from, to }),
+  },
+  {
+    key: 'auction_report', title: 'Auction Report', group: 'Auction Reports', screen: 'reports_summary', params: ['from', 'to'],
+    columns: [C('auction_date', 'Date', 'date'), C('bill_no', 'Loan No'), C('loan_date', 'Loan Date', 'date'), C('customer_name', 'Customer'), C('net_wt', 'Net Wt', 'weight'),
+      C('principal_due', 'Principal', 'money'), C('interest_due', 'Interest', 'money'), C('charges', 'Charges', 'money'), C('sale_amount', 'Sold For', 'money'), C('surplus', 'Surplus / (Loss)', 'money'), C('buyer_name', 'Buyer')],
+    totals: ['net_wt', 'principal_due', 'interest_due', 'charges', 'sale_amount', 'surplus'],
+    run: ({ b, from, to }) => query(`SELECT a.*, l.bill_no, l.loan_date, l.net_wt, c.name customer_name FROM auction_sales a JOIN loans l ON l.id = a.loan_id JOIN customers c ON c.id = l.customer_id
+      WHERE a.branch_id IN (:b) AND a.auction_date BETWEEN :from AND :to ORDER BY a.auction_date`, { b, from, to }),
+  },
 ];
-
 export const defaultParams = (q) => {
   const today = dayjs().format('YYYY-MM-DD');
   return { ...q, from: q.from || dayjs().startOf('month').format('YYYY-MM-DD'), to: q.to || today, asOn: q.asOn || today };

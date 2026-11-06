@@ -27,9 +27,9 @@ export default function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-ink-950 p-12 text-white lg:flex lg:flex-col">
-        <div className="absolute -top-40 -right-40 size-[520px] rounded-full bg-gold-500/20 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 size-[420px] rounded-full bg-gold-700/20 blur-3xl" />
+      <div className="relative hidden overflow-hidden navy-gradient p-12 text-white lg:flex lg:flex-col">
+        <div className="absolute -top-40 -right-40 size-[520px] rounded-full bg-gold-500/15 blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 size-[420px] rounded-full bg-navy-400/20 blur-3xl" />
         <div className="relative flex items-center gap-3">
           <div className="grid size-11 place-items-center rounded-2xl gold-gradient text-lg font-black text-ink-950">G</div>
           <div><p className="font-bold">Gold Finance</p><p className="text-xs text-ink-400">Pawn Broking Suite</p></div>

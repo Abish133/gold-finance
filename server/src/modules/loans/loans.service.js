@@ -1,4 +1,6 @@
 import dayjs from 'dayjs';
+import bcrypt from 'bcryptjs';
+import { can } from '#middleware/auth.js';
 import { query, queryOne, withTransaction } from '#config/db.js';
 import { assertBranch } from '#middleware/branch.js';
 import { ApiError } from '#utils/ApiError.js';
@@ -34,10 +36,43 @@ const loadScheme = async (db, id) => {
 const loadTxns = (db, loanId) =>
   db.query('SELECT * FROM loan_transactions WHERE loan_id = :id AND is_void = 0 ORDER BY txn_date, id', { id: loanId });
 
-const calcOptions = (settings) => ({
+export const calcOptions = (settings) => ({
   monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15),
   roundInterestTo: num(settings.ROUND_INTEREST_TO, 1),
+  compoundMonths: num(settings.COMPOUND_PERIOD_MONTHS, 12),
 });
+
+/**
+ * Admin approval (desktop: frmAdminApproval). Amounts above the limit need a user with the
+ * "admin_approval" permission: either the logged-in user, or an approver who types username + password.
+ * Throws 428 so the UI can open the approval drawer.
+ */
+export const checkApproval = async (req, amount, settings, what = 'Discount') => {
+  const limit = num(settings.DISCOUNT_APPROVAL_LIMIT, 0);
+  if (!limit || num(amount) <= limit) return null;
+  if (can(req.user, 'admin_approval', 'add')) return req.user.id;
+  const a = req.body?.approval;
+  if (!a?.username || !a?.password) throw new ApiError(428, `${what} above ₹${limit} needs admin approval`, { needApproval: true, limit });
+  const u = await queryOne('SELECT * FROM users WHERE username = :u AND is_active = 1', { u: a.username });
+  if (!u || !(await bcrypt.compare(a.password, u.password_hash))) throw ApiError.forbidden('Approver username or password is wrong');
+  if (!u.is_super_admin) {
+    const p = await queryOne("SELECT can_add FROM role_permissions WHERE role_id = :r AND screen_key = 'admin_approval'", { r: u.role_id });
+    if (!p?.can_add) throw ApiError.forbidden(`${u.full_name} is not allowed to approve`);
+  }
+  audit(req, 'APPROVAL', 'users', u.id, { what, amount });
+  return u.id;
+};
+
+/** Desktop rule: no new loan until today's gold / silver rate is entered. */
+const ensureTodayRate = async (metalIds) => {
+  for (const id of metalIds) {
+    const r = await queryOne('SELECT id FROM metal_rates WHERE metal_id = :m AND rate_date = CURDATE() LIMIT 1', { m: id });
+    if (!r) {
+      const m = await queryOne('SELECT name FROM metals WHERE id = :m', { m: id });
+      throw ApiError.badRequest(`Today's ${m?.name || 'metal'} rate is not entered. Enter it in Masters → Gold / Silver Rate first.`);
+    }
+  }
+};
 
 const lockLoan = async (tx, req, id) => {
   const loan = await tx.queryOne('SELECT * FROM loans WHERE id = :id FOR UPDATE', { id });
@@ -84,7 +119,7 @@ export const getLoan = async (req, id) => {
 export const getLoanFull = async (req, id, asOf) => {
   const loan = await getLoan(req, id);
   const [items, txns, scheme, settings, payments, other, notices] = await Promise.all([
-    query('SELECT * FROM loan_items WHERE loan_id = :id ORDER BY id', { id: loan.id }),
+    query('SELECT li.*, m.code AS metal_code FROM loan_items li LEFT JOIN metals m ON m.id = li.metal_id WHERE li.loan_id = :id ORDER BY li.id', { id: loan.id }),
     query(`SELECT t.*, u.full_name AS created_by_name FROM loan_transactions t LEFT JOIN users u ON u.id = t.created_by
             WHERE t.loan_id = :id ORDER BY t.txn_date, t.id`, { id: loan.id }),
     loadScheme({ queryOne }, loan.scheme_id),
@@ -119,10 +154,11 @@ const prepareItems = (items, loanRate) => {
     if (net > gross) throw ApiError.badRequest(`Net weight cannot exceed gross weight (${it.item_name})`);
     const purity = num(it.purity, 91.6);
     const rate = num(it.rate_per_gram, loanRate);
+    const basis = num(it.rate_basis, it.metal_code === 'SILVER' ? 92.5 : 91.6) || 91.6;
     return {
-      item_id: it.item_id || null, item_name: String(it.item_name).slice(0, 80), pcs: Math.max(1, num(it.pcs, 1)),
-      gross_wt: gross, stone_wt: round3(gross - net), net_wt: net, purity, rate_per_gram: rate,
-      value: round2(net * rate * (purity / 91.6)), remarks: it.remarks || null,
+      item_id: it.item_id || null, metal_id: it.metal_id || null, item_name: String(it.item_name).slice(0, 80), pcs: Math.max(1, num(it.pcs, 1)),
+      gross_wt: gross, stone_wt: round3(gross - net), net_wt: net, purity, fine_wt: round3((net * purity) / 100), rate_per_gram: rate,
+      value: round2(it.value != null && it.value !== '' && it.value_manual ? it.value : net * rate * (purity / basis)), remarks: it.remarks || null,
     };
   });
 };
@@ -143,8 +179,21 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
 
   const scheme = await loadScheme({ queryOne }, body.scheme_id);
   const slabs = parseSlabs(scheme.slabs);
-  const metalId = body.metal_id || scheme.metal_id;
+  const metals = await query('SELECT id, code FROM metals');
+  const metalById = Object.fromEntries(metals.map((m) => [m.id, m.code]));
+  const goldId = metals.find((m) => m.code === 'GOLD')?.id;
+  const silverId = metals.find((m) => m.code === 'SILVER')?.id;
+  const loanOn = ['GOLD', 'SILVER', 'MIX'].includes(body.loan_on) ? body.loan_on : (metalById[scheme.metal_id] === 'SILVER' ? 'SILVER' : 'GOLD');
+  for (const it of body.items || []) {
+    if (!it.metal_id) it.metal_id = loanOn === 'SILVER' ? silverId : loanOn === 'GOLD' ? goldId : (it.metal_code === 'SILVER' ? silverId : goldId);
+    it.metal_code = metalById[it.metal_id];
+    if (it.rate_per_gram == null || it.rate_per_gram === '') it.rate_per_gram = it.metal_code === 'SILVER' ? body.silver_rate : body.rate_per_gram;
+  }
+  const metalId = loanOn === 'SILVER' ? silverId : loanOn === 'GOLD' ? (body.metal_id || scheme.metal_id || goldId) : goldId;
   if (!metalId) throw ApiError.badRequest('Select metal');
+  if (entryType === 'NEW' && settings.REQUIRE_TODAY_RATE === '1') {
+    await ensureTodayRate([...new Set((body.items || []).map((i) => i.metal_id))]);
+  }
   const loanRate = num(body.rate_per_gram);
   const items = prepareItems(body.items, loanRate);
   const totals = eligibility({ items, loanRate, ltvPercent: scheme.ltv_percent, roundStep: num(settings.ROUND_LOAN_TO, 100) });
@@ -153,7 +202,7 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
 
   const principal = round2(body.principal);
   if (principal <= 0) throw ApiError.badRequest('Enter loan amount');
-  if (principal > totals.eligible_amount && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1') {
+  if (principal > totals.eligible_amount && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && !body.skipEligibility) {
     throw ApiError.badRequest(`Loan amount exceeds eligible amount ₹${totals.eligible_amount}`);
   }
   if (num(scheme.min_amount) && principal < num(scheme.min_amount)) throw ApiError.badRequest(`Minimum loan for this scheme is ₹${scheme.min_amount}`);
@@ -178,7 +227,10 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
     const branch = await tx.queryOne('SELECT code, loan_prefix FROM branches WHERE id = :id', { id: req.branchId });
     const seqFy = settings.LOAN_NO_RESET_YEARLY === '1' ? fy.id : 0;
     let loanNo;
-    if (entryType === 'OLD') {
+    if (entryType === 'OLD' && !body.manual_bill_no) throw ApiError.badRequest('Bill book number is required for old loans');
+    if (entryType === 'OLD' && !num(body.loan_no)) {
+      loanNo = await nextNumber(tx, { branchId: req.branchId, key: 'LOAN', fyId: seqFy });
+    } else if (entryType === 'OLD') {
       loanNo = num(body.loan_no);
       if (!loanNo) throw ApiError.badRequest('Enter old loan number');
       const dup = await tx.queryOne('SELECT id FROM loans WHERE branch_id = :b AND fy_id = :f AND loan_no = :n', { b: req.branchId, f: fy.id, n: loanNo });
@@ -191,17 +243,18 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
 
     const r = await tx.query(
       `INSERT INTO loans (branch_id, fy_id, loan_no, bill_no, manual_bill_no, barcode, loan_date, due_date, customer_id, scheme_id, metal_id,
-         principal, current_principal, interest_rate, rate_type, slabs_snapshot, doc_charges, advance_interest, other_charges, net_disbursed,
-         total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, rate_per_gram, market_value, eligible_amount, item_summary,
+         principal, current_principal, interest_rate, rate_type, interest_type, loan_on, slabs_snapshot, doc_charges, advance_interest, other_charges, net_disbursed,
+         total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, rate_per_gram, gold_rate, silver_rate, market_value, eligible_amount, item_summary,
          item_photo, customer_photo, entry_type, parent_loan_id, remarks, created_by)
        VALUES (:branch_id, :fy_id, :loan_no, :bill_no, :manual, :barcode, :loan_date, :due_date, :customer_id, :scheme_id, :metal_id,
-         :principal, :principal, :rate, :rate_type, :slabs, :doc, :adv, :other, :net,
-         :total_items, :total_pcs, :gross_wt, :stone_wt, :net_wt, :avg_purity, :rpg, :market_value, :eligible_amount, :summary,
+         :principal, :principal, :rate, :rate_type, :itype, :loan_on, :slabs, :doc, :adv, :other, :net,
+         :total_items, :total_pcs, :gross_wt, :stone_wt, :net_wt, :avg_purity, :rpg, :grate, :srate, :market_value, :eligible_amount, :summary,
          :item_photo, :cust_photo, :entry_type, :parent, :remarks, :u)`,
       {
         branch_id: req.branchId, fy_id: fy.id, loan_no: loanNo, bill_no: billNo, manual: body.manual_bill_no || null, barcode,
         loan_date: date, due_date: dueDate, customer_id: customer.id, scheme_id: scheme.id, metal_id: metalId,
-        principal, rate, rate_type: scheme.rate_type, slabs: JSON.stringify(slabs.map((s, i) => (i === 0 ? { ...s, rate } : s))),
+        principal, rate, rate_type: scheme.rate_type, itype: body.interest_type === 'COMPOUND' ? 'COMPOUND' : 'SIMPLE', loan_on: loanOn,
+        grate: num(body.rate_per_gram) || null, srate: num(body.silver_rate) || null, slabs: JSON.stringify(slabs.map((s, i) => (i === 0 ? { ...s, rate } : s))),
         doc: docCharges, adv: advance, other: otherCharges, net,
         total_items: items.length, total_pcs: totals.total_pcs, gross_wt: totals.gross_wt, stone_wt: totals.stone_wt, net_wt: totals.net_wt,
         avg_purity: totals.avg_purity, rpg: loanRate, market_value: totals.market_value, eligible_amount: totals.eligible_amount,
@@ -210,8 +263,8 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
       },
     );
     const loanId = r.insertId;
-    const vals = items.map((i) => [loanId, i.item_id, i.item_name, i.pcs, i.gross_wt, i.stone_wt, i.net_wt, i.purity, i.rate_per_gram, i.value, i.remarks]);
-    await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, rate_per_gram, value, remarks) VALUES ?', [vals]);
+    const vals = items.map((i) => [loanId, i.item_id, i.metal_id, i.item_name, i.pcs, i.gross_wt, i.stone_wt, i.net_wt, i.purity, i.fine_wt, i.rate_per_gram, i.value, i.remarks]);
+    await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks) VALUES ?', [vals]);
 
     const loan = { id: loanId, branch_id: req.branchId };
     const txn = await insertTxn(tx, req, loan, {
@@ -254,6 +307,7 @@ export const payInterest = async (req, id, body) => {
     const penal = round2(body.penal_amount);
     const charges = round2(body.charges);
     const discount = round2(body.discount);
+    const approvedBy = await checkApproval(req, discount, await getSettings(loan.branch_id));
     const total = round2(interest + penal + charges - discount);
     if (total <= 0) throw ApiError.badRequest('Enter interest amount');
     const payments = normalisePayments(body.payments, total);
@@ -313,6 +367,10 @@ export const topUp = async (req, id, body) => {
     const loan = await lockLoan(tx, req, id);
     requireOpen(loan);
     const amount = round2(body.amount);
+    const within = num(settings.TOPUP_WITHIN_DAYS, 0);
+    if (within > 0 && dayjs(date).diff(dayjs(loan.loan_date), 'day') > within) {
+      throw ApiError.badRequest(`Top-up is allowed only within ${within} days of the loan date. Use Re-loan instead.`);
+    }
     const interest = round2(body.interest_amount);   // interest collected / deducted now
     const charges = round2(body.charges);
     if (amount <= 0) throw ApiError.badRequest('Enter top-up amount');
@@ -357,13 +415,18 @@ export const releaseLoan = async (req, id, body) => {
     const principal = calc.principalOutstanding;
     const interest = body.interest_amount != null && body.interest_amount !== '' ? round2(body.interest_amount) : calc.interestDue;
     const penal = body.penal_amount != null && body.penal_amount !== '' ? round2(body.penal_amount) : calc.penalDue;
-    const charges = round2(body.charges);
+    const charges = round2(num(body.charges) + num(body.ticket_charge) + num(body.post_charge));
     const discount = round2(body.discount);
+    const approvedBy = await checkApproval(req, discount, settings);
     const total = round2(principal + interest + penal + charges - discount);
     if (total < 0) throw ApiError.badRequest('Discount too high');
+    const fyR = await getCurrentFy(tx);
+    const releaseNo = await nextNumber(tx, { branchId: loan.branch_id, key: 'RELEASE', fyId: fyR.id });
     const payments = normalisePayments(body.payments, total);
     const txn = await insertTxn(tx, req, loan, { date, type: 'RELEASE', principal: -principal, interest, penal, charges, discount, total, upto: date, remarks: body.remarks }, payments);
-    await tx.query("UPDATE loans SET status = 'CLOSED', current_principal = 0, close_date = :d, closed_by = :u WHERE id = :id", { d: date, u: req.user.id, id: loan.id });
+    await tx.query("UPDATE loans SET status = 'CLOSED', current_principal = 0, close_date = :d, closed_by = :u, release_no = :rn, released_unable = :un WHERE id = :id",
+      { d: date, u: req.user.id, id: loan.id, rn: releaseNo, un: body.unable_to_release ? 1 : 0 });
+    await tx.query('UPDATE loan_transactions SET release_no = :rn, approved_by = :a WHERE id = :t', { rn: releaseNo, a: approvedBy, t: txn.id });
     if (body.released_by_other?.name) {
       const o = body.released_by_other;
       await tx.query(`INSERT INTO release_by_other (loan_id, name, relation_type, relation_name, address, phone, id_proof, photo)
@@ -397,13 +460,15 @@ export const renewLoan = async (req, id, body) => {
   const calc = old.calc;
   const interest = body.interest_amount != null && body.interest_amount !== '' ? round2(body.interest_amount) : round2(calc.interestDue + calc.penalDue);
   const discount = round2(body.discount);
+  await checkApproval(req, discount, settings);
   const newPrincipal = round2(body.new_principal || (body.add_interest ? calc.principalOutstanding + interest - discount : calc.principalOutstanding));
   const schemeId = body.scheme_id || old.loan.scheme_id;
 
   // net cash: +ve -> paid to customer, -ve -> collected from customer
   const scheme = await loadScheme({ queryOne }, schemeId);
   const docCharges = body.doc_charges != null && body.doc_charges !== '' ? round2(body.doc_charges) : round2((newPrincipal * num(scheme.doc_charge_percent)) / 100 + num(scheme.doc_charge_fixed));
-  const net = round2(newPrincipal - calc.principalOutstanding - interest + discount - docCharges);
+  const advance = round2(body.advance_interest);
+  const net = round2(newPrincipal - calc.principalOutstanding - interest + discount - docCharges - advance);
 
   const newId = await withTransaction(async (tx) => {
     const loan = await lockLoan(tx, req, id);
@@ -429,20 +494,31 @@ export const renewLoan = async (req, id, body) => {
     if (newPrincipal > eligible && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1') throw ApiError.badRequest(`New loan exceeds eligible amount ₹${eligible}`);
     const r = await tx.query(
       `INSERT INTO loans (branch_id, fy_id, loan_no, bill_no, barcode, loan_date, due_date, customer_id, scheme_id, metal_id, principal, current_principal,
-         interest_rate, rate_type, slabs_snapshot, doc_charges, net_disbursed, total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, rate_per_gram,
+         interest_rate, rate_type, slabs_snapshot, doc_charges, advance_interest, net_disbursed, total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, rate_per_gram,
          market_value, eligible_amount, item_summary, item_photo, customer_photo, entry_type, parent_loan_id, remarks, created_by)
-       SELECT branch_id, :fy, :no, :bill, :barcode, :d, :due, customer_id, :scheme, metal_id, :p, :p, :rate, :rt, :slabs, :doc, :net,
+       SELECT branch_id, :fy, :no, :bill, :barcode, :d, :due, customer_id, :scheme, metal_id, :p, :p, :rate, :rt, :slabs, :doc, :adv, :net,
          total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, :lr, :mv, :el, item_summary, item_photo, customer_photo, 'RENEWAL', id, :rem, :u
        FROM loans WHERE id = :old`,
       { fy: fy.id, no: loanNo, bill: billNo, barcode: `${branch.code}${String(loanNo).padStart(6, '0')}`, d: date,
         due: dayjs(date).add(num(scheme.tenure_months, 12), 'month').format('YYYY-MM-DD'), scheme: scheme.id, p: newPrincipal, rate,
-        rt: scheme.rate_type, slabs: JSON.stringify(slabs.map((s, i) => (i === 0 ? { ...s, rate } : s))), doc: docCharges, net: Math.max(0, net),
+        rt: scheme.rate_type, slabs: JSON.stringify(slabs.map((s, i) => (i === 0 ? { ...s, rate } : s))), doc: docCharges, adv: advance, net: Math.max(0, net),
         lr: loanRate, mv: marketValue, el: eligible, rem: `Renewal of ${loan.bill_no}`, u: req.user.id, old: loan.id },
     );
     const newLoanId = r.insertId;
-    await tx.query(`INSERT INTO loan_items (loan_id, item_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, rate_per_gram, value, remarks)
-      SELECT :n, item_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, :lr, ROUND(net_wt * :lr * purity / 91.6, 2), remarks FROM loan_items WHERE loan_id = :o`,
+    await tx.query(`INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks)
+      SELECT :n, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, :lr, ROUND(net_wt * :lr * purity / 91.6, 2), remarks FROM loan_items WHERE loan_id = :o`,
     { n: newLoanId, o: loan.id, lr: loanRate });
+    if (Array.isArray(body.add_items) && body.add_items.length) {
+      const extra = prepareItems(body.add_items, loanRate);
+      await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks) VALUES ?',
+        [extra.map((i) => [newLoanId, i.item_id, i.metal_id, i.item_name, i.pcs, i.gross_wt, i.stone_wt, i.net_wt, i.purity, i.fine_wt, i.rate_per_gram, i.value, i.remarks])]);
+      await tx.query(`UPDATE loans l SET total_items = (SELECT COUNT(*) FROM loan_items WHERE loan_id = l.id), total_pcs = (SELECT SUM(pcs) FROM loan_items WHERE loan_id = l.id),
+        gross_wt = (SELECT SUM(gross_wt) FROM loan_items WHERE loan_id = l.id), stone_wt = (SELECT SUM(stone_wt) FROM loan_items WHERE loan_id = l.id),
+        net_wt = (SELECT SUM(net_wt) FROM loan_items WHERE loan_id = l.id), market_value = (SELECT SUM(value) FROM loan_items WHERE loan_id = l.id),
+        item_summary = (SELECT LEFT(GROUP_CONCAT(item_name SEPARATOR ', '), 300) FROM loan_items WHERE loan_id = l.id) WHERE l.id = :n`, { n: newLoanId });
+    }
+    await tx.query('UPDATE loans SET interest_type = :it, item_photo = COALESCE(:ph, item_photo) WHERE id = :n',
+      { n: newLoanId, it: body.interest_type === 'COMPOUND' || (!body.interest_type && loan.interest_type === 'COMPOUND') ? 'COMPOUND' : 'SIMPLE', ph: body.item_photo || null });
     const open = await insertTxn(tx, req, { id: newLoanId, branch_id: loan.branch_id }, {
       date, type: 'DISBURSE', principal: newPrincipal, charges: docCharges, total: net, remarks: `Renewal of ${loan.bill_no}`,
     }, payments);
@@ -457,6 +533,7 @@ export const renewLoan = async (req, id, body) => {
         { ledger: LEDGER.LOAN_RECEIVABLE, credit: calc.principalOutstanding },
         { ledger: LEDGER.INTEREST_INCOME, credit: interest },
         { ledger: LEDGER.DOC_CHARGES, credit: docCharges },
+        { ledger: LEDGER.INTEREST_INCOME, credit: advance },
         ...(await paymentLines(tx, payments, cashSide, narration)),
       ],
     });
@@ -523,6 +600,20 @@ export const editLoan = async (req, id, body) => {
     if (!['OPEN'].includes(loan.status)) throw ApiError.badRequest('Only open loans can be edited');
     const set = {};
     for (const f of ['manual_bill_no', 'remarks', 'due_date', 'item_photo', 'customer_photo']) if (f in body) set[f] = body[f] || null;
+    if (body.interest_type && ['SIMPLE', 'COMPOUND'].includes(body.interest_type)) set.interest_type = body.interest_type;
+    if (body.customer_id && Number(body.customer_id) !== loan.customer_id) {
+      const c = await tx.queryOne('SELECT id, branch_id, status FROM customers WHERE id = :id', { id: body.customer_id });
+      if (!c || c.branch_id !== loan.branch_id) throw ApiError.badRequest('Customer must be from the same branch');
+      set.customer_id = c.id;
+    }
+    if (body.loan_date && body.loan_date !== loan.loan_date) {
+      const cnt = await tx.queryOne('SELECT COUNT(*) c FROM loan_transactions WHERE loan_id = :id AND is_void = 0', { id: loan.id });
+      if (cnt.c > 1) throw ApiError.badRequest('Loan date cannot be changed after receipts are posted');
+      await ensureDateOpen(req, body.loan_date);
+      set.loan_date = body.loan_date;
+      await tx.query("UPDATE loan_transactions SET txn_date = :d WHERE loan_id = :id AND txn_type = 'DISBURSE'", { d: body.loan_date, id: loan.id });
+      await tx.query("UPDATE voucher_entries e JOIN vouchers v ON v.id = e.voucher_id JOIN loan_transactions t ON t.id = v.source_id AND v.source_type = 'LOAN_TXN' SET e.entry_date = :d, v.voucher_date = :d WHERE t.loan_id = :id AND t.txn_type = 'DISBURSE'", { d: body.loan_date, id: loan.id });
+    }
     if (Array.isArray(body.items)) {
       const items = prepareItems(body.items, num(body.rate_per_gram, loan.rate_per_gram));
       const scheme = await loadScheme(tx, loan.scheme_id);
@@ -535,8 +626,8 @@ export const editLoan = async (req, id, body) => {
         eligible_amount: Math.floor((mv * num(scheme.ltv_percent)) / 100 / step) * step, item_summary: itemSummary(items),
       });
       await tx.query('DELETE FROM loan_items WHERE loan_id = :id', { id: loan.id });
-      const vals = items.map((i) => [loan.id, i.item_id, i.item_name, i.pcs, i.gross_wt, i.stone_wt, i.net_wt, i.purity, i.rate_per_gram, i.value, i.remarks]);
-      await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, rate_per_gram, value, remarks) VALUES ?', [vals]);
+      const vals = items.map((i) => [loan.id, i.item_id, i.metal_id, i.item_name, i.pcs, i.gross_wt, i.stone_wt, i.net_wt, i.purity, i.fine_wt, i.rate_per_gram, i.value, i.remarks]);
+      await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks) VALUES ?', [vals]);
     }
     // financial correction allowed only when nothing but the disbursement exists
     const finChange = (body.principal != null && round2(body.principal) !== num(loan.principal)) || (body.interest_rate != null && num(body.interest_rate) !== num(loan.interest_rate));
@@ -577,4 +668,37 @@ const notify = async (req, loan, event, extra) => {
   const c = await queryOne('SELECT name, phone FROM customers WHERE id = :id', { id: loan.customer_id });
   queueMessage({ branchId: loan.branch_id, event, phone: c?.phone, loanId: loan.id,
     vars: { name: c?.name, loan_no: loan.bill_no, amount: extra.amount, date: dayjs(extra.date).format('DD-MM-YYYY') } });
+};
+
+/* ============================================================ mark old loans (desktop: frmMarkOldLoan) */
+
+/** Convert loans entered as NEW into opening (OLD) entries: removes them from today's cash. */
+export const markOldLoans = async (req, ids) => {
+  const done = [];
+  await withTransaction(async (tx) => {
+    for (const id of ids) {
+      const loan = await lockLoan(tx, req, id);
+      if (loan.entry_type === 'OLD' || loan.status !== 'OPEN') continue;
+      const txns = await loadTxns(tx, loan.id);
+      if (txns.length !== 1) continue;
+      const fy = await getCurrentFy(tx);
+      await voidSourceVouchers(tx, 'LOAN_TXN', txns[0].id);
+      await tx.query('DELETE FROM transaction_payments WHERE transaction_id = :t', { t: txns[0].id });
+      const vId = await postVoucher(tx, {
+        branchId: loan.branch_id, fyId: fy.id, date: loan.loan_date, type: 'JOURNAL', narration: `Old loan ${loan.bill_no}`, sourceType: 'LOAN_TXN', sourceId: txns[0].id, userId: req.user.id,
+        lines: [{ ledger: LEDGER.LOAN_RECEIVABLE, debit: num(loan.principal) }, { ledger: LEDGER.CAPITAL, credit: num(loan.principal) }],
+      });
+      await tx.query("UPDATE loan_transactions SET voucher_id = :v, remarks = 'Old loan entry' WHERE id = :t", { v: vId, t: txns[0].id });
+      await tx.query("UPDATE loans SET entry_type = 'OLD' WHERE id = :id", { id: loan.id });
+      done.push(loan.id);
+    }
+  });
+  audit(req, 'MARK_OLD', 'loans', done.join(','), { count: done.length });
+  return done;
+};
+
+/** Item photo of the customer's latest loan (desktop F8 "Old photo"). */
+export const lastItemPhoto = async (req, customerId) => {
+  const row = await queryOne(`SELECT item_photo FROM loans WHERE customer_id = :c AND branch_id IN (:b) AND item_photo IS NOT NULL ORDER BY id DESC LIMIT 1`, { c: customerId, b: req.branchIds });
+  return row?.item_photo || null;
 };

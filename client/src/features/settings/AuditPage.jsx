@@ -6,7 +6,7 @@ import { useDebounce, useTableState } from '@/hooks/useUtils';
 import { dateTime } from '@/lib/format';
 
 export default function AuditPage() {
-  const [state, set] = useTableState({ pageSize: 50 });
+  const [state, set] = useTableState({ pageSize: 50, search: new URLSearchParams(window.location.search).get('action') || '' });
   const search = useDebounce(state.search);
   const list = useList('/admin/audit-logs', { ...state, search });
   const [row, setRow] = useState(null);

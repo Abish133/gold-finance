@@ -17,10 +17,10 @@ const TXN_TONE = { DISBURSE: 'blue', INTEREST: 'green', PART_PAYMENT: 'gold', TO
 /** Same tiles and F-keys as the desktop app's quick actions. */
 const ACTIONS = [
   { label: 'New Loan', hint: 'Give a new loan', icon: Plus, color: 'text-emerald-600', path: '/loans/new', screen: 'loan_new', hot: 'F1' },
-  { label: 'Release', hint: 'Close / settle a loan', icon: Check, color: 'text-emerald-600', path: '/loans/counter?tab=RELEASE', screen: 'loan_release', hot: 'F2' },
+  { label: 'Release', hint: 'Close / settle a loan', icon: Check, color: 'text-emerald-600', path: '/loans/release', screen: 'loan_release', hot: 'F2' },
   { label: 'Customers', hint: 'Search / edit customers', icon: User, color: 'text-navy-600', path: '/customers', screen: 'customers', hot: 'F3' },
   { label: 'Day End', hint: 'Check cash and close the day', icon: CalendarCheck, color: 'text-navy-600', path: '/accounts/day-close', screen: 'day_close', hot: 'F4' },
-  { label: 'Part Payment', hint: 'Interest / part amount', icon: Coins, color: 'text-gold-600', path: '/loans/counter?tab=INTEREST', screen: 'loan_interest', hot: 'F5' },
+  { label: 'Part Payment', hint: 'Interest / part amount', icon: Coins, color: 'text-gold-600', path: '/loans/part-payment', screen: 'loan_interest', hot: 'F5' },
   { label: 'Voucher Entry', hint: 'Rent, salary, bills', icon: Receipt, color: 'text-rose-700', path: '/accounts/vouchers', screen: 'acc_voucher', hot: 'F6' },
   { label: 'Day Report', hint: 'Today at a glance', icon: BarChart3, color: 'text-teal-600', path: '/accounts/cash-book', screen: 'acc_cashbook', hot: 'F7' },
   { label: 'Duplicate Bill', hint: 'Reprint a receipt', icon: Printer, color: 'text-ink-600', path: '/loans/counter?tab=HISTORY', screen: 'loan_print', hot: 'F8' },
@@ -28,8 +28,8 @@ const ACTIONS = [
   { label: 'Old Loan Entry', hint: 'Enter an old paper loan', icon: Pencil, color: 'text-gold-600', path: '/loans/old', screen: 'loan_old' },
   { label: 'Sticker', hint: 'Print item stickers', icon: Tag, color: 'text-ink-600', path: '/loans/stickers', screen: 'loan_sticker', hot: 'F9' },
   { label: 'Pledge Book', hint: 'All loans register', icon: BookOpen, color: 'text-navy-600', path: '/loans', screen: 'loan_list' },
-  { label: 'Top-up Loan', hint: 'Extra amount on same loan', icon: ArrowUpCircle, color: 'text-emerald-700', path: '/loans/counter?tab=TOPUP', screen: 'loan_topup' },
-  { label: 'Re-loan', hint: 'Release old, new loan in one step', icon: RefreshCcw, color: 'text-sky-600', path: '/loans/counter?tab=RENEW', screen: 'loan_renewal' },
+  { label: 'Top-up Loan', hint: 'Extra amount on same loan', icon: ArrowUpCircle, color: 'text-emerald-700', path: '/loans/topup', screen: 'loan_topup' },
+  { label: 'Re-loan', hint: 'Release old, new loan in one step', icon: RefreshCcw, color: 'text-sky-600', path: '/loans/reloan', screen: 'loan_renewal' },
 ];
 
 export default function DashboardPage() {

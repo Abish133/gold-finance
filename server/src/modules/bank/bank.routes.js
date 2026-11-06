@@ -64,9 +64,11 @@ router.post('/pledges', permit('bank_pledge', 'add'), requireBranch, async (req,
   const id = await withTransaction(async (tx) => {
     const loans = await tx.query("SELECT id, net_wt, total_pcs FROM loans WHERE id IN (:ids) AND branch_id = :b AND status = 'OPEN' AND bank_pledge_id IS NULL FOR UPDATE", { ids, b: req.branchId });
     if (loans.length !== ids.length) throw ApiError.badRequest('Some selected loans are not available');
-    const r = await tx.query(`INSERT INTO bank_pledges (branch_id, bank_account_id, pledge_no, pledge_date, amount, interest_rate, min_days, charges, total_wt, total_pcs, remarks, created_by)
-      VALUES (:b, :ba, :no, :d, :a, :r, :md, :c, :wt, :pcs, :rem, :u)`,
-    { b: req.branchId, ba: b.bank_account_id, no: b.pledge_no, d: date, a: round2(b.amount), r: num(b.interest_rate), md: num(b.min_days), c: round2(b.charges),
+    const yearly = num(b.interest_rate) || num(b.rate_monthly) * 12;
+    const r = await tx.query(`INSERT INTO bank_pledges (branch_id, bank_account_id, pledge_no, pledge_date, amount, interest_rate, rate_monthly, min_days, charges, cash_received, total_wt, total_pcs, remarks, created_by)
+      VALUES (:b, :ba, :no, :d, :a, :r, :rm, :md, :c, :cr, :wt, :pcs, :rem, :u)`,
+    { b: req.branchId, ba: b.bank_account_id, no: b.pledge_no, d: date, a: round2(b.amount), r: yearly, rm: round2(yearly / 12), md: num(b.min_days), c: round2(b.charges),
+      cr: round2(num(b.amount) - num(b.charges)),
       wt: round2(loans.reduce((s, l) => s + num(l.net_wt), 0)), pcs: loans.reduce((s, l) => s + num(l.total_pcs), 0), rem: b.remarks || null, u: req.user.id });
     await tx.conn.query('INSERT INTO bank_pledge_loans (bank_pledge_id, loan_id) VALUES ?', [ids.map((l) => [r.insertId, l])]);
     await tx.query('UPDATE loans SET bank_pledge_id = :p WHERE id IN (:ids)', { p: r.insertId, ids });

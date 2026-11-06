@@ -16,6 +16,11 @@ export const DEFAULTS = {
   BLOCK_LOAN_FOR_BLOCKED_CUSTOMER: '1',
   MONTH_ROUND_HALF_DAYS: '15',             // MONTHS calc: extra days <= this count as half month (0 = always full)
   CANCEL_SAME_DAY_ONLY: '1',
+  REQUIRE_TODAY_RATE: '1',               // no new loan until today's gold/silver rate is entered
+  COMPOUND_PERIOD_MONTHS: '12',          // compound interest: unpaid interest added to base every N months
+  DISCOUNT_APPROVAL_LIMIT: '500',        // discount above this needs admin approval (0 = off)
+  TOPUP_WITHIN_DAYS: '3',                // top-up allowed only within N days of loan (0 = always)
+  DEFAULT_INTEREST_TYPE: 'COMPOUND',
   DEFAULT_TENURE_MONTHS: '12',
   // auction
   AUCTION_AFTER_DAYS_OVERDUE: '30',

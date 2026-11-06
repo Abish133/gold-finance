@@ -30,9 +30,16 @@ router.get('/', anyLoan, async (req, res) => {
   }
   const f = req.query;
   if (f.status) { where.push('l.status IN (:st)'); p.st = String(f.status).split(','); }
-  if (f.from) { where.push('l.loan_date >= :from'); p.from = f.from; }
-  if (f.to) { where.push('l.loan_date <= :to'); p.to = f.to; }
+  const dateCol = f.date_on === 'release' ? 'l.close_date' : 'l.loan_date';
+  if (f.from) { where.push(`${dateCol} >= :from`); p.from = f.from; }
+  if (f.to) { where.push(`${dateCol} <= :to`); p.to = f.to; }
   if (f.metal_id) { where.push('l.metal_id = :metal'); p.metal = f.metal_id; }
+  if (f.loan_on) { where.push('l.loan_on = :lon'); p.lon = f.loan_on; }
+  if (f.amount_from) { where.push('l.principal >= :af'); p.af = Number(f.amount_from); }
+  if (f.amount_to) { where.push('l.principal <= :at'); p.at = Number(f.amount_to); }
+  if (f.older_than) { where.push('l.loan_date <= DATE_SUB(CURDATE(), INTERVAL :om MONTH)'); p.om = Number(f.older_than); }
+  if (f.notice === 'sent') where.push('EXISTS (SELECT 1 FROM auction_notices n WHERE n.loan_id = l.id)');
+  if (f.notice === 'not_sent') where.push('NOT EXISTS (SELECT 1 FROM auction_notices n WHERE n.loan_id = l.id)');
   if (f.scheme_id) { where.push('l.scheme_id = :scheme'); p.scheme = f.scheme_id; }
   if (f.customer_id) { where.push('l.customer_id = :cust'); p.cust = f.customer_id; }
   if (f.overdue === '1') where.push("l.status = 'OPEN' AND l.due_date < CURDATE()");
@@ -40,16 +47,22 @@ router.get('/', anyLoan, async (req, res) => {
   if (f.bank === '0') where.push('l.bank_pledge_id IS NULL');
   if (f.entry_type) { where.push('l.entry_type = :et'); p.et = f.entry_type; }
   const w = where.join(' AND ');
-  const base = `FROM loans l JOIN customers c ON c.id = l.customer_id JOIN metals m ON m.id = l.metal_id JOIN schemes s ON s.id = l.scheme_id JOIN branches b ON b.id = l.branch_id WHERE ${w}`;
-  const [rows, [agg]] = await Promise.all([
+  const joins = 'FROM loans l JOIN customers c ON c.id = l.customer_id JOIN metals m ON m.id = l.metal_id JOIN schemes s ON s.id = l.scheme_id JOIN branches b ON b.id = l.branch_id';
+  const base = `${joins} WHERE ${w}`;
+  const wNoStatus = where.filter((x) => !x.startsWith('l.status IN')).join(' AND ');
+  const [rows, [agg], tiles] = await Promise.all([
     query(`SELECT l.id, l.branch_id, l.bill_no, l.loan_no, l.manual_bill_no, l.barcode, l.loan_date, l.due_date, l.principal, l.current_principal,
-             l.interest_rate, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.status, l.close_date, l.entry_type, l.bank_pledge_id, l.sticker_printed_at,
+             l.interest_rate, l.rate_type, l.interest_type, l.loan_on, l.advance_interest, l.market_value, l.release_no, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary,
+             l.status, l.close_date, l.entry_type, l.bank_pledge_id, l.sticker_printed_at, l.item_photo,
              c.id AS customer_id, c.customer_no, c.name AS customer_name, c.phone AS customer_phone, c.area, m.name AS metal_name, s.code AS scheme_code,
              b.name AS branch_name, DATEDIFF(CURDATE(), l.loan_date) AS age_days
            ${base} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
     query(`SELECT COUNT(*) total, COALESCE(SUM(l.principal),0) principal, COALESCE(SUM(l.current_principal),0) outstanding, COALESCE(SUM(l.net_wt),0) net_wt ${base}`, p),
+    query(`SELECT CASE WHEN l.status = 'OPEN' AND l.bank_pledge_id IS NOT NULL THEN 'IN_BANK' WHEN l.status = 'OPEN' THEN 'PENDING'
+             WHEN l.status IN ('CLOSED','RENEWED') THEN 'RELEASED' ELSE l.status END st, COUNT(*) cnt, COALESCE(SUM(l.principal),0) amount
+           ${joins} WHERE ${wNoStatus} GROUP BY st`, p),
   ]);
-  res.json({ ...paged(rows, agg.total, lq), summary: agg });
+  res.json({ ...paged(rows, agg.total, lq), summary: agg, tiles: Object.fromEntries(tiles.map((t) => [t.st, t])) });
 });
 
 /* quick find by bill no / barcode / manual bill no -> id */
@@ -65,12 +78,26 @@ router.get('/find', anyLoan, async (req, res) => {
   res.json({ data: rows });
 });
 
-router.get('/next-number', permitAny(['loan_new', 'loan_old']), requireBranch, async (req, res) => {
+router.get('/next-number', anyLoan, requireBranch, async (req, res) => {
   const s = await getSettings(req.branchId);
   const fy = await getCurrentFy();
   const no = await peekNumber({ queryOne }, { branchId: req.branchId, key: 'LOAN', fyId: s.LOAN_NO_RESET_YEARLY === '1' ? fy.id : 0 });
+  const release = await peekNumber({ queryOne }, { branchId: req.branchId, key: 'RELEASE', fyId: fy.id });
   const branch = await queryOne('SELECT loan_prefix FROM branches WHERE id = :id', { id: req.branchId });
-  res.json({ data: { loan_no: no, bill_no: `${branch.loan_prefix || ''}${no}` } });
+  const last = await queryOne('SELECT MAX(loan_date) d FROM loans WHERE branch_id = :b', { b: req.branchId });
+  res.json({ data: { loan_no: no, bill_no: `${branch.loan_prefix || ''}${no}`, release_no: release, last_date: last?.d || null } });
+});
+
+/* customer's last jewel photo (F8 Old photo) */
+router.get('/last-photo/:customerId', anyLoan, async (req, res) => {
+  res.json({ data: { path: await svc.lastItemPhoto(req, req.params.customerId) } });
+});
+
+/* convert NEW loans into opening (old) entries */
+router.post('/mark-old', permit('loan_old', 'add'), requireBranch, async (req, res) => {
+  const ids = (req.body.ids || []).map(Number).filter(Boolean);
+  if (!ids.length) throw ApiError.badRequest('Select loans');
+  res.json({ data: { marked: await svc.markOldLoans(req, ids) } });
 });
 
 /* ---------------- calculator (no loan) ---------------- */
@@ -80,10 +107,10 @@ router.post('/calculate', permitAny(['interest_calculator', 'loan_new', 'loan_re
     ? await query('SELECT * FROM schemes WHERE id IN (:ids)', { ids: b.scheme_ids })
     : b.scheme_id ? await query('SELECT * FROM schemes WHERE id = :id', { id: b.scheme_id }) : [];
   const settings = await getSettings(req.branchId || 0);
-  const opts = { monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15), roundInterestTo: num(settings.ROUND_INTEREST_TO, 1) };
+  const opts = svc.calcOptions(settings);
   const list = schemes.length ? schemes : [{ name: 'Custom', code: 'CUSTOM', rate_type: b.rate_type || 'YEARLY', calc_mode: b.calc_mode || 'DAYS', slabs: [{ upto_months: null, rate: num(b.rate) }], min_days: num(b.min_days) }];
   const out = list.map((scheme) => {
-    const loan = { loan_date: b.loan_date, principal: num(b.principal), interest_rate: num(b.rate), rate_type: scheme.rate_type, advance_interest: 0,
+    const loan = { loan_date: b.loan_date, principal: num(b.principal), interest_rate: num(b.rate), rate_type: scheme.rate_type, advance_interest: 0, interest_type: b.interest_type,
       due_date: dayjs(b.loan_date).add(num(scheme.tenure_months, 12), 'month').format('YYYY-MM-DD') };
     return { scheme: { id: scheme.id, code: scheme.code, name: scheme.name }, ...calculateInterest({ loan, scheme, txns: [], asOf: b.as_of, options: opts }) };
   });

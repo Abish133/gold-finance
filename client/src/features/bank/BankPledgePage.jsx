@@ -32,14 +32,25 @@ function NewPledgeDrawer({ open, onClose }) {
             <Field label="Bank loan no" required><Input value={f.pledge_no || ''} onChange={(e) => setF({ ...f, pledge_no: e.target.value })} /></Field>
             <Field label="Date"><Input type="date" value={f.pledge_date} onChange={(e) => setF({ ...f, pledge_date: e.target.value })} /></Field>
             <Field label="Amount" required><Input type="number" value={f.amount || ''} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
-            <Field label="Interest % p.a."><Input type="number" value={f.interest_rate || ''} onChange={(e) => setF({ ...f, interest_rate: e.target.value })} /></Field>
+            <Field label="Interest % / year"><Input type="number" value={f.interest_rate || ''} onChange={(e) => setF({ ...f, interest_rate: e.target.value, rate_monthly: e.target.value ? (Number(e.target.value) / 12).toFixed(3) : '' })} /></Field>
+            <Field label="% / month"><Input type="number" value={f.rate_monthly || ''} onChange={(e) => setF({ ...f, rate_monthly: e.target.value, interest_rate: e.target.value ? (Number(e.target.value) * 12).toFixed(2) : '' })} /></Field>
             <Field label="Minimum days"><Input type="number" value={f.min_days || ''} onChange={(e) => setF({ ...f, min_days: e.target.value })} /></Field>
             <Field label="Bank charges"><Input type="number" value={f.charges || ''} onChange={(e) => setF({ ...f, charges: e.target.value })} /></Field>
           </div>
+          <Field label="Cash received (amount - charges)"><Input readOnly className="bg-ink-50" value={((Number(f.amount) || 0) - (Number(f.charges) || 0)).toFixed(2)} /></Field>
+          <Field label="Scan barcode / type loan no">
+            <Input placeholder="Enter to add" onKeyDown={(e) => {
+              if (e.key !== 'Enter') return;
+              const v = e.currentTarget.value.trim();
+              const hit = loans.find((l) => l.bill_no === v || String(l.id) === v);
+              if (!hit) toast.error('Loan not available for pledge'); else setSel((x) => (x.includes(hit.id) ? x : [...x, hit.id]));
+              e.currentTarget.value = '';
+            }} />
+          </Field>
           <Field label="Amount received in"><Select value={f.received_mode} onChange={(e) => setF({ ...f, received_mode: e.target.value })} options={[{ value: 'BANK', label: 'Same bank account' }, { value: 'CASH', label: 'Cash' }]} /></Field>
           <Field label="Remarks"><Textarea value={f.remarks || ''} onChange={(e) => setF({ ...f, remarks: e.target.value })} /></Field>
           <div className="rounded-2xl bg-ink-50 p-4 dark:bg-ink-800/50">
-            <KeyValue items={[['Loans selected', chosen.length], ['Net weight', grams(chosen.reduce((s, l) => s + n(l.net_wt), 0))], ['Customer loans', money(chosen.reduce((s, l) => s + n(l.current_principal), 0))]]} />
+            <KeyValue items={[['Loans added', chosen.length], ['Weight', grams(chosen.reduce((s, l) => s + n(l.net_wt), 0))], ['Our loan amount', money(chosen.reduce((s, l) => s + n(l.current_principal), 0))], ['Bank amount', money(f.amount || 0)]]} />
           </div>
         </div>
         <DataTable dense selectable selected={sel} onSelect={setSel} rows={loans} columns={[
@@ -93,9 +104,9 @@ function PledgeDetail({ id, onClose }) {
 
 export default function BankPledgePage() {
   const { can, isAllBranches } = useAuth();
-  const [state, set] = useTableState({ status: 'OPEN' });
+  const [state, set] = useTableState({ status: new URLSearchParams(window.location.search).get('status') === 'all' ? '' : 'OPEN' });
   const list = useList('/bank/pledges', state);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(() => new URLSearchParams(window.location.search).get('new') === '1');
   const [view, setView] = useState(null);
   return (
     <div className="animate-rise">

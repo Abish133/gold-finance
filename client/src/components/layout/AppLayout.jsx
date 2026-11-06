@@ -96,6 +96,11 @@ function MenuBar({ onAction, onExit }) {
 function BranchSwitcher() {
   const { user, branch, setBranch, currentBranch } = useAuth();
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('switch') === 'branch') { setOpen(true); navigate(location.pathname, { replace: true }); }
+  }, [location, navigate]);
   const single = user.branches.length === 1 && !user.all_branches;
   const label = branch === 'all' ? 'All Branches' : currentBranch?.name || 'Select branch';
   return (

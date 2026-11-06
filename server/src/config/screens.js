@@ -23,6 +23,7 @@ export const SCREENS = [
   { key: 'loan_print', group: 'Loans', label: 'Bill / Duplicate Print' },
   { key: 'loan_sticker', group: 'Loans', label: 'Jewel Packet Sticker' },
   { key: 'loan_backdate', group: 'Loans', label: 'Back-date Entries' },
+  { key: 'admin_approval', group: 'Loans', label: 'Admin Approval (discount above limit)' },
   { key: 'interest_calculator', group: 'Loans', label: 'Interest Calculator' },
 
   { key: 'bank_accounts', group: 'Bank', label: 'Bank Accounts' },
@@ -67,6 +68,10 @@ export const SCREENS = [
   { key: 's_audit', group: 'Settings', label: 'Audit Trail' },
   { key: 's_backup', group: 'Settings', label: 'Backup & Export' },
   { key: 's_year_end', group: 'Settings', label: 'Financial Year / Year End' },
+  { key: 's_import', group: 'Settings', label: 'Data Import / Migration' },
+  { key: 's_start_fresh', group: 'Settings', label: 'Start Fresh (remove practice entries)' },
+  { key: 'acc_bank_reco', group: 'Accounts', label: 'Bank Reconciliation' },
+  { key: 'acc_tally', group: 'Accounts', label: 'Tally Export' },
 ];
 
 export const ACTIONS = ['view', 'add', 'edit', 'delete', 'print', 'export'];

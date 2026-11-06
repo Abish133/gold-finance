@@ -13,6 +13,7 @@ import dashboardRoutes from '#modules/dashboard/dashboard.routes.js';
 import employeesRoutes from '#modules/employees/employees.routes.js';
 import bankRoutes from '#modules/bank/bank.routes.js';
 import auctionRoutes from '#modules/auction/auction.routes.js';
+import toolsRoutes from '#modules/tools/tools.routes.js';
 
 const api = Router();
 
@@ -31,5 +32,6 @@ api.use('/dashboard', dashboardRoutes);
 api.use('/employees', employeesRoutes);
 api.use('/bank', bankRoutes);
 api.use('/auction', auctionRoutes);
+api.use('/tools', toolsRoutes);
 
 export default api;

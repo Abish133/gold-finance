@@ -20,7 +20,7 @@ const calcFor = async (loan, asOn, settings) => {
     queryOne('SELECT * FROM schemes WHERE id = :id', { id: loan.scheme_id }),
     query('SELECT * FROM loan_transactions WHERE loan_id = :id AND is_void = 0 ORDER BY txn_date, id', { id: loan.id }),
   ]);
-  return calculateInterest({ loan, scheme, txns, asOf: asOn, options: { monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15), roundInterestTo: num(settings.ROUND_INTEREST_TO, 1) } });
+  return calculateInterest({ loan, scheme, txns, asOf: asOn, options: { monthRoundHalfDays: num(settings.MONTH_ROUND_HALF_DAYS, 15), roundInterestTo: num(settings.ROUND_INTEREST_TO, 1), compoundMonths: num(settings.COMPOUND_PERIOD_MONTHS, 12) } });
 };
 
 /** Overdue loans eligible for notice / auction */
@@ -28,14 +28,20 @@ router.get('/list', permit('auction', 'view'), async (req, res) => {
   const settings = await getSettings(req.branchId || 0);
   const asOn = req.query.asOn || dayjs().format('YYYY-MM-DD');
   const minOverdue = req.query.days != null ? num(req.query.days) : num(settings.AUCTION_AFTER_DAYS_OVERDUE, 30);
-  const loans = await query(`SELECT l.*, c.name customer_name, c.phone customer_phone, c.title customer_title, c.relation_type, c.relation_name,
+  const loans = await query(`SELECT l.*, TIMESTAMPDIFF(MONTH, l.loan_date, :d) age_months, c.name customer_name, c.phone customer_phone, c.title customer_title, c.relation_type, c.relation_name,
       CONCAT_WS(', ', c.door_no, c.street, c.area, c.city, c.pincode) address, DATEDIFF(:d, l.due_date) overdue_days,
       (SELECT COUNT(*) FROM auction_notices n WHERE n.loan_id = l.id) notices,
       (SELECT MAX(notice_date) FROM auction_notices n WHERE n.loan_id = l.id) last_notice,
       (SELECT COALESCE(SUM(postage),0) FROM auction_notices n WHERE n.loan_id = l.id) postage
     FROM loans l JOIN customers c ON c.id = l.customer_id
-    WHERE l.branch_id IN (:b) AND l.status = 'OPEN' AND l.bank_pledge_id IS NULL AND DATEDIFF(:d, l.due_date) >= :min ORDER BY l.due_date`,
-  { b: req.branchIds, d: asOn, min: minOverdue });
+    WHERE l.branch_id IN (:b) AND l.status = 'OPEN' AND l.bank_pledge_id IS NULL
+      AND ${req.query.older_than ? 'l.loan_date <= DATE_SUB(:d, INTERVAL :om MONTH)' : 'DATEDIFF(:d, l.due_date) >= :min'}
+      ${req.query.from ? 'AND l.loan_date >= :from' : ''} ${req.query.to ? 'AND l.loan_date <= :to' : ''}
+      ${req.query.loan_on ? 'AND l.loan_on = :lon' : ''}
+      ${req.query.notice === 'sent' ? 'AND EXISTS (SELECT 1 FROM auction_notices n WHERE n.loan_id = l.id)' : ''}
+      ${req.query.notice === 'not_sent' ? 'AND NOT EXISTS (SELECT 1 FROM auction_notices n WHERE n.loan_id = l.id)' : ''}
+    ORDER BY l.loan_date`,
+  { b: req.branchIds, d: asOn, min: minOverdue, om: num(req.query.older_than), from: req.query.from, to: req.query.to, lon: req.query.loan_on });
   const out = [];
   for (const l of loans) {
     const c = await calcFor(l, asOn, settings);
@@ -74,21 +80,19 @@ router.get('/sales', permit('auction_sale', 'view'), async (req, res) => {
   res.json({ data: rows });
 });
 
-router.post('/sales', permit('auction_sale', 'add'), requireBranch, async (req, res) => {
-  const b = req.body;
-  const date = await ensureDateOpen(req, b.auction_date);
-  const settings = await getSettings(req.branchId);
-  const saleAmount = round2(b.sale_amount);
-  if (saleAmount <= 0) throw ApiError.badRequest('Enter sale amount');
-  const result = await withTransaction(async (tx) => {
+/** Settle one loan by auction inside a transaction. sale_amount null -> recovered at full dues. */
+const sellLoan = async (tx, req, b, date, settings) => {
+  {
     const loan = await tx.queryOne('SELECT * FROM loans WHERE id = :id FOR UPDATE', { id: b.loan_id });
     if (!loan) throw ApiError.notFound();
     assertBranch(req, loan.branch_id);
     if (loan.status !== 'OPEN') throw ApiError.badRequest('Loan is not open');
-    if (loan.bank_pledge_id) throw ApiError.badRequest('Jewels are pledged in bank');
+    if (loan.bank_pledge_id) throw ApiError.badRequest(`Loan ${loan.bill_no}: jewels are pledged in bank`);
     const c = await calcFor(loan, date, settings);
-    const postage = num((await tx.queryOne('SELECT COALESCE(SUM(postage),0) p FROM auction_notices WHERE loan_id = :id', { id: loan.id })).p);
-    const charges = round2(num(b.charges) + postage);
+    const postageFirst = num((await tx.queryOne('SELECT COALESCE(SUM(postage),0) p FROM auction_notices WHERE loan_id = :id', { id: loan.id })).p);
+    const saleAmount = b.sale_amount == null || b.sale_amount === '' ? round2(c.totalPayable + postageFirst + num(b.charges)) : round2(b.sale_amount);
+    if (saleAmount <= 0) throw ApiError.badRequest('Enter sale amount');
+    const charges = round2(num(b.charges) + postageFirst);
     const principal = c.principalOutstanding;
     const interestDue = round2(c.interestDue + c.penalDue);
     const recoverable = round2(principal + interestDue + charges);
@@ -117,10 +121,31 @@ router.post('/sales', permit('auction_sale', 'add'), requireBranch, async (req, 
         { ledger: LEDGER.AUCTION_SURPLUS, credit: Math.max(0, surplus) },
       ],
     });
-    return { surplus, recoverable };
-  });
-  audit(req, 'AUCTION_SALE', 'loans', b.loan_id, { saleAmount, ...result });
+    await tx.query('UPDATE loans SET auction_marked_at = NOW() WHERE id = :id', { id: loan.id });
+    audit(req, 'AUCTION_SALE', 'loans', loan.id, { saleAmount, surplus });
+    return { loan_id: loan.id, bill_no: loan.bill_no, saleAmount, surplus, recoverable };
+  }
+};
+
+router.post('/sales', permit('auction_sale', 'add'), requireBranch, async (req, res) => {
+  const date = await ensureDateOpen(req, req.body.auction_date);
+  const settings = await getSettings(req.branchId);
+  const result = await withTransaction((tx) => sellLoan(tx, req, req.body, date, settings));
   res.status(201).json({ data: result });
+});
+
+/** Auction Release (desktop): tick many overdue loans and close them as AUCTIONED in one go. */
+router.post('/mark-auctioned', permit('auction_sale', 'add'), requireBranch, async (req, res) => {
+  const date = await ensureDateOpen(req, req.body.auction_date);
+  const settings = await getSettings(req.branchId);
+  const list = (req.body.loans || []).filter((x) => x.loan_id);
+  if (!list.length) throw ApiError.badRequest('Tick loans to mark as auctioned');
+  const out = await withTransaction(async (tx) => {
+    const r = [];
+    for (const x of list) r.push(await sellLoan(tx, req, { ...x, buyer_name: req.body.buyer_name, approved_by: req.body.approved_by, remarks: req.body.remarks }, date, settings));
+    return r;
+  });
+  res.status(201).json({ data: { count: out.length, total: round2(out.reduce((s2, x) => s2 + x.saleAmount, 0)), loans: out } });
 });
 
 /* ---------------- stock check ---------------- */
