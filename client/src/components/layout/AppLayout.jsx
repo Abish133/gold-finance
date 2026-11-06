@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { useForm } from 'react-hook-form';
-import { Bell, LogOut, Moon, Search, Sun, Building2, Check, KeyRound, Layers, ChevronDown, Power, Keyboard, Info, User } from 'lucide-react';
+import { Bell, LogOut, Moon, Search, Sun, Building2, Check, KeyRound, Layers, ChevronDown, Power, Keyboard, Info, User, Maximize, Minimize } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch, useAction, useCompany } from '@/hooks/useApi';
@@ -89,6 +89,26 @@ function MenuBar({ onAction, onExit }) {
         );
       })()}
     </nav>
+  );
+}
+
+/* ------------------------------------------------------------------ full screen */
+/** One click: full screen. Next click (or Esc): normal window. */
+function FullscreenButton() {
+  const [full, setFull] = useState(() => !!document.fullscreenElement);
+  useEffect(() => {
+    const on = () => setFull(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  const toggle = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  };
+  return (
+    <Button variant="ghost" size="icon" onClick={toggle} aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
+      {full ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
+    </Button>
   );
 }
 
@@ -185,6 +205,7 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
       <BranchSwitcher />
 
       <div className="flex items-center gap-1">
+        <FullscreenButton />
         <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Theme">{dark ? <Sun className="size-5" /> : <Moon className="size-5" />}</Button>
         <Button variant="ghost" size="icon" onClick={onAlerts} className="relative" aria-label="Reminders">
           <Bell className="size-5" />
