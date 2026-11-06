@@ -9,7 +9,7 @@ import { useFetch, useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, LtvBar, useLoan, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer } from './desk';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, LtvBar, useLoan, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer, fineRate } from './desk';
 
 /** Top-up Loan (desktop: frmTopUp) - extra amount on the same loan number within allowed days. */
 export default function TopUpPage() {
@@ -58,7 +58,7 @@ export default function TopUpPage() {
   return (
     <>
       <DeskScreen title="Top-up Loan" subtitle="Give an extra amount on the same loan number, within the allowed days"
-        tiles={[{ label: 'Top-up within', value: within ? `${within} days` : 'Any time' }, { label: 'Top-up date', value: dayjs().format('DD/MM/YYYY') }, { label: 'Gold · Silver', value: `${rateOf('GOLD') ? amount(rateOf('GOLD').market_rate) : '-'} · ${rateOf('SILVER') ? amount(rateOf('SILVER').market_rate) : '-'}`, gold: true }]}
+        tiles={[{ label: 'Top-up within', value: within ? `${within} days` : 'Any time' }, { label: 'Top-up date', value: dayjs().format('DD/MM/YYYY') }, { label: 'Gold · Silver', value: `${rateOf('GOLD') ? amount(fineRate(rateOf('GOLD'))) : '-'} · ${rateOf('SILVER') ? amount(fineRate(rateOf('SILVER'))) : '-'}`, gold: true }]}
         left={<>
           <LoanFinder onLoad={(id) => setSp({ loan: id })} loading={isLoading} />
           <Panel title="Customer · F5 ledger"><CustomerCard customer={loanCustomer(l)} onLedger={l ? () => setLedger(true) : null} rows={[['Other open loans', otherOpen.length ? otherOpen.map((x) => `#${x.bill_no}`).join(', ') : 'none']]} /></Panel>

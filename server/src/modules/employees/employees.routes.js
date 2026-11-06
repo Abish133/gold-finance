@@ -68,6 +68,8 @@ router.post('/attendance/sheet', permit('attendance', 'add'), requireBranch, asy
   const date = req.body.date;
   const rows = (req.body.rows || []).filter((r) => r.status);
   if (!date || !rows.length) throw ApiError.badRequest('Nothing to save');
+  const bad = rows.find((r) => !['P', 'A', 'H', 'L', 'WO'].includes(r.status));
+  if (bad) throw ApiError.badRequest(`Attendance status must be P, A, H, L or WO (got "${bad.status}")`);
   const vals = rows.map((r) => [req.branchId, r.employee_id, date, r.status, r.in_time || null, r.out_time || null, r.remarks || null]);
   await query(`INSERT INTO employee_attendance (branch_id, employee_id, att_date, status, in_time, out_time, remarks) VALUES ?
     ON DUPLICATE KEY UPDATE status = VALUES(status), in_time = VALUES(in_time), out_time = VALUES(out_time), remarks = VALUES(remarks)`, [vals]);

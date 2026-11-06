@@ -20,7 +20,7 @@ export function LoanDetailsDrawer({ full, onClose }) {
   const fileRef = useRef(null);
   const [photo, setPhoto] = useState(null);
   const l = full?.loan;
-  const shownPhoto = photo?.id === l?.id ? photo.path : l?.item_photo;
+  const shownPhoto = photo && l && photo.id === l.id ? photo.path : l?.item_photo;
   const changePhoto = async (file) => {
     try {
       const small = await compressImage(file);

@@ -76,7 +76,7 @@ export default function ReLoanPage() {
     <>
       <DeskScreen title="Re-loan" subtitle="Release the old loan and make a new loan in one step"
         tiles={[{ label: 'New loan no', value: next.data?.bill_no }, { label: 'Bill book', value: next.data?.bill_book_next || '-' }, { label: 'Billing date', value: dayjs().format('DD/MM/YYYY') },
-          { label: 'Gold · Silver', value: `${rateOf('GOLD') ? amount(rateOf('GOLD').market_rate) : '-'} · ${rateOf('SILVER') ? amount(rateOf('SILVER').market_rate) : '-'}`, gold: true }]}
+          { label: 'Gold · Silver', value: `${rateOf('GOLD') ? amount(fineRate(rateOf('GOLD'))) : '-'} · ${rateOf('SILVER') ? amount(fineRate(rateOf('SILVER'))) : '-'}`, gold: true }]}
         left={<>
           <LoanFinder label="Find old loan" onLoad={(id) => setSp({ loan: id })} loading={isLoading} />
           <Panel title="Customer · F5 ledger"><CustomerCard customer={loanCustomer(l)} onLedger={l ? () => setLedger(true) : null} rows={[['Other open loans', otherOpen.length ? otherOpen.map((x) => `#${x.bill_no}`).join(', ') : 'none']]} /></Panel>

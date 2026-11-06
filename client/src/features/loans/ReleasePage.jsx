@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, PaymentsGrid, useLoan, useApproval, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer } from './desk';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, PaymentsGrid, useLoan, useApproval, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer, fineRate } from './desk';
 import { LoanDetailsDrawer } from './LoanDetailsDrawer';
 
 /** Loan Release (desktop: FrmRelease) - settle a loan and give the items back. */
@@ -74,7 +74,7 @@ export default function ReleasePage() {
     <>
       <DeskScreen
         title="Loan Release" subtitle="Settle a loan and give the items back"
-        tiles={[{ label: 'Release no', value: l?.release_no || next.data?.release_no }, { label: 'Release date', value: dayjs(d).format('DD/MM/YYYY') }, { label: 'Gold · Silver', value: `${goldR ? amount(goldR.market_rate) : '-'} · ${silverR ? amount(silverR.market_rate) : '-'}`, gold: true }]}
+        tiles={[{ label: 'Release no', value: l?.release_no || next.data?.release_no }, { label: 'Release date', value: dayjs(d).format('DD/MM/YYYY') }, { label: 'Gold · Silver', value: `${goldR ? amount(fineRate(goldR)) : '-'} · ${silverR ? amount(fineRate(silverR)) : '-'}`, gold: true }]}
         left={<>
           <LoanFinder onLoad={(id) => setSp({ loan: id })} loading={isLoading} />
           <Panel title="Customer · F5 ledger">
