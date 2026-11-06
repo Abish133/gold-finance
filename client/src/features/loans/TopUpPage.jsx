@@ -5,12 +5,11 @@ import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import { Button, Field, Input } from '@/components/ui';
-import { PaymentSplit } from '@/components/common/PaymentSplit';
-import { useFetch } from '@/hooks/useApi';
+import { useFetch, useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
-import { amount, date, n, round2, today, weight } from '@/lib/format';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, LtvBar, useLoan } from './desk';
+import { amount, date, money, n, round2, today, weight } from '@/lib/format';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, LtvBar, useLoan, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer } from './desk';
 
 /** Top-up Loan (desktop: frmTopUp) - extra amount on the same loan number within allowed days. */
 export default function TopUpPage() {
@@ -22,52 +21,64 @@ export default function TopUpPage() {
   const { printTxn, printerUi } = usePrinter();
   const [amt, setAmt] = useState('');
   const [deduct, setDeduct] = useState('');
-  const [payments, setPayments] = useState([]);
+  const [payOpen, setPayOpen] = useState(false);
+  const { data: lk } = useLookups();
+  const others = useFetch(sp.get('loan') ? '/loans' : null, { customer_id: full?.loan?.customer_id, status: 'OPEN', pageSize: 50 }, { enabled: !!full });
   const [ledger, setLedger] = useState(false);
   const [saving, setSaving] = useState(false);
   const l = full?.loan;
   const c = full?.calc;
-  useEffect(() => { setAmt(''); setDeduct(''); setPayments([]); }, [l?.id]);
+  useEffect(() => { setAmt(''); setDeduct(''); setPayOpen(false); }, [l?.id]);
   const within = n(settings?.TOPUP_WITHIN_DAYS);
   const topups = (full?.transactions || []).filter((t) => t.txn_type === 'TOPUP' && !t.is_void);
   const newTotal = c ? round2(c.principalOutstanding + n(amt)) : 0;
   const rate = l ? (l.rate_type === 'MONTHLY' ? n(l.interest_rate) / 100 : n(l.interest_rate) / 1200) : 0;
   const pay = round2(n(amt) - n(deduct));
-  const tooLate = l && within > 0 && dayjs().diff(dayjs(l.loan_date), 'day') > within;
+  const dayNo = l ? dayjs().diff(dayjs(l.loan_date), 'day') : 0;
+  const tooLate = l && within > 0 && dayNo > within;
+  const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
+  const otherOpen = (others.data?.data || []).filter((x) => x.id !== l?.id);
+  const valueToday = round2((full?.items || []).reduce((s2, i) => s2 + n(i.value), 0)) || n(l?.market_value);
+  let after = n(l?.principal);
+  const topupRows = topups.map((t) => { after += n(t.principal_amount); return { ...t, after }; });
 
-  const give = async () => {
+  const start = () => { if (!l || n(amt) <= 0) return toast.error('Enter top-up amount'); if (pay > 0) setPayOpen(true); else give([]); };
+  const give = async (payments) => {
     if (!l || n(amt) <= 0) return toast.error('Enter top-up amount');
     setSaving(true);
     try {
       const r = await api.post(`/loans/${l.id}/topup`, { date: today(), amount: n(amt), interest_amount: n(deduct), payments });
+      setPayOpen(false);
       toast.success('Top-up given'); qc.invalidateQueries({ queryKey: ['/loans'] }); refresh();
       const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); if (last) printTxn(r.data.loan, last);
     } catch (e) { toast.error(e.message); } finally { setSaving(false); }
   };
-  useKeys({ f2: give, f5: () => l && setLedger(true), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, amt, deduct, payments]);
+  useKeys({ f2: start, f5: () => l && setLedger(true), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, amt, deduct, pay]);
 
   return (
     <>
       <DeskScreen title="Top-up Loan" subtitle="Give an extra amount on the same loan number, within the allowed days"
-        tiles={[{ label: 'Top-up within', value: within ? `${within} days` : 'Any time' }, { label: 'Top-up date', value: dayjs().format('DD/MM/YYYY') }, { label: 'Loan', value: l ? `#${l.bill_no}` : '-', gold: true }]}
+        tiles={[{ label: 'Top-up within', value: within ? `${within} days` : 'Any time' }, { label: 'Top-up date', value: dayjs().format('DD/MM/YYYY') }, { label: 'Gold · Silver', value: `${rateOf('GOLD') ? amount(rateOf('GOLD').market_rate) : '-'} · ${rateOf('SILVER') ? amount(rateOf('SILVER').market_rate) : '-'}`, gold: true }]}
         left={<>
           <LoanFinder onLoad={(id) => setSp({ loan: id })} loading={isLoading} />
-          <Panel title="Customer · F5 ledger"><CustomerCard customer={l ? { ...l, name: l.customer_name, phone: l.customer_phone, photo: l.customer_photo || l.customer_photo_master } : null} onLedger={l ? () => setLedger(true) : null} /></Panel>
+          <Panel title="Customer · F5 ledger"><CustomerCard customer={loanCustomer(l)} onLedger={l ? () => setLedger(true) : null} rows={[['Other open loans', otherOpen.length ? otherOpen.map((x) => `#${x.bill_no}`).join(', ') : 'none']]} /></Panel>
           <ItemPhotoPanel value={l?.item_photo} readOnly onChange={() => {}} />
         </>}
         center={<>
-          <Panel title="Loan" bodyClassName="p-0">
-            <div className="grid grid-cols-4 border-b border-ink-200">
-              {[['Loan date', l ? date(l.loan_date) : '-'], ['First amount', l ? amount(l.principal) : '-'], ['Interest', l ? `${n(l.interest_rate)}%` : '-'], ['Running', c ? `${c.elapsedDays} days` : '-']].map(([k, v]) => (
-                <div key={k} className="border-r border-ink-200 px-4 py-2 last:border-0"><p className="label">{k}</p><p className="num font-bold">{v}</p></div>))}
+          <Panel title="Loan" bodyClassName="flex flex-col p-0" className="[&>header]:hidden">
+            <LoanHead loan={l} chips={<Chip tone={tooLate ? 'red' : 'green'}>{within ? `Day ${dayNo} of ${within} · ${tooLate ? 'not allowed' : 'allowed'}` : 'Allowed'}</Chip>}
+              cells={[['Loan date', l && date(l.loan_date)], ['First amount', l && money(l.principal)], [`Interest · ${l ? (l.interest_type === 'COMPOUND' ? 'Compound' : 'Flat') : ''}`, l && `${n(l.interest_rate)}% ${l.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}`], ['Running', c && `${c.elapsedDays} days`]]} />
+            <div className="flex-1">
+              <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">#</th><th className="px-3 text-left">Item</th><th className="px-3 text-left">Metal</th><th className="px-3 text-right">Pcs</th><th className="px-3 text-right">Gross</th><th className="px-3 text-right">Net wt</th><th className="px-3 text-right">Purity</th><th className="px-3 text-right">Value today</th></tr></thead>
+                <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1.5">{k + 1}</td><td className="px-3 font-semibold">{i.item_name}</td><td className="px-3"><Chip tone="gold">{i.metal_code || l.loan_on}</Chip></td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="num px-3 text-right">{amount(i.value)}</td></tr>)}
+                  {!full && <tr><td colSpan={8} className="py-16 text-center text-ink-400">Enter a loan number to load</td></tr>}</tbody></table>
             </div>
-            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">Item</th><th className="px-3 text-right">Pcs</th><th className="px-3 text-right">Gross</th><th className="px-3 text-right">Net wt</th><th className="px-3 text-right">Purity</th><th className="px-3 text-right">Value today</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i) => <tr key={i.id}><td className="px-3 py-1.5 font-semibold">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="num px-3 text-right">{amount(i.value)}</td></tr>)}</tbody></table>
+            <ItemsSummary items={full?.items} />
           </Panel>
-          <Panel title="Top-ups on this loan" bodyClassName="p-0">
-            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 text-right">Top-up</th><th className="px-3 text-left">Paid by</th><th className="px-3 text-left">Entry</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{topups.map((t) => <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="num px-3 text-right">{amount(t.principal_amount)}</td><td className="px-3">{t.payments.map((p) => p.mode).join(', ')}</td><td className="px-3">{t.created_by_name}</td></tr>)}
-                {!topups.length && <tr><td colSpan={4} className="py-6 text-center text-ink-400">No top-ups yet</td></tr>}</tbody></table>
+          <Panel title={`Top-ups on this loan · ${topups.length ? topups.length : 'none'}`} bodyClassName="p-0">
+            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 text-right">Top-up</th><th className="px-3 text-right">Loan after</th><th className="px-3 text-left">Paid by</th><th className="px-3 text-left">Entry</th></tr></thead>
+              <tbody className="divide-y divide-ink-200">{topupRows.map((t) => <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="num px-3 text-right">{amount(t.principal_amount)}</td><td className="num px-3 text-right">{amount(t.after)}</td><td className="px-3">{t.payments.map((x) => x.mode).join(', ')}</td><td className="px-3">{t.created_by_name}</td></tr>)}
+                {!topups.length && <tr><td colSpan={5} className="py-6 text-center text-ink-400">No top-ups yet</td></tr>}</tbody></table>
           </Panel>
         </>}
         right={(
@@ -75,17 +86,16 @@ export default function TopUpPage() {
             <div className="space-y-2">
               <Line label="Loan amount now" value={c ? amount(c.principalOutstanding) : '-'} />
               <Line label="Top-up given before" value={amount(topups.reduce((s, t) => s + n(t.principal_amount), 0))} />
-              <Line label="Items value today" value={l ? amount(l.market_value) : '-'} />
+              <Line label="Items value today" value={l ? amount(valueToday) : '-'} />
               <Line label="Eligible (scheme LTV)" value={l ? amount(l.eligible_amount) : '-'} />
-              <Field label="Top-up amount"><Input type="number" className="h-12 text-xl font-bold" value={amt} onChange={(e) => setAmt(e.target.value)} disabled={tooLate} /></Field>
+              <Field label="Top-up amount"><Input type="number" className="h-12 bg-gold-50 text-right text-xl font-bold" value={amt} onChange={(e) => setAmt(e.target.value)} disabled={tooLate} /></Field>
               <Field label="Interest deducted now (optional)"><Input type="number" value={deduct} onChange={(e) => setDeduct(e.target.value)} /></Field>
               <Line label="New loan total" value={amount(newTotal)} bold />
               <Line label="Interest / month (new total)" value={amount(newTotal * rate)} />
-              <LtvBar value={l && n(l.market_value) ? (newTotal / n(l.market_value)) * 100 : 0} max={l ? (n(l.eligible_amount) / n(l.market_value || 1)) * 100 : 75} />
+              <LtvBar value={valueToday ? (newTotal / valueToday) * 100 : 0} max={l ? (n(l.eligible_amount) / n(l.market_value || 1)) * 100 : 75} suffix="(value today)" />
               {tooLate && <p className="rounded-md bg-rose-50 p-2 text-sm text-rose-700">Top-up allowed only within {within} days of loan date. Use Re-loan.</p>}
-              {pay > 0 && <PaymentSplit total={pay} value={payments} onChange={setPayments} direction="paid" label="Paid by" />}
-              <BigTotal label="Pay to customer" value={pay} tone="green" />
-              <GoldButton disabled={!l || tooLate || saving} loading={saving} onClick={give}>Give Top-up (F2)</GoldButton>
+              <BigTotal label="Pay to customer" value={Math.max(0, pay)} />
+              <GoldButton disabled={!l || tooLate || saving} loading={saving && !payOpen} onClick={start}>Give Top-up (F2)</GoldButton>
             </div>
           </Panel>
         )}
@@ -94,6 +104,8 @@ export default function TopUpPage() {
         hints={[['Enter', 'Load loan'], ['F2', 'Give top-up'], ['F3', 'Bill book no'], ['F5', 'Customer ledger'], ['Ctrl+N', 'Clear'], ['Esc', 'Exit']]}
       />
       <CustomerLedgerDrawer customerId={ledger ? l?.customer_id : null} onClose={() => setLedger(false)} />
+      <PayDrawer open={payOpen} onClose={() => setPayOpen(false)} direction="pay" total={pay} loading={saving} onConfirm={give}
+        title={`Pay Customer · Top-up #${l?.bill_no || ''}`} subtitle={l && `${l.customer_name} · top-up ${money(amt)}`} />
       {printerUi}
     </>
   );

@@ -8,7 +8,7 @@ import { CustomerPicker } from '@/components/common/CustomerPicker';
 import { useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { amount, n, round2 } from '@/lib/format';
-import { Panel, ExitButton, useKeys, ItemEntry, ItemsTable, CustomerCard, ItemPhotoPanel, useLoan, computeItem } from './desk';
+import { Panel, ExitButton, useKeys, ItemEntry, ItemsTable, CustomerCard, ItemPhotoPanel, useLoan, computeItem, INTEREST_TYPES, loanCustomer } from './desk';
 
 /** Edit Pledged Record (desktop: frmPledgeBookEdit) - customer, date, bill book no, amount, interest and items. */
 export default function EditLoanPage() {
@@ -52,6 +52,12 @@ export default function EditLoanPage() {
   useKeys({ f2: save, 'ctrl+s': save, 'ctrl+z': reset, f4: () => l && setChangeCust(true), insert: () => document.querySelector('[data-item-entry] select')?.focus(), escape: () => navigate('/') }, [f, items, customer, l]);
 
   const ro = (v) => <Input readOnly value={v} className="bg-ink-50" />;
+  // what changed compared to the saved loan (desktop shows this above the buttons)
+  const changes = !l ? [] : [
+    ['loan date', String(f.loan_date || '').slice(0, 10), String(l.loan_date).slice(0, 10)], ['bill book no', f.manual_bill_no || '', l.manual_bill_no || ''], ['loan amount', n(f.principal), n(l.principal)],
+    ['interest', n(f.interest_rate), n(l.interest_rate)], ['interest type', f.interest_type, l.interest_type], ['settle before', String(f.due_date || '').slice(0, 10), String(l.due_date || '').slice(0, 10)],
+    ['customer', customer?.id, l.customer_id], ['items', JSON.stringify(items.map((i) => [i.item_name, n(i.gross_wt), n(i.stone_wt), n(i.purity), n(i.pcs)])), JSON.stringify((full?.items || []).map((i) => [i.item_name, n(i.gross_wt), n(i.stone_wt), n(i.purity), n(i.pcs)]))],
+  ].filter(([, a, b]) => String(a) !== String(b)).map(([k]) => k);
   return (
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex items-center gap-4 rounded-md px-5 py-3 text-white">
@@ -66,7 +72,7 @@ export default function EditLoanPage() {
       </div>
       <div className="grid gap-3 xl:grid-cols-[380px_1fr]">
         <Panel title="Customer" actions={l && <button type="button" onClick={() => setChangeCust(true)} className="rounded bg-white px-2 py-0.5 text-xs font-semibold text-navy-800 normal-case">Change Customer (F4)</button>}>
-          <CustomerCard customer={customer} />
+          <CustomerCard customer={customer ? { ...loanCustomer(l), ...customer } : null} />
           <div className="mt-3"><ItemPhotoPanel value={f.item_photo} onChange={(v) => setF({ ...f, item_photo: v })} customerId={customer?.id} /></div>
         </Panel>
         <Panel title="Loan">
@@ -75,7 +81,7 @@ export default function EditLoanPage() {
             <Field label="Bill book no"><Input value={f.manual_bill_no || ''} onChange={(e) => setF({ ...f, manual_bill_no: e.target.value })} /></Field>
             <Field label="Loan amount"><Input type="number" disabled={locked} value={f.principal ?? ''} onChange={(e) => setF({ ...f, principal: e.target.value })} /></Field>
             <Field label={`ROI % ${l?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input type="number" disabled={locked} value={f.interest_rate ?? ''} onChange={(e) => setF({ ...f, interest_rate: e.target.value })} /></Field>
-            <Field label="Interest type"><Select value={f.interest_type || 'SIMPLE'} onChange={(e) => setF({ ...f, interest_type: e.target.value })} options={[{ value: 'COMPOUND', label: 'Compound Interest' }, { value: 'SIMPLE', label: 'Simple Interest' }]} /></Field>
+            <Field label="Interest type"><Select value={f.interest_type || 'SIMPLE'} onChange={(e) => setF({ ...f, interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
             <Field label="Adv. interest (auto)">{ro(l ? amount(l.advance_interest) : '')}</Field>
             <Field label="Doc. charges">{ro(l ? amount(l.doc_charges) : '')}</Field>
             <Field label="Settle before"><Input type="date" value={f.due_date || ''} onChange={(e) => setF({ ...f, due_date: e.target.value })} /></Field>
@@ -93,7 +99,8 @@ export default function EditLoanPage() {
             onAdd={(it) => { const c = computeItem(it, rates); setItems(editing ? items.map((x) => (x.key === editing.key ? c : x)) : [...items, c]); setEditing(null); }} />
         </div>
       </Panel>
-      <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
+      <div className="card flex flex-wrap items-center justify-end gap-2 px-3 py-2">
+        <p className="mr-auto text-sm text-ink-600">{!l ? '' : changes.length ? `Changed: ${changes.join(', ')}` : 'No changes yet'}</p>
         <Button variant="outline" icon={Undo2} onClick={reset}>Cancel Changes (Ctrl+Z)</Button>
         <Button variant="gold" icon={Save} loading={saving} disabled={!l} onClick={save}>Save All Changes (F2)</Button>
         <ExitButton />

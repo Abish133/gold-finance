@@ -5,12 +5,13 @@ import { Minus, Plus, RefreshCw, Save, Printer, X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Avatar, Button, Field, Input, Select } from '@/components/ui';
+import { Button, Field, Input, Select } from '@/components/ui';
+import { useFetch } from '@/hooks/useApi';
 import { useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, money, date, n, round2, today, weight } from '@/lib/format';
-import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer } from './desk';
+import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer, PhotoBox, Chip } from './desk';
 
 const MODES = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK', 'Bank / NEFT'], ['CARD', 'Card'], ['CHEQUE', 'Cheque']];
 
@@ -22,6 +23,7 @@ export default function PartPaymentPage() {
   const loanId = sp.get('loan');
   const { full, refresh } = useLoan(loanId);
   const { data: lk } = useLookups();
+  const { data: settings } = useFetch('/admin/settings');
   const { printTxn, printerUi } = usePrinter();
   const approval = useApproval();
   const [q, setQ] = useState('');
@@ -36,11 +38,16 @@ export default function PartPaymentPage() {
   const c = full?.calc;
 
   useEffect(() => { setMonths(0); setPartAmt(''); setLines([]); }, [loanId]);
+  // nothing due yet -> desktop opens on Part Amount
+  useEffect(() => { if (c) setTab(c.interestDue > 0 ? 'INTEREST' : 'PART'); }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
+  const others = useFetch(l ? '/loans' : null, { customer_id: l?.customer_id, status: 'OPEN', pageSize: 50 });
+  const openCount = others.data?.data?.length || 0;
 
   const monthly = c?.monthlyInterest || 0;
+  const topupsAmt = round2((full?.transactions || []).filter((t) => !t.is_void && t.txn_type === 'TOPUP').reduce((s, t) => s + n(t.principal_amount), 0));
   const paidMonths = c?.monthsPaid || 0;
   const dueMonths = Math.max(0, (c?.monthsDue || 0) - paidMonths);
-  const interest = tab === 'INTEREST' ? round2(months * monthly) : round2(Math.min(c?.interestDue || 0, months * monthly));
+  const interest = tab === 'INTEREST' ? round2(months * monthly) : 0;
   const total = round2(interest + (tab === 'PART' ? n(partAmt) : 0));
   const received = round2(lines.reduce((s, x) => s + n(x.amount), 0));
   const balance = round2(total - received);
@@ -66,7 +73,8 @@ export default function PartPaymentPage() {
     setLines([...lines, { ...pay, amount: a }]); setPay({ ...pay, amount: '', reference: '' });
   };
   const save = async (print) => {
-    if (!l || total <= 0) return toast.error('Choose months or part amount');
+    if (!l || total <= 0) return toast.error(tab === 'PART' ? 'Enter amount received' : 'Choose months to pay');
+    if (tab === 'PART' && c && n(partAmt) > c.principalOutstanding) return toast.error('Amount is more than the outstanding - use Release');
     const payments = lines.length ? lines : [{ mode: 'CASH', amount: total }];
     if (Math.abs(payments.reduce((s, x) => s + n(x.amount), 0) - total) > 0.009) return toast.error('Payment amounts do not match total');
     setSaving(true);
@@ -101,33 +109,54 @@ export default function PartPaymentPage() {
       </section>
 
       <div className="grid items-start gap-3 xl:grid-cols-[320px_1fr_420px]">
-        <Panel title="Customer">
+        <Panel title="Customer" bodyClassName="flex flex-col gap-3 p-4">
           <div className="flex gap-3">
-            <Avatar src={l?.customer_photo || l?.customer_photo_master} name={l?.customer_name || '?'} size="xl" />
-            <div className="text-sm"><p className="font-bold text-navy-900">{l?.customer_name || '-'}</p><p>A/c No {l?.customer_no || '-'}</p><p>{l?.customer_phone || ''}</p></div>
+            <PhotoBox src={l?.customer_photo || l?.customer_photo_master} className="h-28 w-24" />
+            <div className="min-w-0 text-sm">
+              <p className="text-lg font-bold text-navy-900 dark:text-white">{l ? `${l.customer_title || ''} ${l.customer_name}` : ''}</p>
+              {l?.relation_name && <p className="text-ink-600">{l.relation_type} {l.relation_name}</p>}
+              {l && <div className="mt-2 flex flex-wrap gap-2"><Chip tone="green">{l.customer_status || 'Active'}</Chip><Chip tone="gold">{openCount} open loan{openCount === 1 ? '' : 's'}</Chip></div>}
+            </div>
           </div>
-          <p className="mt-2 text-xs text-ink-600">{l && [l.door_no, l.street, l.area, l.city].filter(Boolean).join(', ')}</p>
-          {l && <Button size="sm" variant="outline" className="mt-3" onClick={() => setLedger(true)}>Customer ledger</Button>}
-          <div className="mt-3 grid aspect-[4/3] place-items-center overflow-hidden rounded-md border border-ink-200 bg-ink-50">
-            {l?.item_photo ? <img src={l.item_photo} alt="" className="size-full object-cover" /> : <span className="text-sm text-ink-400">Image not available</span>}
+          <div className="space-y-1.5 text-sm">
+            {[['A/c No', l?.customer_no], ['Phone', l?.customer_phone], ['Address', l && [l.door_no, l.street, l.area, l.city].filter(Boolean).join(', ')], ['ID Proof', l?.id_proof_type]].map(([k, v]) => (
+              <p key={k} className="grid grid-cols-[90px_1fr]"><span className="text-ink-500">{k}</span><span className="font-semibold">{v || ''}</span></p>
+            ))}
+          </div>
+          {l && <Button size="sm" variant="outline" className="self-start" onClick={() => setLedger(true)}>Customer ledger</Button>}
+          <div className="grid min-h-56 flex-1 place-items-center overflow-hidden rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+            {l?.item_photo ? <img src={l.item_photo} alt="" className="size-full object-cover" /> : <span className="text-2xl font-bold text-ink-300">Image not available</span>}
           </div>
         </Panel>
 
         <div className="space-y-3">
-          <Panel title={`Loan #${l?.bill_no || ''}`}>
+          <Panel title="Loan" className="[&>header]:hidden">
+            <div className="mb-3 flex flex-wrap items-center gap-3">
+              <p className="text-3xl font-extrabold text-navy-900 dark:text-white">Loan #{l?.bill_no || ''}</p>
+              {l && <span className="text-sm text-ink-600">{[l.manual_bill_no && `Bill Book ${l.manual_bill_no}`, l.loan_on].filter(Boolean).join(' · ')}</span>}
+              {l && <span className="ml-auto">{l.bank_pledge_id ? <Chip tone="violet">At bank</Chip> : <Chip tone="green">In hand</Chip>}</span>}
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {[['Pledge date', l ? date(l.loan_date) : '-'], ['Loan amount', c ? amount(c.principalOutstanding) : '-'], ['Rate / month', l ? `${c?.rateType === 'MONTHLY' ? c.rate : round2(c?.rate / 12)}% · ${amount(monthly)}` : '-']].map(([k, v]) => (
                 <div key={k} className="rounded-md border border-ink-200 bg-cream-50 px-3 py-2"><p className="label">{k}</p><p className="num font-bold text-navy-900">{v}</p></div>
               ))}
             </div>
-            <p className="label mt-4">Interest months</p>
+            <p className="label mt-4">Interest months {c && <span className="ml-2 normal-case">Total {c.monthsDue} · Paid {paidMonths} · Due {dueMonths}</span>}</p>
             <div className="grid grid-cols-6 gap-1 sm:grid-cols-12">
-              {strip.map((st, i) => <div key={i} className={clsx('rounded py-1.5 text-center text-xs font-bold', cell[st])}>{i + 1}</div>)}
+              {strip.map((st, i) => (
+                <div key={i} className={clsx('rounded py-1 text-center text-xs font-bold leading-tight', cell[st])}>{i + 1}
+                  {l && <span className="block text-[10px] font-medium opacity-80">{dayjs(l.loan_date).add(i, 'month').format('MMM')}</span>}</div>
+              ))}
             </div>
             <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-ink-600">
               {[['adv', 'Advance'], ['paid', 'Paid'], ['now', 'Paying now'], ['due', 'Due'], ['not', 'Not yet']].map(([k, t]) => <span key={k} className="flex items-center gap-1"><span className={clsx('size-3 rounded', cell[k])} />{t}</span>)}
             </div>
-            {c && <p className="mt-2 text-xs text-ink-500">Running {c.elapsedDays} days · interest due {money(c.interestDue)} · {l.interest_type === 'COMPOUND' ? 'compound' : 'simple'} interest</p>}
+            {c && <p className="mt-2 text-xs text-ink-500">Running {c.elapsedDays} days · interest due {money(c.interestDue)} · {l.interest_type === 'COMPOUND' ? 'compound' : 'flat'} interest</p>}
+            {c && (() => { const paidP = round2(n(l.principal) + topupsAmt - c.principalOutstanding); const pct = Math.min(100, (paidP / Math.max(1, n(l.principal) + topupsAmt)) * 100); return (
+              <div className="mt-4">
+                <div className="flex justify-between text-sm"><span className="font-semibold text-emerald-700">PRINCIPAL &nbsp; Paid {money(paidP)}</span><span className="font-semibold text-rose-600">Outstanding {money(c.principalOutstanding)}</span></div>
+                <div className="mt-1 h-3 rounded bg-navy-100 dark:bg-ink-700"><div className="h-3 rounded bg-emerald-600" style={{ width: `${pct}%` }} /></div>
+              </div>); })()}
           </Panel>
           <Panel title="Payment history" bodyClassName="p-0"><PaymentsGrid transactions={full?.transactions} /></Panel>
           <Panel title="Pledged items" bodyClassName="p-0">
@@ -144,6 +173,7 @@ export default function PartPaymentPage() {
               <button key={k} type="button" onClick={() => setTab(k)} className={clsx('rounded-md py-2.5 font-bold', tab === k ? 'bg-navy-800 text-white' : 'text-navy-800')}>{t}</button>
             ))}
           </div>
+          {tab === 'INTEREST' && <>
           <p className="text-center text-xs font-bold text-ink-600 uppercase">Months to pay</p>
           <div className="flex items-center justify-center gap-3">
             <Button variant="outline" size="lg" className="w-16" onClick={() => setMonths((m) => Math.max(0, m - 1))}><Minus /></Button>
@@ -155,14 +185,23 @@ export default function PartPaymentPage() {
             <Button variant="outline" onClick={() => setMonths(3)}>3 months</Button>
             <Button variant="outline" onClick={() => setMonths(dueMonths)}>All due ({dueMonths})</Button>
           </div>
-          {tab === 'PART' && <Field label="Part amount (principal)"><Input type="number" className="h-11 text-lg font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} /></Field>}
-          <div className="rounded-md bg-cream-100 p-3">
+          <div className="rounded-md bg-cream-100 p-3 dark:bg-ink-800">
             <Line label="Interest / month" value={amount(monthly)} />
             <Line label="Months" value={months} />
             <Line label="Paid up to (after save)" value={paidUpTo ? date(paidUpTo) : '-'} />
-            {tab === 'PART' && <Line label="Part amount" value={amount(partAmt)} />}
             <Line bold label="Total" value={amount(total)} />
           </div>
+          </>}
+          {tab === 'PART' && <>
+            <Field label="Amount received"><Input type="number" autoFocus className="h-14 bg-gold-50 text-right text-2xl font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} /></Field>
+            <div className="rounded-md bg-cream-100 p-3 dark:bg-ink-800">
+              <Line label="Outstanding now" value={c ? money(c.principalOutstanding) : '-'} />
+              <Line label="Paying" value={`− ${money(partAmt)}`} />
+              <Line bold label="New outstanding" value={c ? money(Math.max(0, c.principalOutstanding - n(partAmt))) : '-'} />
+            </div>
+            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{settings?.PART_PAYMENT_REDUCES_INTEREST === '0' ? 'Interest is calculated on the original loan amount (as per current system).' : 'Interest from today is calculated on the new outstanding amount.'}</p>
+            {c?.interestDue > 0 && <p className="text-xs text-amber-700">Interest due {money(c.interestDue)} - collect it in the Interest (F2) tab.</p>}
+          </>}
           <p className="num text-center text-3xl font-extrabold text-navy-900">{money(total)}</p>
           <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
             <Field label="Payment mode"><Select value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })} options={MODES.map(([v, t]) => ({ value: v, label: t }))} /></Field>

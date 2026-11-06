@@ -46,6 +46,9 @@ router.get('/', anyLoan, async (req, res) => {
   if (f.bank === '1') where.push('l.bank_pledge_id IS NOT NULL');
   if (f.bank === '0') where.push('l.bank_pledge_id IS NULL');
   if (f.entry_type) { where.push('l.entry_type = :et'); p.et = f.entry_type; }
+  if (f.loan_no_from) { where.push('l.loan_no >= :lnf'); p.lnf = Number(f.loan_no_from); }
+  if (f.loan_no_to) { where.push('l.loan_no <= :lnt'); p.lnt = Number(f.loan_no_to); }
+  if (f.not_printed === '1') where.push('l.sticker_printed_at IS NULL');
   const w = where.join(' AND ');
   const joins = 'FROM loans l JOIN customers c ON c.id = l.customer_id JOIN metals m ON m.id = l.metal_id JOIN schemes s ON s.id = l.scheme_id JOIN branches b ON b.id = l.branch_id';
   const base = `${joins} WHERE ${w}`;
@@ -55,7 +58,9 @@ router.get('/', anyLoan, async (req, res) => {
              l.interest_rate, l.rate_type, l.interest_type, l.loan_on, l.advance_interest, l.market_value, l.release_no, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary,
              l.status, l.close_date, l.entry_type, l.bank_pledge_id, l.sticker_printed_at, l.item_photo,
              c.id AS customer_id, c.customer_no, c.name AS customer_name, c.phone AS customer_phone, c.area, m.name AS metal_name, s.code AS scheme_code,
-             b.name AS branch_name, DATEDIFF(CURDATE(), l.loan_date) AS age_days
+             b.name AS branch_name, DATEDIFF(CURDATE(), l.loan_date) AS age_days,
+             (SELECT COUNT(*) FROM print_logs pl WHERE pl.loan_id = l.id AND pl.doc_type = 'LOAN_RECEIPT') AS receipt_prints,
+             (SELECT GROUP_CONCAT(DISTINCT pp.mode) FROM loan_transactions lt JOIN transaction_payments pp ON pp.transaction_id = lt.id WHERE lt.loan_id = l.id AND lt.txn_type = 'DISBURSE') AS paid_by
            ${base} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
     query(`SELECT COUNT(*) total, COALESCE(SUM(l.principal),0) principal, COALESCE(SUM(l.current_principal),0) outstanding, COALESCE(SUM(l.net_wt),0) net_wt ${base}`, p),
     query(`SELECT CASE WHEN l.status = 'OPEN' AND l.bank_pledge_id IS NOT NULL THEN 'IN_BANK' WHEN l.status = 'OPEN' THEN 'PENDING'
@@ -85,7 +90,15 @@ router.get('/next-number', anyLoan, requireBranch, async (req, res) => {
   const release = await peekNumber({ queryOne }, { branchId: req.branchId, key: 'RELEASE', fyId: fy.id });
   const branch = await queryOne('SELECT loan_prefix FROM branches WHERE id = :id', { id: req.branchId });
   const last = await queryOne('SELECT MAX(loan_date) d FROM loans WHERE branch_id = :b', { b: req.branchId });
-  res.json({ data: { loan_no: no, bill_no: `${branch.loan_prefix || ''}${no}`, release_no: release, last_date: last?.d || null } });
+  // paper bill book: next = highest numeric bill book no + 1 (null until the first one is given)
+  const book = await queryOne("SELECT MAX(CAST(manual_bill_no AS UNSIGNED)) n FROM loans WHERE branch_id = :b AND manual_bill_no REGEXP '^[0-9]+$'", { b: req.branchId });
+  res.json({ data: { loan_no: no, bill_no: `${branch.loan_prefix || ''}${no}`, release_no: release, last_date: last?.d || null, bill_book_next: book?.n ? Number(book.n) + 1 : null } });
+});
+
+/* is a paper bill book number free? */
+router.get('/bill-book-free', anyLoan, requireBranch, async (req, res) => {
+  const used = await queryOne('SELECT bill_no FROM loans WHERE branch_id = :b AND manual_bill_no = :m LIMIT 1', { b: req.branchId, m: String(req.query.no || '') });
+  res.json({ data: { free: !used, used_by: used?.bill_no || null } });
 });
 
 /* customer's last jewel photo (F8 Old photo) */

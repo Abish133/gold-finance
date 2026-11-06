@@ -91,6 +91,9 @@
 }
 
 @layer components {
+  /* counter screen columns: panels stack, the last one fills the height */
+  .desk-col { @apply flex min-w-0 flex-col gap-3; }
+  .desk-col > :last-child { @apply flex-1; }
   .card { @apply rounded-md border border-ink-300/80 bg-white shadow-soft dark:border-ink-700 dark:bg-ink-900; }
   .input {
     @apply h-10 w-full rounded-md border border-ink-300 bg-white px-3 text-sm text-ink-900 outline-none transition

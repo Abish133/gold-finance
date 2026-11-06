@@ -16,7 +16,7 @@ import { queueMessage } from '#services/message.service.js';
 /* ============================================================ helpers */
 
 export const LOAN_SELECT = `SELECT l.*, c.customer_no, c.title AS customer_title, c.name AS customer_name, c.phone AS customer_phone,
-  c.relation_type, c.relation_name, c.door_no, c.street, c.area, c.city, c.pincode, c.photo AS customer_photo_master, c.status AS customer_status,
+  c.relation_type, c.relation_name, c.door_no, c.street, c.area, c.city, c.pincode, c.photo AS customer_photo_master, c.status AS customer_status, c.id_proof_type, c.id_proof_no,
   s.code AS scheme_code, s.name AS scheme_name, m.name AS metal_name, b.name AS branch_name, b.code AS branch_code, b.phone AS branch_phone
   FROM loans l
   JOIN customers c ON c.id = l.customer_id
@@ -229,6 +229,10 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
     const seqFy = settings.LOAN_NO_RESET_YEARLY === '1' ? fy.id : 0;
     let loanNo;
     if (entryType === 'OLD' && !body.manual_bill_no) throw ApiError.badRequest('Bill book number is required for old loans');
+    if (body.manual_bill_no) {
+      const dup = await tx.queryOne('SELECT bill_no FROM loans WHERE branch_id = :b AND manual_bill_no = :m LIMIT 1', { b: req.branchId, m: String(body.manual_bill_no) });
+      if (dup) throw ApiError.conflict(`Bill book no ${body.manual_bill_no} is already used on loan ${dup.bill_no}`);
+    }
     if (entryType === 'OLD' && !num(body.loan_no)) {
       loanNo = await nextNumber(tx, { branchId: req.branchId, key: 'LOAN', fyId: seqFy });
     } else if (entryType === 'OLD') {

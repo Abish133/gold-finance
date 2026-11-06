@@ -23,7 +23,7 @@ const ACTIONS = [
   { label: 'Part Payment', hint: 'Interest / part amount', icon: Coins, color: 'text-gold-600', path: '/loans/part-payment', screen: 'loan_interest', hot: 'F5' },
   { label: 'Voucher Entry', hint: 'Rent, salary, bills', icon: Receipt, color: 'text-rose-700', path: '/accounts/vouchers', screen: 'acc_voucher', hot: 'F6' },
   { label: 'Day Report', hint: 'Today at a glance', icon: BarChart3, color: 'text-teal-600', path: '/accounts/day-report', screen: 'acc_cashbook', hot: 'F7' },
-  { label: 'Duplicate Bill', hint: 'Reprint a receipt', icon: Printer, color: 'text-ink-600', path: '/loans/counter?tab=HISTORY', screen: 'loan_print', hot: 'F8' },
+  { label: 'Duplicate Bill', hint: 'Reprint a receipt', icon: Printer, color: 'text-ink-600', path: '/loans/duplicate', screen: 'loan_print', hot: 'F8' },
   { label: 'New Customer', hint: 'Add a customer', icon: UserPlus, color: 'text-emerald-600', path: '/customers?new=1', screen: 'customers' },
   { label: 'Old Loan Entry', hint: 'Enter an old paper loan', icon: Pencil, color: 'text-gold-600', path: '/loans/old', screen: 'loan_old' },
   { label: 'Sticker', hint: 'Print item stickers', icon: Tag, color: 'text-ink-600', path: '/loans/stickers', screen: 'loan_sticker', hot: 'F9' },

@@ -15,6 +15,7 @@ import { ledgerId, LEDGER } from '#services/accounting.service.js';
 import { calcOptions } from '#modules/loans/loans.service.js';
 import { openingBalance } from '#modules/accounts/accounts.service.js';
 import { lastClosedDate } from '#services/daycontrol.service.js';
+import { withCalc } from '#services/loanCalc.service.js';
 import { upload, publicPath } from '#middleware/upload.js';
 import { saveSettings } from '#services/settings.service.js';
 import { requireBranch, assertBranch } from '#middleware/branch.js';
@@ -104,31 +105,6 @@ router.get('/interest-due', permitAny(['interest_calculator', 'reports_loan']), 
   const avgAge = rows.length ? round2(rows.reduce((s, r) => s + r.months, 0) / rows.length) : 0;
   res.json({ data: { rows, summary: { open: rows.length, over12: rows.filter((r) => r.months > 12).length, loanDue: sum('loan_due'), partPaid: sum('part_paid'), interestDue: sum('interest_due'), totalDue: sum('total_due'), avgAge } } });
 });
-
-const withCalc = async (loans, asOn, branchId) => {
-  if (!loans.length) return [];
-  const ids = loans.map((l) => l.id);
-  const [txns, schemes, settings] = await Promise.all([
-    query('SELECT * FROM loan_transactions WHERE loan_id IN (:ids) AND is_void = 0 ORDER BY txn_date, id', { ids }),
-    query('SELECT * FROM schemes'), getSettings(branchId || 0),
-  ]);
-  const sMap = Object.fromEntries(schemes.map((s) => [s.id, s]));
-  const tMap = {};
-  for (const t of txns) (tMap[t.loan_id] ||= []).push(t);
-  const opts = calcOptions(settings);
-  return loans.map((l) => {
-    const t = tMap[l.id] || [];
-    const c = calculateInterest({ loan: l, scheme: sMap[l.scheme_id], txns: t, asOf: asOn, options: opts });
-    const partPaid = round2(t.filter((x) => x.txn_type === 'PART_PAYMENT').reduce((s, x) => s - num(x.principal_amount), 0));
-    return {
-      id: l.id, bill_no: l.bill_no, loan_date: l.loan_date, customer_name: l.customer_name, customer_phone: l.customer_phone, loan_on: l.loan_on, item_summary: l.item_summary,
-      total_items: l.total_items, net_wt: l.net_wt, gross_wt: l.gross_wt, stone_wt: l.stone_wt, principal: l.principal, interest_rate: l.interest_rate, rate_type: l.rate_type,
-      interest_type: l.interest_type, bank: !!l.bank_pledge_id, months: round2(c.elapsedDays / 30), days: c.elapsedDays, part_paid: partPaid, loan_due: c.principalOutstanding,
-      total_interest: c.totalInterest, advance: num(l.advance_interest), paid_earlier: round2(c.interestPaid - num(l.advance_interest)), interest_due: round2(c.interestDue + c.penalDue), total_due: c.totalPayable,
-      months_paid: c.monthsPaid, months_due: c.monthsDue,
-    };
-  });
-};
 
 /* ------------------------------------------------ Current stock (as on a date) */
 router.get('/stock', permitAny(['stock', 'reports_loan']), async (req, res) => {

@@ -31,6 +31,17 @@ export function usePrinter() {
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   }, [company, settings, lookups]);
 
+  /** Several loan bills in one preview (Duplicate Bill screen). Always marked DUPLICATE. */
+  const printLoans = useCallback(async (fulls) => {
+    setBusy(true);
+    try {
+      const datas = await Promise.all(fulls.map((full) => buildLoanPrintData({ full, company, settings, schemes: lookups?.schemes, copy: 'DUPLICATE' })));
+      setPreview({ title: `Duplicate bill${fulls.length > 1 ? `s (${fulls.length})` : ` #${fulls[0].loan.bill_no}`}`,
+        element: <div>{datas.map((d, i) => <div key={i} className={i < datas.length - 1 ? 'page-break' : ''}><LoanReceipt data={d} /></div>)}</div>,
+        logs: fulls.map((f) => ({ id: f.loan.id, doc_type: 'LOAN_RECEIPT' })) });
+    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  }, [company, settings, lookups]);
+
   const printTxn = useCallback((full, txn) => {
     const after = full.transactions.filter((t) => !t.is_void && t.id <= txn.id).reduce((s, t) => s + n(t.principal_amount), 0);
     setPreview({ title: `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={{ company: company || {}, loan: full.loan, txn, balance: after }} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
@@ -40,6 +51,7 @@ export function usePrinter() {
     setBusy(true);
     try {
       if (preview.log) await api.post(`/loans/${preview.log.id}/print-log`, { doc_type: preview.log.doc_type });
+      for (const lg of preview.logs || []) await api.post(`/loans/${lg.id}/print-log`, { doc_type: lg.doc_type });
       await printElement(preview.element, { title: preview.title });
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
@@ -51,5 +63,5 @@ export function usePrinter() {
     </Drawer>
   );
 
-  return { printLoan, printTxn, busy, company, settings, printerUi };
+  return { printLoan, printLoans, printTxn, busy, company, settings, printerUi };
 }

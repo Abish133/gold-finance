@@ -23,10 +23,11 @@ export const MENUS = [
       { label: 'Loan Details', hint: 'All actions & history of one loan', path: '/loans/counter', icon: HandCoins, screen: 'loan_list' },
       { section: 'More' },
       { label: 'Old Loan Entry', hint: 'Enter an old paper loan', path: '/loans/old', icon: History, screen: 'loan_old' },
-      { label: 'Duplicate Bill', hint: 'Reprint a receipt', path: '/loans/counter?tab=HISTORY', icon: Printer, screen: 'loan_print', hot: 'F8' },
+
       { label: 'Edit Loan Record', hint: 'Correct an open loan', path: '/loans/edit', icon: Pencil, screen: 'loan_edit' },
       { section: 'Print' },
       { label: 'Jewel Packet Sticker', hint: 'Print item stickers', path: '/loans/stickers', icon: Tag, screen: 'loan_sticker', hot: 'F9' },
+      { label: 'Duplicate Bill', hint: 'Reprint loan receipt', path: '/loans/duplicate', icon: Printer, screen: 'loan_print', hot: 'F8' },
     ],
   },
   {

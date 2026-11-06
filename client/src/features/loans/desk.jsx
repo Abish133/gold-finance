@@ -7,13 +7,14 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ScanLine, LogOut, Plus, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand } from 'lucide-react';
+import { ScanLine, LogOut, Plus, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, Badge, Button, Drawer, Field, Input, Select, Spinner, StatusBadge, DataTable } from '@/components/ui';
 import { compressImage } from '@/components/ui/ImageCapture';
-import { useFetch } from '@/hooks/useApi';
+import { PhotoBox } from '@/components/common/PhotoBox';
+import { useFetch, useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
-import { money, amount, date, weight, n, round2, round3 } from '@/lib/format';
+import { money, amount, date, weight, n, round2, round3, inWords } from '@/lib/format';
 
 /* ------------------------------------------------------------------ layout */
 export function DeskScreen({ title, subtitle, tiles = [], left, center, right, footerLeft, footerRight, hints = [], headerExtra, cols = 'xl:grid-cols-[360px_1fr_380px]' }) {
@@ -32,10 +33,10 @@ export function DeskScreen({ title, subtitle, tiles = [], left, center, right, f
           </div>
         ))}
       </section>
-      <div className={clsx('grid items-start gap-3', cols)}>
-        {left && <div className="space-y-3">{left}</div>}
-        <div className="min-w-0 space-y-3">{center}</div>
-        {right && <div className="space-y-3 xl:sticky xl:top-36">{right}</div>}
+      <div className={clsx('grid items-stretch gap-3 xl:min-h-[calc(100vh-20.5rem)]', cols)}>
+        {left && <div className="desk-col">{left}</div>}
+        <div className="desk-col min-w-0">{center}</div>
+        {right && <div className="desk-col">{right}</div>}
       </div>
       <div className="card flex flex-wrap items-center gap-2 px-3 py-2">
         {footerLeft}
@@ -48,11 +49,11 @@ export function DeskScreen({ title, subtitle, tiles = [], left, center, right, f
 
 export function Panel({ title, actions, children, className, bodyClassName }) {
   return (
-    <section className={clsx('card overflow-hidden', className)}>
+    <section className={clsx('card flex flex-col overflow-hidden', className)}>
       <header className="navy-gradient flex items-center gap-2 px-4 py-2 text-sm font-bold tracking-wide text-white uppercase">
         <span className="flex-1 truncate">{title}</span>{actions}
       </header>
-      <div className={clsx('p-4', bodyClassName)}>{children}</div>
+      <div className={clsx('flex-1 p-4', bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -64,14 +65,55 @@ export const Line = ({ label, value, tone, bold, minus }) => (
   </div>
 );
 
-export function BigTotal({ label, value, tone = 'navy' }) {
+/** "Rupees Forty Nine Thousand Two Hundred Fifty Only" */
+export const rupees = (v) => (n(v) ? `Rupees ${inWords(v).replace(/ Rupees Only$/, '')} Only` : '');
+
+export function BigTotal({ label, value, tone = 'navy', words = true }) {
   return (
     <div className={clsx('rounded-md px-4 py-3 text-white', tone === 'green' ? 'bg-emerald-700' : 'navy-gradient')}>
       <p className="text-xs font-bold tracking-wide uppercase opacity-90">{label}</p>
       <p className="num mt-1 text-3xl font-extrabold">{money(value)}</p>
+      {words && n(value) > 0 && <p className="mt-1 text-xs opacity-80">{rupees(value)}</p>}
     </div>
   );
 }
+
+/** Small coloured tag used in loan headers (IN HAND, 1 MONTH, ALLOWED...). */
+export const Chip = ({ children, tone = 'ink' }) => (
+  <span className={clsx('rounded px-3 py-1 text-xs font-bold uppercase', {
+    green: 'bg-emerald-50 text-emerald-700', gold: 'bg-amber-50 text-amber-800', red: 'bg-rose-50 text-rose-700', violet: 'bg-violet-50 text-violet-700', ink: 'bg-ink-100 text-ink-700',
+  }[tone])}>{children}</span>
+);
+
+export const interestTypeLabel = (t) => (t === 'COMPOUND' ? 'Compound Interest' : 'Flat Interest Calculation');
+export const INTEREST_TYPES = [{ value: 'COMPOUND', label: 'Compound Interest' }, { value: 'SIMPLE', label: 'Flat Interest Calculation' }];
+
+/** "LOAN 1 · BILL BOOK 1 · GOLD" title row with chips, then info cells. */
+export function LoanHead({ loan, prefix = 'Loan', chips, cells = [] }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-200 px-4 py-2.5">
+        <p className="flex-1 text-base font-bold text-navy-900 uppercase dark:text-white">
+          {loan ? [`${prefix} ${loan.bill_no}`, loan.manual_bill_no && `Bill Book ${loan.manual_bill_no}`, loan.loan_on || loan.metal_name].filter(Boolean).join(' · ') : `${prefix} -`}
+        </p>
+        {loan && chips}
+      </div>
+      <div className="grid border-b border-ink-200" style={{ gridTemplateColumns: `repeat(${cells.length || 1}, minmax(0, 1fr))` }}>
+        {cells.map(([k, v]) => (
+          <div key={k} className="border-r border-ink-200 px-4 py-2 last:border-r-0"><p className="label">{k}</p><p className="num font-bold text-navy-900 dark:text-white">{loan ? v : '-'}</p></div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** "Total · 1 item · 1 pcs · gross 10.000 g · net 9.500 g · value today 68,700.00" */
+export const ItemsSummary = ({ items = [], label = 'Total', valueKey = 'value' }) => (items.length ? (
+  <p className="border-t border-ink-200 px-4 py-2 text-sm font-semibold text-navy-900 dark:text-white">
+    {label} · {items.length} item{items.length > 1 ? 's' : ''} · {items.reduce((s, i) => s + n(i.pcs), 0)} pcs · gross {weight(items.reduce((s, i) => s + n(i.gross_wt), 0))} g
+    · net {weight(items.reduce((s, i) => s + n(i.net_wt), 0))} g · value today {money(items.reduce((s, i) => s + n(i[valueKey]), 0))}
+  </p>
+) : null);
 
 export const GoldButton = ({ children, ...p }) => (
   <Button {...p} size="lg" className="h-14 w-full rounded-md !bg-ink-900 text-lg !text-white hover:!bg-ink-700 border-0">{children}</Button>
@@ -139,43 +181,121 @@ export function LoanFinder({ onLoad, loading, autoFocus = true, label = 'Find lo
 }
 
 /* ------------------------------------------------------------------ customer */
-export function CustomerLedgerDrawer({ customerId, onClose }) {
-  const { data, isLoading } = useFetch(customerId ? `/customers/${customerId}/ledger` : null);
-  return (
-    <Drawer open={!!customerId} onClose={onClose} size="xl" icon={BookUser} title={data ? `Ledger · ${data.customer.name}` : 'Customer ledger'} subtitle={data && `A/c No ${data.customer.customer_no} · ${data.customer.phone}`}>
-      {isLoading ? <Spinner /> : (
-        <DataTable dense rows={data?.entries || []} columns={[
-          { key: 'txn_date', label: 'Date', type: 'date' }, { key: 'bill_no', label: 'Loan' }, { key: 'txn_type', label: 'Type', render: (r) => r.txn_type.replace('_', ' ') },
-          { key: 'receipt_no', label: 'Receipt' }, { key: 'principal_amount', label: 'Principal', type: 'money' }, { key: 'interest_amount', label: 'Interest', type: 'money' },
-          { key: 'total_amount', label: 'Amount', type: 'money' }, { key: 'balance', label: 'Loan balance', type: 'money' },
-        ]} />
-      )}
-    </Drawer>
-  );
-}
+export { CustomerLedgerDrawer } from '@/features/customers/CustomerLedger';
+export { PhotoBox };
 
-export function CustomerCard({ customer, extra, onLedger }) {
-  if (!customer) {
-    return <div className="flex items-center gap-3 text-sm text-ink-500"><Avatar name="?" size="lg" /> No customer loaded</div>;
-  }
-  const addr = [customer.door_no, customer.street, customer.area, customer.city, customer.pincode].filter(Boolean).join(', ');
+/** Customer fields from a loan record. */
+export const loanCustomer = (l) => (l ? { ...l, id: l.customer_id, name: l.customer_name, phone: l.customer_phone, photo: l.customer_photo || l.customer_photo_master, status: l.customer_status || 'ACTIVE' } : null);
+
+export function CustomerCard({ customer, rows = [], extra, onLedger }) {
+  const c = customer;
+  const addr = c && [c.door_no, c.street, c.area, c.city, c.pincode].filter(Boolean).join(', ');
   return (
     <div>
       <div className="flex gap-3">
-        <Avatar src={customer.photo || customer.customer_photo_master} name={customer.name || customer.customer_name} size="xl" />
-        <div className="min-w-0 text-sm">
-          <p className="truncate text-base font-bold text-navy-900 dark:text-white">{customer.title ? `${customer.title}. ` : ''}{customer.name || customer.customer_name}</p>
-          {customer.relation_name && <p className="text-ink-500">{customer.relation_type} {customer.relation_name}</p>}
-          <p>A/c No <b>{customer.customer_no}</b></p>
-          <p>{customer.phone || customer.customer_phone}</p>
-          {customer.status === 'BLOCKED' && <Badge tone="red">Blocked</Badge>}
-        </div>
+        <PhotoBox src={c?.photo || c?.customer_photo_master} />
+        {c && (
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="text-base leading-snug font-bold text-navy-900 dark:text-white">{c.title ? `${c.title} ` : ''}{c.name || c.customer_name}{c.relation_name ? ` ${c.relation_type || ''} ${c.relation_name}` : ''}</p>
+            {addr && <p className="mt-1 text-ink-600">{addr}</p>}
+            <p className="mt-2 font-bold">{c.phone || c.customer_phone}</p>
+            {c.id_proof_type && <p className="text-xs text-ink-500">{c.id_proof_type}</p>}
+          </div>
+        )}
       </div>
-      {addr && <p className="mt-2 text-xs text-ink-600">{addr}</p>}
-      {customer.id_proof_type && <p className="text-xs text-ink-500">ID: {customer.id_proof_type} {customer.id_proof_no}</p>}
+      {c && (
+        <div className="mt-2 flex gap-2">
+          <span className="rounded bg-navy-50 px-6 py-1 text-xs font-bold text-navy-900 dark:bg-ink-800 dark:text-white">A/C {c.customer_no}</span>
+          <span className={clsx('rounded px-4 py-1 text-xs font-bold', c.status === 'BLOCKED' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{c.status || 'ACTIVE'}</span>
+        </div>
+      )}
+      {rows.length > 0 && <div className="mt-3 space-y-0.5">{rows.map(([k, v]) => <Line key={k} label={k} value={c ? v ?? '-' : '-'} tone="text-ink-600" />)}</div>}
       {extra}
-      {onLedger && <Button size="sm" variant="outline" icon={BookUser} className="mt-3" onClick={onLedger}>Ledger (F5)</Button>}
+      {onLedger && c && <Button size="sm" variant="outline" icon={BookUser} className="mt-3" onClick={onLedger}>Ledger (F5)</Button>}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ pay / receive step */
+const PAY_MODES = [['CASH', '1 · Cash', 'notes'], ['UPI', '2 · Online', 'UPI / NEFT'], ['CARD', '3 · Card', 'debit / credit'], ['CHEQUE', '4 · Cheque', 'no. + bank']];
+
+/**
+ * Payment step shown after the main action (desktop: Pay Customer / Receive dialog).
+ * Lines are added per mode until the balance is 0, then Confirm (F2).
+ */
+export function PayDrawer({ open, onClose, title, subtitle, total, direction = 'pay', onConfirm, loading }) {
+  const { data: lk } = useLookups();
+  const banks = (lk?.banks || []).map((b) => ({ value: b.id, label: `${b.bank_name}${b.account_no ? ` · ${String(b.account_no).slice(-4)}` : ''}` }));
+  const [mode, setMode] = useState('CASH');
+  const [amt, setAmt] = useState('');
+  const [ref, setRef] = useState('');
+  const [bank, setBank] = useState('');
+  const [lines, setLines] = useState([]);
+  const amtRef = useRef(null);
+  const paid = round2(lines.reduce((s, x) => s + n(x.amount), 0));
+  const balance = round2(n(total) - paid);
+  useEffect(() => { if (open) { setLines([]); setMode('CASH'); setRef(''); setAmt(String(round2(total))); setTimeout(() => amtRef.current?.select(), 50); } }, [open, total]);
+  useEffect(() => { if (!bank && banks[0]) setBank(String(banks[0].value)); }, [banks, bank]);
+  const add = () => {
+    const a = round2(n(amt) || balance);
+    if (a <= 0) return;
+    if (a > balance + 0.009) return toast.error(`Only ${money(balance)} is left`);
+    if (mode !== 'CASH' && !bank) return toast.error('Add a bank account in Bank master first');
+    setLines([...lines, { mode, amount: a, reference: ref, bank_account_id: mode === 'CASH' ? null : Number(bank) }]);
+    setAmt(String(round2(balance - a))); setRef('');
+    amtRef.current?.focus();
+  };
+  const confirm = () => {
+    if (Math.abs(balance) > 0.009) return toast.error('Balance must be 0 to save');
+    onConfirm(lines);
+  };
+  const onKey = (e) => {
+    if (e.key === 'F2') { e.preventDefault(); confirm(); }
+    if (e.ctrlKey && ['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); setMode(PAY_MODES[Number(e.key) - 1][0]); }
+  };
+  return (
+    <Drawer open={open} onClose={onClose} size="lg" icon={Wallet} title={title} subtitle={subtitle}
+      footer={<><Button variant="outline" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" loading={loading} disabled={Math.abs(balance) > 0.009} onClick={confirm}>Confirm (F2)</Button></>}>
+      <div className="space-y-4" onKeyDown={onKey}>
+        <div className="flex items-end justify-between rounded-md bg-ink-50 px-4 py-3 dark:bg-ink-800">
+          <span className="text-xs font-bold text-ink-600 uppercase">{direction === 'pay' ? 'Amount to pay' : 'Amount to receive'}</span>
+          <span className="num text-3xl font-extrabold text-navy-900 dark:text-white">{money(total)}</span>
+        </div>
+        <div>
+          <p className="label">Payment mode <span className="font-normal normal-case">(Ctrl+1-4)</span></p>
+          <div className="grid grid-cols-4 gap-2">
+            {PAY_MODES.map(([k, t, h]) => (
+              <button key={k} type="button" onClick={() => setMode(k)} className={clsx('rounded-md border px-2 py-2 text-center text-sm font-bold', mode === k ? 'border-ink-900 bg-ink-900 text-white dark:border-white dark:bg-white dark:text-ink-900' : 'border-ink-300 text-navy-900 dark:text-white')}>
+                {t}<span className="block text-xs font-semibold opacity-80">{h}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+          <Field label="Amount (₹)"><Input ref={amtRef} type="number" className="h-11 text-right text-lg font-bold" value={amt} onChange={(e) => setAmt(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} /></Field>
+          <Field label="Ref / UTR / cheque no"><Input disabled={mode === 'CASH'} value={ref} onChange={(e) => setRef(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())} /></Field>
+          <Button className="h-11" icon={Plus} onClick={add}>Add (Enter)</Button>
+        </div>
+        {mode !== 'CASH' && <Field label="Bank account"><Select value={bank} onChange={(e) => setBank(e.target.value)} options={banks} placeholder="Select bank" /></Field>}
+        <div className="min-h-24 divide-y divide-ink-200 rounded-md border border-ink-200 dark:divide-ink-700 dark:border-ink-700">
+          {!lines.length && <p className="px-3 py-6 text-center text-sm text-ink-400">Add the amount for each payment mode</p>}
+          {lines.map((x, i) => (
+            <div key={i} className="flex items-center gap-3 px-3 py-2 text-sm">
+              <b className="w-20">{PAY_MODES.find((m) => m[0] === x.mode)?.[1].split(' · ')[1] || x.mode}</b>
+              <span className="flex-1 text-ink-500">{x.reference || '-'}</span>
+              <span className="num font-bold">{amount(x.amount)}</span>
+              <button type="button" onClick={() => setLines(lines.filter((_, k) => k !== i))} className="text-rose-600"><X className="size-4" /></button>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-ink-200 rounded-md border border-ink-200 dark:divide-ink-700 dark:border-ink-700">
+          {[['Total due', money(total), ''], ['Paid', money(paid), 'text-emerald-700'], ['Balance', money(balance), Math.abs(balance) < 0.01 ? 'text-emerald-700' : 'text-rose-600']].map(([k, v, cls]) => (
+            <div key={k} className="px-3 py-2"><p className="label">{k}</p><p className={clsx('num flex items-center gap-1 text-lg font-bold', cls)}>{v}{k === 'Balance' && Math.abs(balance) < 0.01 && <Check className="size-5" />}</p></div>
+          ))}
+        </div>
+        <p className="text-xs text-ink-500">Balance must be 0 to save.</p>
+      </div>
+    </Drawer>
   );
 }
 
@@ -353,14 +473,14 @@ export function ItemsTable({ items, onRemove, onEdit, valueLabel = 'Value', show
 }
 
 /* ------------------------------------------------------------------ LTV bar */
-export function LtvBar({ value, max = 75, safe, warn }) {
+export function LtvBar({ value, max = 75, safe, warn, suffix = '' }) {
   const pct = Math.min(100, n(value));
   const s = n(safe) || max * 0.9;
   const w = n(warn) || max;
   const tone = pct > Math.max(w, max) ? 'bg-rose-600' : pct > s ? 'bg-amber-500' : 'bg-emerald-600';
   return (
     <div>
-      <div className="flex justify-between text-xs text-ink-600"><span>Loan to value</span><b className="num">{value ? `${n(value).toFixed(1)}%` : '-'}</b></div>
+      <div className="flex justify-between text-xs text-ink-600"><span>Loan to value</span><b className={clsx('num', n(value) > Math.max(n(warn) || max, max) ? 'text-rose-600' : n(value) > (n(safe) || max * 0.9) ? 'text-amber-600' : 'text-emerald-700')}>{value ? `${n(value).toFixed(1)}%${suffix ? ` ${suffix}` : ''}` : '-'}</b></div>
       <div className="relative mt-1 h-2 rounded-full bg-ink-200"><div className={clsx('h-2 rounded-full transition-all', tone)} style={{ width: `${pct}%` }} />
         <div className="absolute top-[-3px] h-3.5 w-0.5 bg-navy-900" style={{ left: `${Math.min(100, max)}%` }} title={`Scheme limit ${max}%`} /></div>
     </div>
@@ -398,8 +518,10 @@ export function useApproval() {
 }
 
 /* ------------------------------------------------------------------ payments received grid */
-export function PaymentsGrid({ transactions = [] }) {
-  const rows = transactions.filter((t) => !t.is_void && t.txn_type !== 'DISBURSE');
+const TXN_LABEL = { INTEREST: 'Interest', PART_PAYMENT: 'Part payment', TOPUP: 'Top-up', RELEASE: 'Release', RENEWAL: 'Re-loan', AUCTION: 'Auction' };
+export function PaymentsGrid({ transactions = [], loan }) {
+  const adv = loan && n(loan.advance_interest) ? [{ id: 'adv', txn_date: loan.loan_date, txn_type: 'ADVANCE', months_paid: loan.advance_months || 1, total_amount: loan.advance_interest, payments: [{ mode: 'at loan' }] }] : [];
+  const rows = [...adv, ...transactions.filter((t) => !t.is_void && t.txn_type !== 'DISBURSE')];
   return (
     <div className="overflow-hidden rounded-md border border-ink-300">
       <table className="w-full text-sm">
@@ -407,7 +529,7 @@ export function PaymentsGrid({ transactions = [] }) {
         <tbody className="divide-y divide-ink-200">
           {!rows.length && <tr><td colSpan={5} className="py-6 text-center text-ink-400">No payments yet</td></tr>}
           {rows.map((t) => (
-            <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.months_paid) || ''}</td>
+            <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}</td>
               <td className="num px-3 text-right">{amount(t.total_amount)}</td><td className="px-3">{(t.payments || []).map((p) => p.mode).join(', ')}</td></tr>
           ))}
         </tbody>

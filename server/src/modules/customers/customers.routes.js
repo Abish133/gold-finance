@@ -7,6 +7,7 @@ import { ApiError } from '#utils/ApiError.js';
 import { parseListQuery, paged } from '#utils/pagination.js';
 import { audit } from '#services/audit.service.js';
 import { nextNumber } from '#services/sequence.service.js';
+import { withCalc } from '#services/loanCalc.service.js';
 
 const router = Router();
 
@@ -37,8 +38,9 @@ router.get('/', listPerm, async (req, res) => {
   const where = ['c.branch_id IN (:b)', req.query.status === 'MERGED' ? 'c.merged_into IS NOT NULL' : 'c.merged_into IS NULL'];
   const p = { b: req.branchIds };
   if (lq.search) {
-    where.push('(c.name LIKE :s OR c.phone LIKE :s OR c.alt_phone LIKE :s OR c.area LIKE :s OR c.id_proof_no LIKE :s OR c.customer_no = :raw)');
-    p.s = `%${lq.search}%`; p.raw = Number(lq.search) || -1;
+    const by = { name: '(c.name LIKE :s OR c.relation_name LIKE :s)', mobile: '(c.phone LIKE :s OR c.alt_phone LIKE :s)', acno: 'c.customer_no = :raw', area: '(c.area LIKE :s OR c.city LIKE :s OR c.street LIKE :s)' }[req.query.by];
+    where.push(by || '(c.name LIKE :s OR c.phone LIKE :s OR c.alt_phone LIKE :s OR c.area LIKE :s OR c.id_proof_no LIKE :s OR c.customer_no = :raw)');
+    p.s = req.query.by === 'name' ? `${lq.search}%` : `%${lq.search}%`; p.raw = Number(lq.search) || -1;
   }
   if (req.query.status && !['MERGED', 'DUPLICATE'].includes(req.query.status)) { where.push('c.status = :st'); p.st = req.query.status; }
   if (req.query.status === 'DUPLICATE') where.push('EXISTS (SELECT 1 FROM customers d WHERE d.branch_id = c.branch_id AND d.id <> c.id AND d.merged_into IS NULL AND (d.phone = c.phone OR (d.name = c.name AND d.relation_name <=> c.relation_name)))');
@@ -47,7 +49,7 @@ router.get('/', listPerm, async (req, res) => {
   if (req.query.area) { where.push('c.area = :area'); p.area = req.query.area; }
   const w = where.join(' AND ');
   const [rows, [{ total }], [tiles]] = await Promise.all([
-    query(`${SELECT.replace('FROM customers c', ", (SELECT MAX(l.loan_date) FROM loans l WHERE l.customer_id = c.id) AS last_loan FROM customers c")} WHERE ${w} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
+    query(`${SELECT.replace('FROM customers c', ", (SELECT MAX(l.loan_date) FROM loans l WHERE l.customer_id = c.id) AS last_loan, (SELECT COUNT(*) FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN') AS open_loans FROM customers c")} WHERE ${w} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
     query(`SELECT COUNT(*) total FROM customers c WHERE ${w}`, p),
     query(`SELECT COUNT(*) total, SUM(c.status = 'ACTIVE') active, SUM(c.status = 'BLOCKED') blocked,
              SUM(EXISTS (SELECT 1 FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN')) with_open
@@ -80,6 +82,9 @@ router.get('/:id/summary', listPerm, async (req, res) => {
             COALESCE(SUM(IF(l.status='OPEN', l.net_wt, 0)),0) AS gold_in_custody,
             (SELECT COALESCE(SUM(t.interest_amount),0) FROM loan_transactions t JOIN loans x ON x.id = t.loan_id WHERE x.customer_id = :id AND t.is_void = 0) AS interest_paid
        FROM loans l WHERE l.customer_id = :id`, { id: customer.id });
+  const open = await query("SELECT l.*, c.name customer_name FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.customer_id = :id AND l.status = 'OPEN'", { id: customer.id });
+  const calc = await withCalc(open, new Date(), customer.branch_id);
+  totals.interest_due = Math.round(calc.reduce((s, r) => s + Number(r.interest_due), 0) * 100) / 100;
   res.json({ data: { customer, loans, totals } });
 });
 
@@ -91,7 +96,11 @@ router.get('/:id/ledger', listPerm, async (req, res) => {
     FROM loan_transactions t JOIN loans l ON l.id = t.loan_id WHERE l.customer_id = :c AND t.is_void = 0 ORDER BY t.txn_date, t.id`, { c: customer.id });
   let bal = 0;
   const entries = rows.map((r) => { bal += Number(r.principal_amount); return { ...r, balance: Math.round(bal * 100) / 100 }; });
-  res.json({ data: { customer, entries } });
+  const loanRows = await query(`SELECT l.*, c.name customer_name FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.customer_id = :c ORDER BY l.loan_date DESC, l.id DESC`, { c: customer.id });
+  const calc = await withCalc(loanRows, new Date(), customer.branch_id);
+  const loans = loanRows.map((l, i) => ({ ...calc[i], loan_on: l.loan_on, status: l.status, close_date: l.close_date }));
+  const docs = await queryOne("SELECT COUNT(*) c FROM documents WHERE owner_type = 'CUSTOMER' AND owner_id = :c", { c: customer.id });
+  res.json({ data: { customer, entries, loans, documents: docs.c } });
 });
 
 router.post('/', permitAny(['customers', 'loan_new', 'loan_old'], 'add'), requireBranch, async (req, res) => {
