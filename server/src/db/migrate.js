@@ -57,6 +57,9 @@ const run = async () => {
     if (!rows.length) await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
   }
   await conn.query(TABLES);
+  // ID proof names follow the desktop list
+  await conn.query("UPDATE customers SET id_proof_type = 'Aadhaar Card' WHERE id_proof_type = 'Aadhaar'");
+  await conn.query("UPDATE customers SET id_proof_type = 'PAN Card' WHERE id_proof_type = 'PAN'");
   await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (2, 'Desktop parity: mix loans, compound interest, release no, bank reco')");
   await conn.end();
   console.log(`✔ Database "${env.db.database}" is up to date`);

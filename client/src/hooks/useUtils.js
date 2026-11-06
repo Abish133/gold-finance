@@ -17,7 +17,10 @@ export function useHotkey(combo, handler, deps = []) {
     const [mod, key] = combo.toLowerCase().includes('+') ? combo.toLowerCase().split('+') : [null, combo.toLowerCase()];
     const onKey = (e) => {
       const modOk = !mod || (mod === 'ctrl' && (e.ctrlKey || e.metaKey)) || (mod === 'alt' && e.altKey) || (mod === 'shift' && e.shiftKey);
-      if (modOk && e.key.toLowerCase() === key) { e.preventDefault(); ref.current(e); }
+      if (!modOk || e.key.toLowerCase() !== key) return;
+      // function keys belong to the open drawer (e.g. F2 = save in a form), not to the global shortcuts
+      if (!mod && document.querySelector('[data-drawer]')) return;
+      e.preventDefault(); ref.current(e);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

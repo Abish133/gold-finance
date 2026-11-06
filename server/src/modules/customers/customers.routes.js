@@ -6,7 +6,7 @@ import { upload, publicPath } from '#middleware/upload.js';
 import { ApiError } from '#utils/ApiError.js';
 import { parseListQuery, paged } from '#utils/pagination.js';
 import { audit } from '#services/audit.service.js';
-import { nextNumber } from '#services/sequence.service.js';
+import { nextNumber, peekNumber } from '#services/sequence.service.js';
 import { withCalc } from '#services/loanCalc.service.js';
 
 const router = Router();
@@ -60,6 +60,11 @@ router.get('/', listPerm, async (req, res) => {
 
 router.get('/areas', listPerm, async (req, res) => {
   res.json({ data: (await query('SELECT DISTINCT area FROM customers WHERE branch_id IN (:b) AND area IS NOT NULL ORDER BY area', { b: req.branchIds })).map((r) => r.area) });
+});
+
+/* next customer A/c no (shown on the New Customer form) */
+router.get('/next-no', listPerm, requireBranch, async (req, res) => {
+  res.json({ data: { customer_no: await peekNumber({ queryOne }, { branchId: req.branchId, key: 'CUSTOMER' }) } });
 });
 
 router.get('/check-phone', listPerm, async (req, res) => {

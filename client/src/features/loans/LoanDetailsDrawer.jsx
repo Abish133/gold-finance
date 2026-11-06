@@ -1,4 +1,10 @@
-import { FileText } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { FileText, ImagePlus } from 'lucide-react';
+import { toast } from 'sonner';
+import { compressImage } from '@/components/ui/ImageCapture';
+import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
 import clsx from 'clsx';
 import { Button, Drawer } from '@/components/ui';
 import { PhotoBox } from '@/components/common/PhotoBox';
@@ -9,7 +15,21 @@ const Row = ({ k, v }) => <div className="flex justify-between gap-4 py-0.5 text
 
 /** Loan Details (desktop F7): customer, item photo, pledged items, loan and release summary. */
 export function LoanDetailsDrawer({ full, onClose }) {
+  const qc = useQueryClient();
+  const { can } = useAuth();
+  const fileRef = useRef(null);
+  const [photo, setPhoto] = useState(null);
   const l = full?.loan;
+  const shownPhoto = photo?.id === l?.id ? photo.path : l?.item_photo;
+  const changePhoto = async (file) => {
+    try {
+      const small = await compressImage(file);
+      const r = await api.upload(`/loans/${l.id}/photo`, small);
+      setPhoto({ id: l.id, path: r.data.item_photo });
+      qc.invalidateQueries({ queryKey: [`/loans/${l.id}`] });
+      toast.success('Item photo changed');
+    } catch (e) { toast.error(e.message); }
+  };
   const items = full?.items || [];
   const txns = (full?.transactions || []).filter((t) => !t.is_void);
   const parts = txns.filter((t) => t.txn_type === 'PART_PAYMENT');
@@ -36,9 +56,11 @@ export function LoanDetailsDrawer({ full, onClose }) {
               </div>
             </section>
             <section className="rounded-md border border-ink-200 p-3 dark:border-ink-700">
-              <p className="mb-2 text-xs font-bold text-navy-900 uppercase dark:text-white">Item photo</p>
-              <a href={l.item_photo || undefined} target="_blank" rel="noreferrer" className="grid h-40 place-items-center overflow-hidden rounded bg-ink-50 dark:bg-ink-800">
-                {l.item_photo ? <img src={l.item_photo} alt="" className="size-full object-contain" /> : <span className="text-sm text-ink-400">No item photo saved for this loan</span>}
+              <div className="mb-2 flex items-center justify-between"><p className="text-xs font-bold text-navy-900 uppercase dark:text-white">Item photo (click to enlarge)</p>
+                {(can('loan_edit', 'add') || can('loan_new', 'add')) && <Button size="sm" variant="outline" icon={ImagePlus} onClick={() => fileRef.current?.click()}>Change photo</Button>}</div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { e.target.files?.[0] && changePhoto(e.target.files[0]); e.target.value = ''; }} />
+              <a href={shownPhoto || undefined} target="_blank" rel="noreferrer" className="grid h-40 place-items-center overflow-hidden rounded bg-ink-50 dark:bg-ink-800">
+                {shownPhoto ? <img src={shownPhoto} alt="" className="size-full object-contain" /> : <span className="text-sm text-ink-400">No item photo saved for this loan</span>}
               </a>
             </section>
           </div>

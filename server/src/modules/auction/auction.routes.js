@@ -75,7 +75,11 @@ router.post('/notices', permit('auction', 'add'), requireBranch, async (req, res
 });
 
 router.get('/sales', permit('auction_sale', 'view'), async (req, res) => {
-  const rows = await query(`SELECT a.*, l.bill_no, l.loan_date, l.net_wt, c.name customer_name FROM auction_sales a JOIN loans l ON l.id = a.loan_id JOIN customers c ON c.id = l.customer_id
+  const rows = await query(`SELECT a.*, l.bill_no, l.loan_date, l.net_wt, l.loan_on, l.item_summary, l.interest_rate, l.rate_type, c.name customer_name, c.relation_type, c.relation_name,
+      u.full_name marked_by, TIMESTAMPDIFF(MONTH, l.loan_date, a.auction_date) months,
+      (SELECT MIN(n.notice_date) FROM auction_notices n WHERE n.loan_id = l.id AND n.notice_type IN ('FIRST','REMINDER')) first_notice,
+      (SELECT MIN(n.notice_date) FROM auction_notices n WHERE n.loan_id = l.id AND n.sent_via = 'REGISTERED') registered_notice
+    FROM auction_sales a JOIN loans l ON l.id = a.loan_id JOIN customers c ON c.id = l.customer_id LEFT JOIN users u ON u.id = a.created_by
     WHERE a.branch_id IN (:b) ORDER BY a.auction_date DESC`, { b: req.branchIds });
   res.json({ data: rows });
 });

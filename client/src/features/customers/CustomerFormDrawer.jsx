@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { UserPlus, AlertTriangle } from 'lucide-react';
+import { UserPlus, AlertTriangle, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Drawer, ImageCapture } from '@/components/ui';
 import { FormFields } from '@/components/form/FormFields';
 import { api } from '@/lib/api';
 import { useDebounce } from '@/hooks/useUtils';
+import { useFetch } from '@/hooks/useApi';
 
-export const ID_PROOFS = ['Aadhaar', 'PAN', 'Voter ID', 'Driving Licence', 'Passport', 'Ration Card', 'Other'];
+export const ID_PROOFS = ['Aadhaar Card', 'PAN Card', 'Voter ID', 'Driving Licence', 'Passport', 'Ration Card', 'Other'];
+
+/** Names are saved in Proper Case (desktop behaviour). */
+const proper = (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s.(/-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : v);
+const PROPER = ['name', 'relation_name', 'street', 'area', 'city', 'district', 'nominee_name', 'occupation'];
+const DEFAULTS = { title: 'Mr', relation_type: 'S/o', id_proof_type: 'Aadhaar Card', state: 'Tamil Nadu' };
 
 const FIELDS = [
   { type: 'section', name: 's1', label: 'Personal' },
   { name: 'title', label: 'Title', type: 'select', options: ['Mr', 'Mrs', 'Ms', 'Dr'], placeholder: '' },
-  { name: 'name', label: 'Full name', required: true },
+  { name: 'name', label: 'Customer name', required: true },
   { name: 'relation_type', label: 'Relation', type: 'select', options: ['S/o', 'D/o', 'W/o', 'C/o'], placeholder: '' },
-  { name: 'relation_name', label: 'Relation name' },
-  { name: 'phone', label: 'Mobile', type: 'tel', required: true, maxLength: 15, rules: { pattern: { value: /^[0-9+ -]{6,15}$/, message: 'Invalid number' } } },
-  { name: 'alt_phone', label: 'Alternate mobile', type: 'tel', maxLength: 15 },
+  { name: 'relation_name', label: 'Father / Husband name', required: true },
+  { name: 'phone', label: 'Mobile (10 digit)', type: 'tel', required: true, maxLength: 10, rules: { pattern: { value: /^[0-9]{10}$/, message: 'Enter a 10 digit mobile number' } } },
+  { name: 'alt_phone', label: 'Alternate mobile', type: 'tel', maxLength: 10, rules: { pattern: { value: /^([0-9]{10})?$/, message: 'Enter a 10 digit mobile number' } } },
   { name: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
   { name: 'dob', label: 'Date of birth', type: 'date' },
   { name: 'occupation', label: 'Occupation' },
@@ -49,10 +55,11 @@ export function CustomerFormDrawer({ open, onClose, customer, onSaved }) {
   const [images, setImages] = useState({});
   const phone = useDebounce(form.watch('phone'), 400);
   const [dupes, setDupes] = useState([]);
+  const nextNo = useFetch(open && !customer?.id ? '/customers/next-no' : null);
 
   useEffect(() => {
     if (!open) return;
-    form.reset(customer || { title: 'Mr', state: 'Tamil Nadu' });
+    form.reset(customer || DEFAULTS);
     setImages(Object.fromEntries(FILES.map(([k]) => [k, customer?.[k] || null])));
     setPending({});
     setDupes([]);
@@ -65,7 +72,8 @@ export function CustomerFormDrawer({ open, onClose, customer, onSaved }) {
   }, [phone, open, customer]);
 
   const save = useMutation({
-    mutationFn: async (values) => {
+    mutationFn: async (raw) => {
+      const values = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, PROPER.includes(k) ? proper(v) : v]));
       const res = customer?.id ? await api.put(`/customers/${customer.id}`, values) : await api.post('/customers', values);
       const id = res.data.id;
       for (const [field, file] of Object.entries(pending)) await api.upload(`/customers/${id}/files/${field}`, file);
@@ -90,13 +98,33 @@ export function CustomerFormDrawer({ open, onClose, customer, onSaved }) {
     return URL.createObjectURL(file);
   };
 
+  const submit = form.handleSubmit((v) => save.mutate(v));
+  const clear = () => { form.reset(DEFAULTS); setImages({}); setPending({}); setDupes([]); };
+  // Enter = next box, F2 = save, Ctrl+N = clear (desktop keys)
+  const keys = (e) => {
+    if (e.key === 'F2') { e.preventDefault(); e.stopPropagation(); submit(); return; }
+    if (e.ctrlKey && e.key.toLowerCase() === 'n') { e.preventDefault(); e.stopPropagation(); clear(); return; }
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+      e.preventDefault();
+      const list = [...e.currentTarget.querySelectorAll('input:not([type=hidden]):not([type=file]), select, textarea')].filter((x) => !x.disabled && x.offsetParent);
+      const i = list.indexOf(e.target);
+      if (i >= 0 && i < list.length - 1) list[i + 1].focus(); else submit();
+    }
+  };
+  const acNo = customer?.id ? customer.customer_no : nextNo.data?.customer_no;
   return (
     <Drawer open={open} onClose={onClose} size="xl" icon={UserPlus}
-      title={customer?.id ? `Edit customer #${customer.customer_no}` : 'New customer'}
-      subtitle="Customer details, KYC and photos"
-      footer={<><Button variant="outline" onClick={onClose}>Cancel</Button><Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save customer</Button></>}>
-      <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="grid gap-6 lg:grid-cols-[1fr_260px]">
+      title={customer?.id ? `Edit Customer · A/c No ${customer.customer_no}` : 'New Customer'}
+      subtitle={`${customer?.id ? 'Customer details, KYC and photos' : `New A/c No ${acNo ?? '-'}`} - fields with * are required`}
+      footer={<>
+        <p className="mr-auto text-xs text-ink-500">Enter = next box · names are saved in Proper Case</p>
+        {!customer?.id && <Button variant="outline" icon={Eraser} onClick={clear}>Clear (Ctrl+N)</Button>}
+        <Button variant="outline" onClick={onClose}>Cancel (Esc)</Button>
+        <Button variant="gold" loading={save.isPending} onClick={submit}>Save Customer (F2)</Button>
+      </>}>
+      <form onSubmit={submit} onKeyDown={keys} className="grid gap-6 lg:grid-cols-[1fr_260px]">
         <div>
+          {acNo != null && <div className="mb-3 inline-block rounded-md bg-navy-50 px-5 py-1.5 text-sm font-bold text-navy-900 dark:bg-ink-800 dark:text-white">A/C NO {acNo}</div>}
           {dupes.length > 0 && (
             <div className="mb-4 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
               <AlertTriangle className="size-5 shrink-0" />

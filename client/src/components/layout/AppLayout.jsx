@@ -224,9 +224,9 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
         <HeaderTile label="Billing date" value={dayjs(billing?.billingDate).format('DD/MM/YYYY')} accent={billing?.behind ? 'text-rose-600' : undefined}
           onClick={billing?.behind ? () => navigate('/accounts/day-report') : undefined} title={billing?.behind ? 'Billing date is behind today - finish Day End' : undefined}
           icon={<span className="grid h-8 w-7 place-items-end overflow-hidden rounded-sm border border-ink-300 bg-white pb-0.5 text-center text-xs font-bold text-navy-900"><span className="absolute" /><span className="block w-full border-t-4 border-rose-600 pt-0.5">{dayjs(billing?.billingDate).format('D')}</span></span>} />
-        <HeaderTile label="Gold rate" value={gold ? `₹${amount(gold.market_rate)}` : 'Not set'} accent={!todayRate ? 'text-rose-600' : undefined} onClick={() => navigate('/masters/rates')}
+        <HeaderTile label="Gold rate" value={gold ? `₹${amount((gold.market_rate * 100) / (gold.purity || 100))}` : 'Not set'} accent={!todayRate ? 'text-rose-600' : undefined} onClick={() => navigate('/masters/rates')}
           icon={<span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-gold-300 to-gold-600 text-[11px] font-black text-white ring-2 ring-gold-200">G</span>} />
-        <HeaderTile label="Silver rate" value={silver ? `₹${amount(silver.market_rate)}` : 'Not set'} onClick={() => navigate('/masters/rates')}
+        <HeaderTile label="Silver rate" value={silver ? `₹${amount((silver.market_rate * 100) / (silver.purity || 100))}` : 'Not set'} onClick={() => navigate('/masters/rates')}
           icon={<span className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-slate-200 to-slate-500 text-[11px] font-black text-white ring-2 ring-slate-200">S</span>} />
       </div>
 

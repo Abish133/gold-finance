@@ -61,7 +61,7 @@ export default function RateBoardPage() {
         <div className="card overflow-hidden">
           <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Board rate · {dayjs(d).format('DD/MM/YYYY')}</p>
           <table className="w-full text-sm">
-            <thead className="bg-navy-50 text-xs text-navy-800 uppercase"><tr><th className="px-3 py-1.5 text-left">Metal</th><th className="px-3 text-left">Purity</th><th className="px-3 text-right">Purity %</th><th className="px-3 text-right">Previous</th><th className="px-3 text-right">Today</th><th className="px-3 text-right">Loan rate</th><th className="px-3 text-right">Change</th></tr></thead>
+            <thead className="bg-navy-50 text-xs text-navy-800 uppercase"><tr><th className="px-3 py-1.5 text-left">Metal</th><th className="px-3 text-left">Purity</th><th className="px-3 text-right">Purity %</th><th className="px-3 text-right">Previous</th><th className="px-3 text-right">Today</th><th className="px-3 text-right">Change</th></tr></thead>
             <tbody className="divide-y divide-ink-200">
               {rows.map((r, i) => {
                 const ch = n(r.today) && n(r.previous) ? n(r.today) - n(r.previous) : null;
@@ -70,14 +70,13 @@ export default function RateBoardPage() {
                     <td className="px-3 py-1 font-bold">{rows[i - 1]?.metal_id === r.metal_id ? '' : r.metal_code}</td><td className="px-3">{r.name}</td><td className="num px-3 text-right">{n(r.purity)}</td>
                     <td className="num px-3 text-right text-ink-500">{r.previous != null ? amount(r.previous) : '-'}</td>
                     <td className="px-2"><Input type="number" className="h-8 bg-gold-50 text-right" value={r.today} onChange={(e) => set(i, { today: e.target.value })} /></td>
-                    <td className="px-2"><Input type="number" className="h-8 text-right" placeholder={n(r.today) ? String(round2((n(r.today) * ltv) / 100)) : ''} value={r.today_loan} onChange={(e) => set(i, { today_loan: e.target.value })} /></td>
                     <td className={clsx('num px-3 text-right', ch > 0 ? 'text-emerald-700' : ch < 0 ? 'text-rose-600' : '')}>{ch == null ? '' : `${ch > 0 ? '+' : ''}${amount(ch)}`}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <p className="px-4 py-2 text-xs text-ink-500">Loan rate blank = {ltv}% of today's rate (System Control → LTV safe %).</p>
+          <p className="px-4 py-2 text-xs text-ink-500">Enter the 100% rate and press Auto from 100% Rate - the ornament rate is filled from its purity. Loans are valued at fine weight x 100% rate.</p>
         </div>
         <div className="card overflow-hidden">
           <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Rate history · last 30 days · {hist === 'GOLD' ? 'Gold' : 'Silver'}</p>

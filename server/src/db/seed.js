@@ -75,6 +75,11 @@ const run = async () => {
       [gold, '24K (99.9)', 99.9], [gold, '22K (91.6)', 91.6], [gold, '20K (83.3)', 83.3], [gold, '18K (75.0)', 75.0], [silver, 'Silver 92.5', 92.5], [silver, 'Silver 80', 80],
     ]]);
   }
+  // board rows like the desktop Rate Master: fine (100%) and ornament (92%) for each metal; older rows are kept but hidden
+  if (!(await queryOne('SELECT id FROM purities WHERE purity = 100 LIMIT 1'))) {
+    await query('UPDATE purities SET is_active = 0');
+    await pool.query('INSERT INTO purities (metal_id, name, purity) VALUES ?', [[[gold, 'Fine Gold', 100], [gold, 'Gold Ornament', 92], [silver, 'Fine Silver', 100], [silver, 'Silver Ornament', 92]]]);
+  }
   if (!(await queryOne('SELECT id FROM metal_rates LIMIT 1'))) {
     await query('INSERT INTO metal_rates (metal_id, rate_date, purity, market_rate, loan_rate) VALUES (:g, CURDATE(), 91.6, 7200, 5400), (:s, CURDATE(), 92.5, 95, 60)', { g: gold, s: silver });
   }
@@ -96,7 +101,7 @@ const run = async () => {
     const GOLD_ITEMS = ['ARANAKAYAR', 'ARTICLE', 'BABY BANGLE', 'BABY KAMAL', 'BABY RING', 'BANGLE', 'BARSS', 'BESAR', 'BLACK MANI CHAIN', 'BRACELET', 'CAP', 'CASS', 'CHAIN', 'CHAIN WITH DOLLAR',
       'COINS', 'COVERING CHAIN', 'DILLI CHAIN', 'DILLI MATTAL', 'DISKO KAMAL', 'DISKO MATTAL', 'DOLLAR', 'FAIR RING', 'GULESH', 'GUNDU', 'HARAM', 'JIMIKHI', 'KAMAL', 'KAMAL WITH JIMIKHI',
       'KAMAL WITH THONGLE', 'KINI BOTHU', 'KOLAS', 'LADIES RING', 'LAXSHMI BOTTU', 'MANGA BOTTHU', 'MATTAL', 'MOGATHI', 'MOP', 'NANCOLLA', 'NECKLACE', 'NITHI CHITY', 'RATTAI PATTAI CHAIN', 'RING',
-      'SARAD', 'STONE KAMAL', 'STONE KAMAL WITH STONE JIMIKHI', 'STONE KAMAL WITH STONE THONGLE', 'STONE NECKLACE', 'STONE RING', 'TALI', 'TANGOTAM', 'THAYAT'];
+      'SARAD', 'STONE KAMAL', 'STONE KAMAL WITH STONE JIMIKHI', 'STONE KAMAL WITH STONE THONGLE', 'STONE NECKLACE', 'STONE RING', 'TALI', 'TANGOTAM', 'THAYAT', 'VENKY RING', 'WAL SHIP'];
     const SILVER_ITEMS = ['ARNA', 'ARNAKAYAR', 'ARTICLE', 'BRACELET', 'CAP', 'CHAIN', 'CHAIN PATTI', 'COINS', 'DEEPAK', 'DOLLAR', 'GULAS', 'KEY CHAIN', 'KINAM', 'KUNGAM BOX', 'MITTI', 'PLATE', 'RING',
       'TAMLAR', 'TANDAI', 'THAT', 'VALAG'];
     if (g) await pool.query('INSERT IGNORE INTO items (category_id, name) VALUES ?', [GOLD_ITEMS.map((x) => [g.id, tc(x)])]);
