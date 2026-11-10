@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { useDebounce } from '@/hooks/useUtils';
 import { useFetch } from '@/hooks/useApi';
 
-export const ID_PROOFS = ['Aadhaar Card', 'PAN Card', 'Voter ID', 'Driving Licence', 'Passport', 'Ration Card', 'Other'];
+export const ID_PROOFS = ['Aadhaar Card', 'PAN Card', 'Voter ID', 'Driving Licence', 'Ration Card', 'Passport', 'Other', 'None'];
 
 /** Names are saved in Proper Case (desktop behaviour). */
 const proper = (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s.(/-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : v);
@@ -18,9 +18,9 @@ const DEFAULTS = { title: 'Mr', relation_type: 'S/o', id_proof_type: 'Aadhaar Ca
 
 const FIELDS = [
   { type: 'section', name: 's1', label: 'Personal' },
-  { name: 'title', label: 'Title', type: 'select', options: ['Mr', 'Mrs', 'Ms', 'Dr'], placeholder: '' },
+  { name: 'title', label: 'Title', type: 'select', options: ['Mr', 'Mrs', 'Miss', 'Smt', 'Master'], placeholder: '' },
   { name: 'name', label: 'Customer name', required: true },
-  { name: 'relation_type', label: 'Relation', type: 'select', options: ['S/o', 'D/o', 'W/o', 'C/o'], placeholder: '' },
+  { name: 'relation_type', label: 'Relation', type: 'select', options: ['S/o', 'W/o', 'D/o', 'C/o'], placeholder: '' },
   { name: 'relation_name', label: 'Father / Husband name', required: true },
   { name: 'phone', label: 'Mobile (10 digit)', type: 'tel', required: true, maxLength: 10, rules: { pattern: { value: /^[0-9]{10}$/, message: 'Enter a 10 digit mobile number' } } },
   { name: 'alt_phone', label: 'Alternate mobile', type: 'tel', maxLength: 10, rules: { pattern: { value: /^([0-9]{10})?$/, message: 'Enter a 10 digit mobile number' } } },

@@ -1,4 +1,5 @@
 // Smoke test for desktop-parity features
+import { testBranch } from './_testbranch.mjs';
 const B = `${process.env.API_URL || 'http://localhost:5000'}/api`;
 const jar = {};
 const mk = (who) => async (method, url, body, expect) => {
@@ -15,11 +16,11 @@ const ok = (m) => console.log('✔', m);
 const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 const me = (await A('POST', '/auth/login', { username: 'admin', password: 'Admin@123' })).data.user;
-jar.ab = String(me.branches[0].id);
+jar.ab = await testBranch(A);   // own branch - the shop's Head Office is never touched
 const lk = (await A('GET', '/masters/lookups')).data;
 const gold = lk.metals.find((m) => m.code === 'GOLD'), silver = lk.metals.find((m) => m.code === 'SILVER');
 const scheme = lk.schemes.find((s) => s.code === 'GL001');
-const cust = (await A('GET', '/customers?pageSize=1')).data[0];
+const cust = (await A('GET', '/customers?pageSize=1')).data[0] || (await A('POST', '/customers', { name: 'Parity Customer', relation_name: 'Father', phone: '9000000098', area: 'Town' })).data;
 
 // today's rate rule
 const hasRate = (await A('GET', '/masters/rates?pageSize=50')).data.some((r) => r.rate_date === today);

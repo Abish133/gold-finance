@@ -382,7 +382,8 @@ Steps
 Steps
 1. Type the **old loan no** → Enter. Top: *Interest · N months*, *Paid before*, *Old loan total*.
 2. **New loan amount** - same amount by default; type more or less. Interest % and Flat / Compound come from the old loan (change if needed). Advance interest on new loan (F6).
-3. Add / remove items if the customer takes back or adds a jewel.
+3. Add / remove items if the customer takes back or adds a jewel. Gold items are valued at today's gold rate and **silver items at today's silver rate**; a silver loan stays a silver loan.
+   - The new loan gets the **next bill book no** when the old loan had one (example: old bill book 2 → new loan bill book 3).
 4. The box at the bottom says **Receive from customer** (green) or **Pay to customer**.
 5. **Save Re-loan (F2)** → take / give the money → the new loan bill prints. The old loan shows *Re-loaned*.
 
@@ -390,6 +391,11 @@ Example (flat 1.5% on ₹12,345, 22 months, advance ₹185):
 - Old loan total = 12,345 + (22 × 185) − 185 = **₹16,230**
 - New loan ₹12,345 with advance ₹185
 - **Receive from customer = 16,230 − 12,345 + 185 = ₹4,070**
+
+Example (silver, flat 2%, same day): old loan ₹3,000 on a 50 g silver article (92% → 46 g × ₹100 = **₹4,600**), advance ₹60 already taken.
+- Old loan total = ₹3,000 (first month covered by the advance)
+- New loan ₹3,500, advance 2% = ₹70 → LTV 76.1%
+- **Pay to customer = 3,500 − 3,000 − 70 = ₹430**
 
 ---
 
@@ -574,7 +580,10 @@ Every loan, receipt, release, bank and auction entry is posted to the accounts *
 1. Type: **Payment** (money out - rent, salary, tea), **Receipt** (money in - other income), **Journal** (adjustment, no cash), **Contra** (cash ↔ bank).
 2. Date, account (type to search - e.g. *Rent*), amount, Cash or Bank, narration.
 3. Journal / Contra: one line per account, debit = credit.
-4. **Save**. *All Vouchers* lists and deletes (manager) vouchers.
+4. **Save Voucher (F10)**. The next voucher no is shown at the top (V. No).
+5. The list on the right shows the day's vouchers with the account name, Cash / Bank and Jama / Nave totals. **Auction sale** receipts are listed too (read only - change them in Auction Release). Double-click your own voucher to edit, **Del** to delete (manager). *All Vouchers* lists every voucher.
+
+Example: Jama · Capital · ₹10,000 · Cash · "Capital introduced" → Jama total ₹10,000, cash effect + ₹10,000.
 
 Example: Payment · Rent · ₹8,000 · Cash · "Shop rent November".
 
@@ -599,7 +608,7 @@ Example: Payment · Rent · ₹8,000 · Cash · "Shop rent November".
 - **Export History** - what was sent and when.
 
 ## Cash Denomination
-**Accounts → Cash Denomination** - count the drawer: number of ₹500, ₹200, ₹100 … notes and coins. The difference with *cash should be in drawer* is shown on Day End.
+**Accounts → Cash Denomination** (or **F6** on Day Report / Day End) - count the drawer: number of ₹2000, ₹500, ₹200, ₹100 … notes and coins (Enter = next note, F2 = save). The difference with *cash should be in drawer* is shown on Day End.
 
 ---
 
@@ -626,9 +635,11 @@ Example: Payment · Rent · ₹8,000 · Cash · "Shop rent November".
 **Settings → Day End** - check and close the billing date.
 
 1. The checks on the right: gold / silver rate entered, cash counted (F6), cash tally, rows to post.
-2. **Count Cash (F6)** if not done - Cash Denomination.
+2. **Count Cash (F6)** if not done - the *Cash Count* drawer opens over the report: type the number of ₹2000, ₹500, ₹200 … ₹1 notes / coins (**Enter** = next note), then **Save Count (F2)**. *Difference* shows **Cash Tally** when the drawer matches.
+   - Example: Pote Baki ₹47,850 → 95 × ₹500 + 3 × ₹100 + 1 × ₹50 = ₹47,850 → *Cash Tally*.
 3. Untick *Print Day Report before closing* if you do not want the print.
-4. **Close Day & Move to next date (F10)**.
+4. **Close Day & Move to next date (F10)** → "Everything is OK. Close 10/11/2026 and move to 11/11/2026?" → **Yes, close the day**.
+   - *Account posting: N rows will be written* counts the loan-counter rows (Girvi, Interest, Ashal Jama, Interest Jama, Potali, bank charges). Auction sales and your own vouchers are already in the books.
    - If the cash was not counted: "Day End check failed - Cash has not been counted" → **Open Day Report** / **Close the day anyway** / **Go back**.
 5. The day is locked, the billing date moves to the next day and **Gold / Silver Rate** opens for the new date.
 

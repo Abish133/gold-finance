@@ -10,6 +10,7 @@ import { createCrudRouter } from '#utils/crudFactory.js';
 import { audit } from '#services/audit.service.js';
 import { postVoucher, ledgerId, LEDGER } from '#services/accounting.service.js';
 import { getCurrentFy } from '#services/settings.service.js';
+import { peekNumber } from '#services/sequence.service.js';
 import { ensureDateOpen, lastClosedDate } from '#services/daycontrol.service.js';
 import * as acc from './accounts.service.js';
 
@@ -52,17 +53,28 @@ router.get('/vouchers', permitAny(['acc_voucher', 'acc_cashbook']), async (req, 
   const where = ['v.branch_id IN (:b)', 'v.voucher_date BETWEEN :f AND :t', 'v.is_void = 0'];
   const p = { b: req.branchIds, f: from, t: to };
   if (req.query.type) { where.push('v.voucher_type = :ty'); p.ty = req.query.type; }
-  if (req.query.manual === '1') where.push('v.source_type IS NULL');
+  // Voucher Entry list: own vouchers plus auction sales (the desktop app lists them there too)
+  if (req.query.manual === '1') where.push("(v.source_type IS NULL OR v.source_type = 'AUCTION_SALE')");
   if (lq.search) { where.push('(v.narration LIKE :s OR v.voucher_no = :raw)'); p.s = `%${lq.search}%`; p.raw = lq.search; }
   const w = where.join(' AND ');
   const rows = await query(`SELECT v.*, b.name branch_name, u.full_name created_by_name,
       (SELECT SUM(debit) FROM voucher_entries e WHERE e.voucher_id = v.id) amount,
       (SELECT GROUP_CONCAT(CONCAT(l.name, IF(e.debit > 0, ' Dr ', ' Cr '), IF(e.debit > 0, e.debit, e.credit)) SEPARATOR ' | ')
-         FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id WHERE e.voucher_id = v.id) lines_text
+         FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id WHERE e.voucher_id = v.id) lines_text,
+      (SELECT l.name FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id
+        WHERE e.voucher_id = v.id AND IF(v.voucher_type = 'PAYMENT', e.debit > 0, e.credit > 0) ORDER BY e.id LIMIT 1) account,
+      IF(EXISTS (SELECT 1 FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id WHERE e.voucher_id = v.id AND l.name = 'Cash'), 'Cash', 'Bank') mode
      FROM vouchers v JOIN branches b ON b.id = v.branch_id LEFT JOIN users u ON u.id = v.created_by
      WHERE ${w} ${lq.orderBy}, v.id DESC LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p);
   const [{ total }] = await query(`SELECT COUNT(*) total FROM vouchers v WHERE ${w}`, p);
   res.json(paged(rows, total, lq));
+});
+
+/* next voucher number (shown on the Voucher Entry form) */
+router.get('/vouchers/next-no', permitAny(['acc_voucher', 'acc_cashbook']), requireBranch, async (req, res) => {
+  const fy = await getCurrentFy();
+  const no = await peekNumber({ queryOne }, { branchId: req.branchId, key: 'VCH', fyId: fy.id });
+  res.json({ data: { next: `V${no}` } });
 });
 
 router.get('/vouchers/:id', permitAny(['acc_voucher', 'acc_cashbook']), async (req, res) => {

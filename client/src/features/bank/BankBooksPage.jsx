@@ -40,7 +40,7 @@ function Grid({ cols, rows, onOpen, sel, setSel }) {
       <table className="w-full text-sm">
         <thead className="navy-gradient sticky top-0 text-white"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-2 py-2 whitespace-nowrap', ['money', 'weight', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
         <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-          {!rows.length && <tr><td colSpan={cols.length} className="py-16 text-center text-ink-400">Press Load (F5)</td></tr>}
+          {!rows.length && <tr><td colSpan={cols.length} className="py-16 text-center text-ink-400">No bank loans for these filters</td></tr>}
           {rows.map((r) => (
             <tr key={r.id || r.month} onClick={() => setSel?.(r)} onDoubleClick={() => onOpen?.(r)} className={clsx('cursor-pointer', sel && (sel.id || sel.month) === (r.id || r.month) && 'bg-navy-50 dark:bg-ink-800')}>
               {cols.map((c) => <td key={c.key} className={clsx('px-2 py-1.5', ['money', 'weight', 'number'].includes(c.type) && 'num text-right')}>
@@ -60,8 +60,9 @@ export default function BankBooksPage({ mode = 'book' }) {
   const { data: lk } = useLookups();
   const { data: company } = useCompany();
   const [tab, setTab] = useState('taken');
-  const [f, setF] = useState({ bank: '', date_on: 'loan', from: mode === 'book' ? '' : fyStart(), to: mode === 'book' ? '' : today(), search: '' });
-  const [q, setQ] = useState(null);
+  const init = { bank: '', date_on: 'loan', from: mode === 'book' ? '' : fyStart(), to: mode === 'book' ? '' : today(), search: '' };
+  const [f, setF] = useState(init);
+  const [q, setQ] = useState(init);   // loads on open, like the desktop app
   const [sel, setSel] = useState(null);
   const [view, setView] = useState(null);
   const dateOn = mode === 'reports' ? (tab === 'released' ? 'release' : 'loan') : f.date_on;

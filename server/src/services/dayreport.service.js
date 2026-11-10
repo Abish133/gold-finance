@@ -19,14 +19,14 @@ export const dayReport = async ({ branchIds, branchId, from, to }) => {
   };
   const rows = Object.fromEntries(Object.entries(R).map(([k, [id, name]]) => [k, { id, name, jama: 0, nave: 0 }]));
   const add = (k, j = 0, nv = 0) => { rows[k].jama += num(j); rows[k].nave += num(nv); };
-  const txns = await query(`SELECT t.* FROM loan_transactions t
-      LEFT JOIN vouchers v ON v.source_type = 'LOAN_TXN' AND v.source_id = t.id
+  // old loan entries are opening balances, not today's cash; a re-loan's new loan is counted (MyBook shows it in Girvi)
+  const txns = await query(`SELECT t.*, l.advance_interest loan_advance FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
      WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t
-       AND NOT (t.txn_type = 'DISBURSE' AND (COALESCE(v.voucher_type, '') = 'JOURNAL' OR COALESCE(t.remarks, '') = 'Old loan entry'))`, p);
+       AND NOT (t.txn_type = 'DISBURSE' AND (l.entry_type = 'OLD' OR COALESCE(t.remarks, '') = 'Old loan entry'))`, p);
   for (const t of txns) {
     const pr = Math.abs(num(t.principal_amount)); const it = num(t.interest_amount) + num(t.penal_amount);
     switch (t.txn_type) {
-      case 'DISBURSE': add('girvi', 0, pr); add('interest', round2(pr - num(t.charges) - num(t.total_amount))); add('doc', t.charges); break;
+      case 'DISBURSE': add('girvi', 0, pr); add('interest', t.loan_advance); add('doc', t.charges); break;
       case 'TOPUP': add('girvi', 0, pr); add('intjama', it); add('other', t.charges); break;
       case 'PART_PAYMENT': add('ashal', pr); add('intjama', it); add('other', t.charges); add('discount', 0, t.discount); break;
       case 'INTEREST': add('intjama', it); add('other', t.charges); add('discount', 0, t.discount); break;
@@ -58,8 +58,9 @@ export const dayReport = async ({ branchIds, branchId, from, to }) => {
      GROUP BY l.id ORDER BY l.id`, { ...p, cash: cashId });
   const always = new Set([1, 2, 4, 5, 6, 9, 10]); // the desktop always lists these
   const accounts = [
-    ...Object.values(rows).filter((r) => always.has(r.id) || r.jama || r.nave).map((r) => ({ ...r, jama: round2(r.jama), nave: round2(r.nave), muted: !r.jama && !r.nave })),
-    ...extra, ...others.map((o, i) => ({ id: o.code || 11 + i, name: o.name, jama: num(o.jama), nave: num(o.nave) })),
+    // post: rows the Day End writes to the books (auction sales and other vouchers are already vouchers)
+    ...Object.values(rows).filter((r) => always.has(r.id) || r.jama || r.nave).map((r) => ({ ...r, jama: round2(r.jama), nave: round2(r.nave), muted: !r.jama && !r.nave, post: r.id !== 8 })),
+    ...extra.map((x) => ({ ...x, post: x.id === 11 })), ...others.map((o) => ({ id: o.code || o.id, name: o.name, jama: num(o.jama), nave: num(o.nave) })),
   ];
   const opening = await openingBalance(cashId, b, from);
   const jama = round2(accounts.reduce((s2, a) => s2 + num(a.jama), 0));

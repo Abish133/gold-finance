@@ -495,27 +495,41 @@ export const renewLoan = async (req, id, body) => {
     const slabs = parseSlabs(scheme.slabs);
     const rate = num(body.interest_rate, slabs[0].rate);
     const loanRate = num(body.rate_per_gram, loan.rate_per_gram);
+    const silverRate = num(body.silver_rate, loan.silver_rate) || loanRate;   // silver items are valued at the silver rate
+    const rateOf = (code) => (code === 'SILVER' ? silverRate : loanRate);
     const basis = num(body.rate_basis, 91.6) || 91.6;
-    const marketValue = round2(old.items.reduce((s, i) => s + itemValue(i.net_wt, i.purity, loanRate, basis), 0));
+    const marketValue = round2(old.items.reduce((s, i) => s + itemValue(i.net_wt, i.purity, rateOf(i.metal_code), basis), 0));
+    // paper bill book: the given number, else the next one when the old loan had a bill book no (as the desktop app does)
+    let billBook = body.manual_bill_no ? String(body.manual_bill_no) : null;
+    if (!billBook && loan.manual_bill_no) {
+      const bk = await tx.queryOne("SELECT MAX(CAST(manual_bill_no AS UNSIGNED)) n FROM loans WHERE branch_id = :b AND manual_bill_no REGEXP '^[0-9]+$'", { b: loan.branch_id });
+      if (bk?.n) billBook = String(Number(bk.n) + 1);
+    }
+    if (billBook) {
+      const dup = await tx.queryOne('SELECT bill_no FROM loans WHERE branch_id = :b AND manual_bill_no = :m LIMIT 1', { b: loan.branch_id, m: billBook });
+      if (dup) throw ApiError.conflict(`Bill book no ${billBook} is already used on loan ${dup.bill_no}`);
+    }
     const step = num(settings.ROUND_LOAN_TO, 100) || 1;
     const eligible = Math.floor((marketValue * num(scheme.ltv_percent)) / 100 / step) * step;
     if (newPrincipal > eligible && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && scheme.calc_mode !== 'MYBOOK') throw ApiError.badRequest(`New loan exceeds eligible amount ₹${eligible}`);
     const r = await tx.query(
       `INSERT INTO loans (branch_id, fy_id, loan_no, bill_no, barcode, loan_date, due_date, customer_id, scheme_id, metal_id, principal, current_principal,
          interest_rate, rate_type, slabs_snapshot, doc_charges, advance_interest, net_disbursed, total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, rate_per_gram,
-         market_value, eligible_amount, item_summary, item_photo, customer_photo, entry_type, parent_loan_id, remarks, created_by)
+         market_value, eligible_amount, item_summary, item_photo, customer_photo, entry_type, parent_loan_id, remarks, created_by, loan_on, silver_rate, manual_bill_no)
        SELECT branch_id, :fy, :no, :bill, :barcode, :d, :due, customer_id, :scheme, metal_id, :p, :p, :rate, :rt, :slabs, :doc, :adv, :net,
-         total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, :lr, :mv, :el, item_summary, item_photo, customer_photo, 'RENEWAL', id, :rem, :u
+         total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, :lr, :mv, :el, item_summary, item_photo, customer_photo, 'RENEWAL', id, :rem, :u, loan_on, :sr, :mb
        FROM loans WHERE id = :old`,
       { fy: fy.id, no: loanNo, bill: billNo, barcode: `${branch.code}${String(loanNo).padStart(6, '0')}`, d: date,
         due: dayjs(date).add(num(scheme.tenure_months, 12), 'month').format('YYYY-MM-DD'), scheme: scheme.id, p: newPrincipal, rate,
         rt: scheme.rate_type, slabs: JSON.stringify(slabs.map((s, i) => (i === 0 ? { ...s, rate } : s))), doc: docCharges, adv: advance, net: Math.max(0, net),
-        lr: loanRate, mv: marketValue, el: eligible, rem: `Renewal of ${loan.bill_no}`, u: req.user.id, old: loan.id },
+        lr: loanRate, sr: silverRate, mb: billBook, mv: marketValue, el: eligible, rem: `Renewal of ${loan.bill_no}`, u: req.user.id, old: loan.id },
     );
     const newLoanId = r.insertId;
     await tx.query(`INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks)
-      SELECT :n, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, :lr, ROUND(ROUND(net_wt * purity / 100, 3) * :lr * 100 / :basis / 100) * 100, remarks FROM loan_items WHERE loan_id = :o`,
-    { n: newLoanId, o: loan.id, lr: loanRate, basis });
+      SELECT :n, li.item_id, li.metal_id, li.item_name, li.pcs, li.gross_wt, li.stone_wt, li.net_wt, li.purity, li.fine_wt, IF(m.code = 'SILVER', :sr, :lr),
+             ROUND(ROUND(li.net_wt * li.purity / 100, 3) * IF(m.code = 'SILVER', :sr, :lr) * 100 / :basis / 100) * 100, li.remarks
+        FROM loan_items li LEFT JOIN metals m ON m.id = li.metal_id WHERE li.loan_id = :o ORDER BY li.id`,
+    { n: newLoanId, o: loan.id, lr: loanRate, sr: silverRate, basis });
     if (Array.isArray(body.add_items) && body.add_items.length) {
       const extra = prepareItems(body.add_items, loanRate);
       await tx.conn.query('INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks) VALUES ?',

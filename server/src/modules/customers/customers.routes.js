@@ -19,7 +19,10 @@ const SELECT = `SELECT c.*, b.name AS branch_name,
   (SELECT COALESCE(SUM(l.current_principal),0) FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN') AS outstanding
   FROM customers c JOIN branches b ON b.id = c.branch_id`;
 
-const clean = (body) => Object.fromEntries(FIELDS.filter((f) => f in body).map((f) => [f, body[f] === '' ? null : body[f]]));
+/* names and places are kept in Proper Case like the desktop ("ravi kumar" -> "Ravi Kumar") */
+const PROPER = ['name', 'relation_name', 'street', 'area', 'city', 'district', 'nominee_name', 'occupation'];
+const proper = (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').toLowerCase().replace(/(^|[\s.(/-])([a-z])/g, (m, a, c) => a + c.toUpperCase()) : v);
+const clean = (body) => Object.fromEntries(FIELDS.filter((f) => f in body).map((f) => [f, body[f] === '' ? null : PROPER.includes(f) ? proper(body[f]) : body[f]]));
 
 const loadCustomer = async (req, id) => {
   const c = await queryOne(`${SELECT} WHERE c.id = :id`, { id });

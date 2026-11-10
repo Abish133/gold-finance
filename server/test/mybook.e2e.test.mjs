@@ -58,5 +58,15 @@ for (const [d, l2, l4i, l4t] of MYBOOK_AFTER_PAYMENTS.filter(([d]) => d >= today
   const rel = (await call('GET', `/loans/${ids.L3}`)).data.transactions.find((t) => t.txn_type === 'RELEASE');
   eq(rel.interest_amount, due, 're-loan interest collected'); eq(rel.total_amount, 12345 + due, 're-loan old loan total');
   eq(nl.calc.monthlyInterest, 185, 're-loan new interest / month'); }
+// MyBook Re-loan of a silver loan: stays a silver loan, item valued at the silver rate, next bill book no
+{ const sl = (await call('POST', '/loans', { customer_id: cust.id, scheme_id: scheme.id, loan_date: today, principal: 3000, interest_rate: 2, interest_type: 'SIMPLE', advance_interest: 60,
+    manual_bill_no: `9${tag}`, rate_per_gram: 7900, silver_rate: 100, loan_on: 'SILVER', items: [{ item_name: 'Article', metal_code: 'SILVER', pcs: 1, gross_wt: 50, stone_wt: 0, purity: 92, rate_basis: 100 }],
+    payments: [{ mode: 'CASH', amount: 2940 }] })).data.loan;
+  eq(sl.market_value, 4600, 'silver loan value');
+  const nl = (await call('POST', `/loans/${sl.id}/renew`, { date: today, new_principal: 3500, interest_rate: 2, advance_interest: 70, doc_charges: 0, interest_amount: 0,
+    rate_per_gram: 7900, silver_rate: 100, rate_basis: 100, payments: [{ mode: 'CASH', amount: 430 }] })).data.loan;
+  if (nl.loan_on !== 'SILVER') fails.push(`silver re-loan stays silver (got ${nl.loan_on})`);
+  eq(nl.market_value, 4600, 'silver re-loan value at silver rate');
+  if (String(nl.manual_bill_no) !== String(Number(`9${tag}`) + 1)) fails.push(`silver re-loan bill book next (got ${nl.manual_bill_no})`); }
 console.log(fails.length ? `FAILED ${fails.length}:\n${fails.join('\n')}` : 'ALL MYBOOK LOAN FIGURES MATCH THROUGH THE API');
 if (fails.length) process.exitCode = 1;

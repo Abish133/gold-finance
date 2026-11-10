@@ -88,8 +88,8 @@ export default function DashboardPage() {
 
       {/* four tiles */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat tone="blue" label="Loans today" value={data.today.loans.cnt} hint={`${amount(data.today.loans.principal)} · ${grams(data.today.loans.net_wt)}`} />
-        <Stat tone="green" label="Releases today" value={n(t.RELEASE?.cnt)} hint={amount(t.RELEASE?.principal)} />
+        <Stat tone="blue" label="Loans today" value={data.today.loans.cnt} hint={`${amount(n(data.today.loans.principal) + n(t.TOPUP?.principal))} · ${grams(data.today.loans.net_wt)}`} />
+        <Stat tone="green" label="Releases today" value={n(t.RELEASE?.cnt) + n(t.AUCTION?.cnt)} hint={amount(n(t.RELEASE?.principal) + n(t.AUCTION?.principal))} />
         <Stat tone="gold" label="Interest today" value={amount(interestToday)} hint="advance + release + part payment" />
         <Stat tone="red" label="Due for auction" value={n(status?.unsettled_12m)} hint={`open for over 12 months · ${n(data.overdue.cnt)} past due date`} />
       </div>
@@ -121,8 +121,8 @@ export default function DashboardPage() {
                   <li key={r.id}>
                     <button type="button" onClick={() => navigate(`/loans/counter?loan=${r.loan_id}`)} className="flex w-full items-center gap-3 px-5 py-2.5 text-left hover:bg-navy-50/50 dark:hover:bg-ink-800/40">
                       <Badge tone={TXN_TONE[r.txn_type]}>{TXN_LABEL[r.txn_type]}</Badge>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{r.customer_name}</span><span className="text-xs text-ink-500">#{r.bill_no} · {dayjs(r.created_at).format('hh:mm A')}</span></span>
-                      <span className="num text-sm font-bold">{amount(r.total_amount)}</span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{r.customer_name}</span><span className="text-xs text-ink-500">{r.manual_bill_no ? `${r.manual_bill_no} / ` : '#'}{r.bill_no} · {dayjs(r.created_at).format('hh:mm A')}</span></span>
+                      <span className="num text-sm font-bold">{amount(['DISBURSE', 'TOPUP', 'RELEASE', 'AUCTION'].includes(r.txn_type) ? Math.abs(r.principal_amount) : r.total_amount)}</span>
                     </button>
                   </li>
                 ))}
@@ -130,7 +130,7 @@ export default function DashboardPage() {
             )}
           </Card>
           <Card title="Reminders" bodyClassName="space-y-2 p-4">
-            {!alerts.length && <p className="text-sm text-ink-500">Nothing pending.</p>}
+            {!alerts.length && <p className="text-sm text-ink-500">All good - nothing pending</p>}
             {billing?.behind && (
               <button type="button" onClick={() => navigate('/accounts/day-report')} className="flex w-full items-center justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-2.5 text-left text-sm text-rose-800">
                 <span>Billing date {dayjs(billing.billingDate).format('DD/MM/YYYY')} is behind today. Finish Day End to move to {dayjs().format('DD/MM/YYYY')}.</span><span className="font-semibold whitespace-nowrap">Day End →</span>

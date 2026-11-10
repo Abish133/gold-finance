@@ -1,4 +1,5 @@
 // End-to-end API smoke test
+import { testBranch } from './_testbranch.mjs';
 const U = 'krl' + Date.now().toString().slice(-5);
 const B = `${process.env.API_URL || 'http://localhost:5000'}/api`;
 let cookie = '';
@@ -16,7 +17,7 @@ const today = new Date().toISOString().slice(0, 10);
 
 const me = await call('POST', '/auth/login', { username: 'admin', password: 'Admin@123' });
 ok(`login as ${me.data.user.full_name}, branches ${me.data.user.branches.length}`);
-const ho = me.data.user.branches[0].id; branch = String(ho);
+const ho = await testBranch(call); branch = String(ho);   // own branch - the shop's Head Office is never touched
 
 // second branch
 const b2 = await call('POST', '/admin/branches', { code: 'K' + Date.now().toString().slice(-4), name: 'Karungal', phone: '7708950919', loan_prefix: 'K', opening_cash: 100000 });

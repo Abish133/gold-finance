@@ -29,7 +29,7 @@ router.get('/', permit('dashboard', 'view'), async (req, res) => {
                FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_date >= :s GROUP BY 1) x GROUP BY m ORDER BY m`, { b, s: sixMonths }),
     query(`SELECT m.name metal, COUNT(*) loans, SUM(l.net_wt) net_wt, SUM(l.current_principal) amount FROM loans l JOIN metals m ON m.id = l.metal_id
              WHERE l.branch_id IN (:b) AND l.status = 'OPEN' GROUP BY m.id`, { b }),
-    query(`SELECT t.id, t.txn_type, t.txn_date, t.total_amount, t.receipt_no, l.id loan_id, l.bill_no, c.name customer_name, t.created_at
+    query(`SELECT t.id, t.txn_type, t.txn_date, t.total_amount, t.principal_amount, t.receipt_no, l.id loan_id, l.bill_no, l.manual_bill_no, c.name customer_name, t.created_at
              FROM loan_transactions t JOIN loans l ON l.id = t.loan_id JOIN customers c ON c.id = l.customer_id
             WHERE t.branch_id IN (:b) AND t.is_void = 0 ORDER BY t.id DESC LIMIT 10`, { b }),
     query(`SELECT l.id, l.bill_no, l.due_date, l.current_principal, c.name customer_name, c.phone FROM loans l JOIN customers c ON c.id = l.customer_id
@@ -58,9 +58,9 @@ router.get('/status', async (req, res) => {
     `SELECT
        (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND entry_type <> 'OLD'
           AND loan_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month_loans,
-       (SELECT COUNT(*) FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type = 'RELEASE'
+       (SELECT COUNT(*) FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type IN ('RELEASE', 'AUCTION')
           AND txn_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month_releases,
-       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date < DATE_SUB(CURDATE(), INTERVAL 12 MONTH)) unsettled_12m,
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date <= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)) unsettled_12m,
        (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN') open_loans`,
     { b },
   );
@@ -91,12 +91,12 @@ router.get('/search', async (req, res) => {
 router.get('/alerts', async (req, res) => {
   const b = req.branchIds;
   const [overdue, rateMissing, notClosed] = await Promise.all([
-    queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND due_date < CURDATE()", { b }),
+    queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date <= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)", { b }),
     queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = CURDATE()'),
     req.branchId ? queryOne('SELECT MAX(close_date) d FROM day_closes WHERE branch_id = :b', { b: req.branchId }) : null,
   ]);
   const alerts = [];
-  if (overdue.c) alerts.push({ type: 'warning', key: 'overdue', text: `${overdue.c} loans are past due date`, link: '/auction' });
+  if (overdue.c) alerts.push({ type: 'warning', key: 'overdue', text: `${overdue.c} loans are open for over 12 months`, link: '/auction' });
   if (!rateMissing.c) alerts.push({ type: 'info', key: 'rate', text: "Today's gold rate is not updated", link: '/masters/rates' });
   if (notClosed && notClosed.d && dayjs().diff(dayjs(notClosed.d), 'day') > 1) {
     alerts.push({ type: 'info', key: 'dayclose', text: `Day close pending since ${dayjs(notClosed.d).add(1, 'day').format('DD-MM-YYYY')}`, link: '/accounts/day-close' });

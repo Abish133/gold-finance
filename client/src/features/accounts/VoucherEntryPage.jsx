@@ -29,6 +29,7 @@ export default function VoucherEntryPage() {
   const amt = useRef(null);
   const ledgers = useFetch('/desk/ledger-balances');
   const list = useFetch('/accounts/vouchers', { from: d, to: d, manual: '1', pageSize: 200 });
+  const nextNo = useFetch(isAllBranches ? null : '/accounts/vouchers/next-no');
   const closed = useFetch(isAllBranches ? null : '/accounts/day-close');
   const isClosed = closed.data?.lastClosed && !dayjs(d).isAfter(dayjs(closed.data.lastClosed));
   const accounts = (ledgers.data || []).filter((l) => l.is_active && l.system_key !== 'CASH');
@@ -50,7 +51,7 @@ export default function VoucherEntryPage() {
       if (editing) await api.del(`/accounts/vouchers/${editing.id}`);
       await api.post('/accounts/vouchers', { voucher_type: f.type, date: d, ledger_id: f.ledger_id, amount: f.amount, mode: f.mode, bank_ledger_id: f.bank_ledger_id, narration: f.narration });
       toast.success(editing ? 'Voucher updated' : 'Voucher saved');
-      clear(); list.refetch(); ledgers.refetch(); qc.invalidateQueries({ queryKey: ['/accounts/vouchers'] });
+      clear(); list.refetch(); ledgers.refetch(); nextNo.refetch?.(); qc.invalidateQueries({ queryKey: ['/accounts/vouchers'] });
     } catch (e) { toast.error(e.message); }
   };
   const edit = async (v) => {
@@ -62,7 +63,7 @@ export default function VoucherEntryPage() {
     setAcq(other.ledger_name);
   };
   const print = () => printTable({ title: `Vouchers - ${dayjs(d).format('DD/MM/YYYY')}`, company, rows, columns: [
-    { key: 'voucher_no', label: 'V.No' }, { key: 'voucher_type', label: 'Type', print: (r) => (r.voucher_type === 'RECEIPT' ? 'Jama' : 'Nave') }, { key: 'lines_text', label: 'Account' },
+    { key: 'voucher_no', label: 'V.No' }, { key: 'voucher_type', label: 'Type', print: (r) => (r.voucher_type === 'RECEIPT' ? 'Jama' : 'Nave') }, { key: 'account', label: 'Account', print: (r) => (r.source_type ? 'Auction' : r.account || r.lines_text) },
     { key: 'narration', label: 'Narration' }, { key: 'amount', label: 'Amount', type: 'money' }] });
   useKeys({ f10: save, f3: () => sel && edit(sel), delete: () => sel && setDel(sel), f9: print }, [f, d, sel, editing]);
 
@@ -80,7 +81,7 @@ export default function VoucherEntryPage() {
       </section>
       <div className="grid items-start gap-3 xl:grid-cols-[400px_1fr]">
         <div className="card space-y-3 p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-bold text-ink-600 uppercase">{editing ? `Edit voucher ${editing.voucher_no}` : 'New voucher'}</p><span className="text-xs text-ink-500">V. No {rows.length + 1}</span></div>
+          <div className="flex items-center justify-between"><p className="text-xs font-bold text-ink-600 uppercase">{editing ? `Edit voucher ${editing.voucher_no}` : 'New voucher'}</p><span className="text-xs text-ink-500">V. No {editing ? editing.voucher_no : nextNo.data?.next || '-'}</span></div>
           <Field label="Date" hint={settings?.ALLOW_BACKDATE_BILLING === '1' ? 'Back date allowed (setting)' : 'Back date not allowed'}>
             <Input type="date" max={today()} disabled={settings?.ALLOW_BACKDATE_BILLING !== '1'} value={d} onChange={(e) => setD(e.target.value)} />
           </Field>
@@ -124,9 +125,9 @@ export default function VoucherEntryPage() {
               <thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">V. No</th><th className="px-3 text-left">Type</th><th className="px-3 text-left">Account</th><th className="px-3 text-left">Narration</th><th className="px-3 text-left">Mode</th><th className="px-3 text-right">Jama</th><th className="px-3 text-right">Nave</th></tr></thead>
               <tbody className="divide-y divide-ink-200">
                 {rows.map((v) => (
-                  <tr key={v.id} onClick={() => setSel(v)} onDoubleClick={() => edit(v)} className={clsx('cursor-pointer hover:bg-navy-50/60', sel?.id === v.id && 'bg-cream-200')}>
+                  <tr key={v.id} onClick={() => setSel(v.source_type ? null : v)} onDoubleClick={() => !v.source_type && edit(v)} title={v.source_type ? 'Posted by Auction Release - change it there' : undefined} className={clsx('cursor-pointer hover:bg-navy-50/60', sel?.id === v.id && 'bg-cream-200')}>
                     <td className="px-3 py-1.5 font-semibold">{v.voucher_no}</td><td className="px-3">{v.voucher_type === 'RECEIPT' ? 'Jama' : v.voucher_type === 'PAYMENT' ? 'Nave' : v.voucher_type}</td>
-                    <td className="max-w-72 truncate px-3 text-xs">{v.lines_text}</td><td className="px-3">{v.narration}</td><td className="px-3 text-xs">{/Cash/.test(v.lines_text) ? 'Cash' : 'Bank'}</td>
+                    <td className="max-w-72 truncate px-3">{v.source_type ? 'Auction' : v.account || v.lines_text}</td><td className="px-3">{v.narration}</td><td className="px-3 text-xs">{v.mode || (/Cash/.test(v.lines_text) ? 'Cash' : 'Bank')}</td>
                     <td className="num px-3 text-right text-emerald-700">{v.voucher_type === 'RECEIPT' ? amount(v.amount) : ''}</td><td className="num px-3 text-right text-rose-600">{v.voucher_type === 'PAYMENT' ? amount(v.amount) : ''}</td>
                   </tr>
                 ))}

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { Search, RefreshCw, FileDown, FileSpreadsheet, Coins, CalendarCheck, Printer, Check, X } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Checkbox, Drawer, Input } from '@/components/ui';
+import { Button, Checkbox, ConfirmDrawer, Drawer, Input } from '@/components/ui';
 import { useFetch, useCompany, useLookups } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -13,6 +13,7 @@ import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, Line, useKeys } from '@/features/loans/desk';
+import { CashCountDrawer } from './DenominationPage';
 
 const MODE = ['CASH', 'UPI', 'BANK', 'CARD', 'CHEQUE'];
 
@@ -25,6 +26,8 @@ export default function DayReportPage({ mode = 'report' }) {
   const billing = useFetch(isEnd ? '/desk/billing-date' : null);
   const [printFirst, setPrintFirst] = useState(true);
   const [closing, setClosing] = useState(false);
+  const [count, setCount] = useState(false);
+  const [sure, setSure] = useState(false);
   const navigate = useNavigate();
   const { data: company } = useCompany();
   const [r, setR] = useState({ from: today(), to: today() });
@@ -45,8 +48,11 @@ export default function DayReportPage({ mode = 'report' }) {
     if (q.from !== q.to) return toast.error('Day End closes one day - set From and To to the same date');
     if (data?.dayClosed) return toast.error('This day is already closed');
     // desktop: "Day End check failed - Cash has not been counted" -> Day Report / close anyway / go back
-    if (force !== true && t?.counted == null) return setCheck(true);
+    if (force !== true && force !== 'ok' && t?.counted == null) return setCheck(true);
     setCheck(false);
+    // desktop: "Everything is OK. Close dd/mm/yyyy and move to dd/mm/yyyy?"
+    if (force !== 'ok') return setSure(true);
+    setSure(false);
     setClosing(true);
     try {
       if (printFirst) await print();
@@ -57,7 +63,7 @@ export default function DayReportPage({ mode = 'report' }) {
       if (!dayjs(nextDay).isAfter(dayjs(), 'day')) navigate(`/masters/rates?date=${nextDay}`); else refetch();
     } catch (e) { toast.error(e.message); } finally { setClosing(false); }
   };
-  useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => navigate('/accounts/denomination'), f10: () => (isEnd ? closeDay() : navigate('/settings/day-end')), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, q, data, printFirst, isEnd]);
+  useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => setCount(true), f10: () => (isEnd ? closeDay() : navigate('/settings/day-end')), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, q, data, printFirst, isEnd]);
 
   return (
     <div className="animate-rise space-y-3">
@@ -108,7 +114,7 @@ export default function DayReportPage({ mode = 'report' }) {
           <Line bold label="Cash should be in drawer" value={amount(t?.cashInDrawer)} />
           <div className="flex items-center justify-between rounded-md bg-cream-100 px-3 py-2">
             <div><p className="text-xs font-bold text-ink-600 uppercase">Counted cash {dayjs(q.to).format('DD/MM/YYYY')}</p><p className="text-lg font-bold">{t?.counted != null ? amount(t.counted) : 'Not counted'}</p></div>
-            <Button variant="outline" icon={Coins} onClick={() => navigate('/accounts/denomination')}>Count Cash (F6)</Button>
+            <Button variant="outline" icon={Coins} onClick={() => setCount(true)}>Count Cash (F6)</Button>
           </div>
           <div className={clsx('rounded-md p-3 text-center text-sm font-bold', t?.counted == null ? 'bg-rose-100 text-rose-700' : Math.abs(t.countDiff) < 0.01 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>
             {t?.counted == null ? <>CASH NOT COUNTED<p className="text-xs font-normal">Press F6 and count the drawer.</p></> : Math.abs(t.countDiff) < 0.01 ? 'CASH TALLIED' : `${t.countDiff > 0 ? 'EXCESS' : 'SHORTAGE'} ${amount(Math.abs(t.countDiff))}`}
@@ -119,7 +125,7 @@ export default function DayReportPage({ mode = 'report' }) {
               {[[rateOk, 'Gold / Silver rate entered'], [t?.counted != null, 'Cash counted (F6)', 'Cash not counted (F6)'], [t?.counted != null && Math.abs(t.countDiff) < 0.01, 'Cash tally', 'Cash not tally (Close Day will offer Day Report)']].map(([ok, yes, no]) => (
                 <p key={yes} className={clsx('flex items-center gap-2', ok ? 'text-emerald-700' : 'text-rose-600')}>{ok ? <Check className="size-4" /> : <X className="size-4" />}{ok ? yes : no || yes}</p>
               ))}
-              <p className="text-ink-600">Account posting: {(data?.accounts || []).filter((a) => n(a.jama) || n(a.nave)).length} rows will be written</p>
+              <p className="text-ink-600">Account posting: {(data?.accounts || []).filter((a) => a.post && (n(a.jama) || n(a.nave))).length} rows will be written</p>
               <div className="flex items-center justify-between"><span>New billing date</span><b className="num">{dayjs(nextDay).format('DD/MM/YYYY')}</b></div>
               <Checkbox checked={printFirst} onChange={setPrintFirst} label="Print Day Report before closing" />
               {can('day_close', 'add') && <Button variant="outline" size="lg" className="h-12 w-full border-emerald-600 bg-amber-50 text-emerald-800" icon={CalendarCheck} loading={closing} disabled={data?.dayClosed}
@@ -132,6 +138,10 @@ export default function DayReportPage({ mode = 'report' }) {
           <div className="grid grid-cols-2 gap-2"><Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button><ExitButton /></div>
         </div>
       </div>
+      <ConfirmDrawer open={sure} onClose={() => setSure(false)} onConfirm={() => closeDay('ok')} tone="primary" loading={closing} confirmText="Yes, close the day"
+        title={t?.counted != null && Math.abs(n(t.countDiff)) < 0.01 ? 'Everything is OK.' : 'Close the day?'}
+        message={`Close ${dayjs(q.to).format('DD/MM/YYYY')} and move to ${dayjs(nextDay).format('DD/MM/YYYY')}?`} />
+      <CashCountDrawer open={count} onClose={() => { setCount(false); refetch(); }} date={q.to} />
       <Drawer open={check} onClose={() => setCheck(false)} size="sm" icon={CalendarCheck} title={`Day End check failed for ${dayjs(q.to).format('DD/MM/YYYY')}`}
         footer={<><Button variant="outline" onClick={() => setCheck(false)}>Go back (Esc)</Button><Button variant="outline" onClick={() => closeDay(true)}>Close the day anyway</Button><Button variant="gold" onClick={() => { setCheck(false); navigate('/accounts/day-report'); }}>Open Day Report</Button></>}>
         <ul className="list-disc space-y-1 pl-5 text-sm"><li>Cash has not been counted.</li></ul>

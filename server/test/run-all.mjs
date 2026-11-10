@@ -1,5 +1,6 @@
 // Runs every API test against a running dev server (npm run dev) on the DEV database.
-// The tests create their own test branches / customers / loans; backup.test restores the data it changed.
+// The tests create their own test branches / customers / loans (never in the shop's Head Office); backup.test restores
+// the data it changed, and cleanup.mjs removes the test branches and users at the end.
 // Usage: npm test            (all)       npm test -- flows sweep   (only matching files)
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -22,6 +23,8 @@ for (const f of files) {
   const r = spawnSync(process.execPath, [dir + f], { stdio: 'inherit', env: process.env });
   results.push([f, r.status === 0, Math.round((Date.now() - t) / 1000)]);
 }
+// leave the dev database with only the shop's own data
+if (!want.length) spawnSync(process.execPath, [dir + 'cleanup.mjs'], { stdio: 'inherit', env: process.env });
 console.log('\n--- summary');
 for (const [f, ok, s] of results) console.log(`${ok ? 'PASS' : 'FAIL'}  ${f}  (${s}s)`);
 process.exit(results.every((r) => r[1]) ? 0 : 1);

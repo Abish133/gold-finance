@@ -26,9 +26,11 @@ screens: day_close, acc_cashbook, cash_denomination
 **Settings → Day End** - check and close the billing date.
 
 1. The checks on the right: gold / silver rate entered, cash counted (F6), cash tally, rows to post.
-2. **Count Cash (F6)** if not done - Cash Denomination.
+2. **Count Cash (F6)** if not done - the *Cash Count* drawer opens over the report: type the number of ₹2000, ₹500, ₹200 … ₹1 notes / coins (**Enter** = next note), then **Save Count (F2)**. *Difference* shows **Cash Tally** when the drawer matches.
+   - Example: Pote Baki ₹47,850 → 95 × ₹500 + 3 × ₹100 + 1 × ₹50 = ₹47,850 → *Cash Tally*.
 3. Untick *Print Day Report before closing* if you do not want the print.
-4. **Close Day & Move to next date (F10)**.
+4. **Close Day & Move to next date (F10)** → "Everything is OK. Close 10/11/2026 and move to 11/11/2026?" → **Yes, close the day**.
+   - *Account posting: N rows will be written* counts the loan-counter rows (Girvi, Interest, Ashal Jama, Interest Jama, Potali, bank charges). Auction sales and your own vouchers are already in the books.
    - If the cash was not counted: "Day End check failed - Cash has not been counted" → **Open Day Report** / **Close the day anyway** / **Go back**.
 5. The day is locked, the billing date moves to the next day and **Gold / Silver Rate** opens for the new date.
 
