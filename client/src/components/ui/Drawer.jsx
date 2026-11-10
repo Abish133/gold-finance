@@ -20,23 +20,30 @@ let openCount = 0;
  */
 export function Drawer({ open, onClose, title, subtitle, icon: Icon, size = 'md', footer, children, bodyClassName, closeOnOverlay = true }) {
   const panel = useRef(null);
+  // latest onClose without re-running the open effect (an inline onClose changes every render,
+  // which used to re-focus the first box while typing in another one)
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
     openCount += 1;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
-      if (e.key === 'Escape' && panel.current && panel.current === [...document.querySelectorAll('[data-drawer]')].pop()) onClose?.();
+      if (e.key === 'Escape' && panel.current && panel.current === [...document.querySelectorAll('[data-drawer]')].pop()) closeRef.current?.();
     };
     window.addEventListener('keydown', onKey);
-    const t = setTimeout(() => panel.current?.querySelector('input:not([type=hidden]):not([disabled]), select, textarea')?.focus(), 80);
+    // focus the first box once when the drawer opens - never steal focus the user already moved inside it
+    const t = setTimeout(() => {
+      if (panel.current && !panel.current.contains(document.activeElement)) panel.current.querySelector('input:not([type=hidden]):not([disabled]), select, textarea')?.focus();
+    }, 80);
     return () => {
       openCount -= 1;
       if (!openCount) document.body.style.overflow = '';
       window.removeEventListener('keydown', onKey);
       clearTimeout(t);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return createPortal(
