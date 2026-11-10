@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import dayjs from 'dayjs';
 import { workDate } from '#services/daycontrol.service.js';
+import { getSettings } from '#services/settings.service.js';
+import { listBackupFiles } from '#services/backup.service.js';
 import { query, queryOne } from '#config/db.js';
 import { permit, can } from '#middleware/auth.js';
 import { daySummary } from '#modules/accounts/accounts.service.js';
@@ -101,6 +103,19 @@ router.get('/alerts', async (req, res) => {
   if (!rateMissing.c) alerts.push({ type: 'info', key: 'rate', text: `Gold rate for ${dayjs(await workDate(req.branchId)).format('DD/MM/YYYY')} is not updated`, link: '/masters/rates' });
   if (notClosed && notClosed.d && dayjs().diff(dayjs(notClosed.d), 'day') > 1) {
     alerts.push({ type: 'info', key: 'dayclose', text: `Day close pending since ${dayjs(notClosed.d).add(1, 'day').format('DD/MM/YYYY')}`, link: '/accounts/day-close' });
+  }
+  const st = await getSettings(req.branchId || 0);
+  // desktop: warn when there is no backup for this many days (BK..)
+  const warnDays = Number(st.BACKUP_WARN_DAYS ?? 7);
+  if (warnDays > 0) {
+    const last = listBackupFiles()[0];
+    const age = last ? dayjs().diff(dayjs(last.created_at), 'day') : null;
+    if (age == null || age >= warnDays) alerts.push({ type: 'warning', key: 'backup', text: last ? `No backup for ${age} days` : 'No backup taken yet', link: '/settings/backup' });
+  }
+  // desktop: the last year is over and not closed - remind to run Year End (YE..)
+  if (st.YEAR_END_REMIND !== '0') {
+    const fy = await queryOne('SELECT name, end_date, is_closed FROM financial_years WHERE is_current = 1');
+    if (fy && !Number(fy.is_closed) && dayjs().isAfter(dayjs(fy.end_date), 'day')) alerts.push({ type: 'info', key: 'yearend', text: `A/c year ${fy.name} is over - run Year End Process`, link: '/settings/year-end' });
   }
   res.json({ data: alerts });
 });

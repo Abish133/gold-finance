@@ -21,33 +21,47 @@ export function usePrinter() {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null);
 
+  // System Control: LRBP = preview before print (No = straight to the printer); DB.. = duplicate preview / mark / copies
+  const show = useCallback(async (p, dup = false) => {
+    const wantPreview = dup ? settings?.DUP_PREVIEW !== '0' : settings?.PRINT_PREVIEW !== '0';
+    if (wantPreview) { setPreview(p); return; }
+    try {
+      if (p.log) await api.post(`/loans/${p.log.id}/print-log`, { doc_type: p.log.doc_type });
+      for (const lg of p.logs || []) await api.post(`/loans/${lg.id}/print-log`, { doc_type: lg.doc_type });
+      await printElement(p.element, { title: p.title });
+    } catch (e) { toast.error(e.message); }
+  }, [settings]);
+  const dupMark = settings?.DUP_MARK !== '0';
+
   const printLoan = useCallback(async (full) => {
     setBusy(true);
     try {
       const prev = await api.get(`/loans/${full.loan.id}/print-logs`);
-      const copy = prev.data.some((p) => p.doc_type === 'LOAN_RECEIPT') ? 'DUPLICATE' : 'ORIGINAL';
-      const data = await buildLoanPrintData({ full, company, settings, schemes: lookups?.schemes, copy });
-      setPreview({ title: `Loan bill #${full.loan.bill_no}`, element: <LoanReceipt data={data} />, log: { id: full.loan.id, doc_type: 'LOAN_RECEIPT' } });
+      const again = prev.data.some((p) => p.doc_type === 'LOAN_RECEIPT');
+      const data = await buildLoanPrintData({ full, company, settings, schemes: lookups?.schemes, copy: again && dupMark ? 'DUPLICATE' : 'ORIGINAL' });
+      await show({ title: `Loan bill #${full.loan.bill_no}`, element: <LoanReceipt data={data} />, log: { id: full.loan.id, doc_type: 'LOAN_RECEIPT' } }, again);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
-  }, [company, settings, lookups]);
+  }, [company, settings, lookups, show, dupMark]);
 
   /** Several loan bills in one preview (Duplicate Bill screen). Always marked DUPLICATE. */
   const printLoans = useCallback(async (fulls) => {
     setBusy(true);
     try {
-      const datas = await Promise.all(fulls.map((full) => buildLoanPrintData({ full, company, settings, schemes: lookups?.schemes, copy: 'DUPLICATE' })));
-      setPreview({ title: `Duplicate bill${fulls.length > 1 ? `s (${fulls.length})` : ` #${fulls[0].loan.bill_no}`}`,
+      const copies = Math.min(5, Math.max(1, Number(settings?.DUP_COPIES) || 1));
+      const one = await Promise.all(fulls.map((full) => buildLoanPrintData({ full, company, settings, schemes: lookups?.schemes, copy: dupMark ? 'DUPLICATE' : 'ORIGINAL' })));
+      const datas = one.flatMap((d) => Array.from({ length: copies }, () => d));
+      await show({ title: `Duplicate bill${fulls.length > 1 ? `s (${fulls.length})` : ` #${fulls[0].loan.bill_no}`}`,
         element: <div>{datas.map((d, i) => <div key={i} className={i < datas.length - 1 ? 'page-break' : ''}><LoanReceipt data={d} /></div>)}</div>,
-        logs: fulls.map((f) => ({ id: f.loan.id, doc_type: 'LOAN_RECEIPT' })) });
+        logs: fulls.map((f) => ({ id: f.loan.id, doc_type: 'LOAN_RECEIPT' })) }, true);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
-  }, [company, settings, lookups]);
+  }, [company, settings, lookups, show, dupMark]);
 
   const printTxn = useCallback((full, txn) => {
     const after = full.transactions.filter((t) => !t.is_void && t.id <= txn.id).reduce((s, t) => s + n(t.principal_amount), 0);
     const paidBefore = full.transactions.filter((t) => !t.is_void && t.id < txn.id && t.txn_type !== 'DISBURSE').reduce((s, t) => s + n(t.interest_amount), 0);
     const data = { company: company || {}, loan: full.loan, txn, balance: after, items: full.items, monthly: full.calc?.monthlyInterest, months: full.calc?.months, paidBefore };
-    setPreview({ title: `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={data} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
-  }, [company]);
+    show({ title: `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={data} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
+  }, [company, show]);
 
   const doPrint = async () => {
     setBusy(true);

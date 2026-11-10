@@ -26,6 +26,20 @@ const mk = async (amt, item = 'Ring', wt = 10) => (await call('POST', '/loans', 
   items: [{ item_name: item, pcs: 1, gross_wt: wt, stone_wt: 0, purity: 91.6 }], payments: [{ mode: 'CASH', amount: amt }] })).data.loan;
 let L1, L2, L3, L4;
 await step('create 4 loans', async () => { L1 = await mk(20000); L2 = await mk(25000, 'Chain', 12); L3 = await mk(10000, 'Bangle', 6); L4 = await mk(8000, 'Ring', 5); return [L1, L2, L3, L4].map((l) => l.bill_no).join(','); });
+// desktop "Auto manual number (last + 1)": loans without a bill book no get 1, 2, 3, 4
+await step('bill book no given by itself', async () => {
+  const books = [L1, L2, L3, L4].map((l) => l.manual_bill_no).join(',');
+  if (books !== '1,2,3,4') throw new Error(`bill book nos ${books}, expected 1,2,3,4`);
+  return books;
+});
+// desktop: 3 wrong passwords lock the user name for some seconds
+await step('login locks after wrong passwords', async () => {
+  const u = `nobody${tag}`;
+  const try1 = async () => (await fetch(`${B}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: 'x' }) })).status;
+  const s = [await try1(), await try1(), await try1(), await try1()];
+  if (s[3] !== 429) throw new Error(`statuses ${s.join(',')} - 4th try should be locked (429)`);
+  return s.join(',');
+});
 
 // customer edit + search + next-no
 await step('customer edit / search / next-no', async () => {
@@ -109,7 +123,7 @@ await step('auction: remove sale, undo, mark again, sell', async () => {
 
 // employees, attendance, salary
 await step('employee + attendance + salary', async () => {
-  const e = (await call('POST', '/employees', { emp_code: 'E' + tag, name: 'Flow Staff', phone: '9000011111', basic_salary: 12000 })).data;
+  const e = (await call('POST', '/employees', { emp_code: 'E' + tag, name: 'Flow Staff', phone: `9${tag}`.padEnd(10, '1').slice(0, 10), basic_salary: 12000 })).data;
   await call('POST', '/employees/attendance/sheet', { date: today, rows: [{ employee_id: e.id, status: 'P' }] });
   await call('POST', '/employees/attendance/sheet', { date: today, rows: [{ employee_id: e.id, status: 'PRESENT' }] }, true);
   await call('POST', '/employees/salary', { employee_id: e.id, pay_month: today.slice(0, 7), basic: 12000, allowances: 0, deductions: 0, payment_mode: 'CASH' });

@@ -142,8 +142,8 @@ export function ExitButton() {
 }
 
 /* ------------------------------------------------------------------ loan finder */
-export function LoanFinder({ onLoad, loading, autoFocus = true, label = 'Find loan' }) {
-  const [by, setBy] = useState('loan');
+export function LoanFinder({ onLoad, loading, autoFocus = true, label = 'Find loan', defaultBy = 'loan' }) {
+  const [by, setBy] = useState(defaultBy);
   const [q, setQ] = useState('');
   const [list, setList] = useState(null);
   const input = useRef(null);

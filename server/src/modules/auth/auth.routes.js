@@ -8,12 +8,26 @@ import { authenticate, signToken, COOKIE, loadAuthUser, invalidateUserCache } fr
 import { validate } from '#middleware/validate.js';
 import { ApiError } from '#utils/ApiError.js';
 import { audit } from '#services/audit.service.js';
+import { getSettings } from '#services/settings.service.js';
 import { SCREENS } from '#config/screens.js';
 
 const router = Router();
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, skipSuccessfulRequests: true, // only wrong passwords count
   message: { message: 'Too many login attempts. Try again in 15 minutes.' } });
+
+// desktop: after N wrong passwords the user name is locked for some seconds (System Control LG.. / LGLS)
+const wrongTries = new Map();
+const lockCheck = async (username) => {
+  const st = await getSettings(0);
+  const max = Math.max(0, Number(st.LOGIN_MAX_TRIES ?? 3));
+  const secs = Math.max(0, Number(st.LOGIN_LOCK_SECONDS ?? 30));
+  const k = String(username || '').toLowerCase();
+  const w = wrongTries.get(k);
+  if (w?.until && w.until > Date.now()) throw ApiError.tooMany ? ApiError.tooMany(`Too many wrong passwords. Try again in ${Math.ceil((w.until - Date.now()) / 1000)} seconds.`)
+    : new ApiError(429, `Too many wrong passwords. Try again in ${Math.ceil((w.until - Date.now()) / 1000)} seconds.`);
+  return { fail: () => { if (!max) return; const c = (w?.until ? 0 : w?.count || 0) + 1; wrongTries.set(k, c >= max ? { count: 0, until: Date.now() + secs * 1000 } : { count: c }); }, ok: () => wrongTries.delete(k) };
+};
 
 const cookieOpts = { httpOnly: true, sameSite: 'lax', secure: env.isProd, path: '/', maxAge: 12 * 3600 * 1000 };
 
@@ -27,7 +41,9 @@ router.post('/login', loginLimiter,
   validate(z.object({ username: z.string().min(1), password: z.string().min(1) })),
   async (req, res) => {
     const row = await queryOne('SELECT * FROM users WHERE username = :u', { u: req.body.username.trim() });
-    if (!row || !(await bcrypt.compare(req.body.password, row.password_hash))) throw ApiError.unauthorized('Invalid username or password');
+    const lock = await lockCheck(req.body.username);
+    if (!row || !(await bcrypt.compare(req.body.password, row.password_hash))) { lock.fail(); throw ApiError.unauthorized('Invalid username or password'); }
+    lock.ok();
     if (!row.is_active) throw ApiError.forbidden('Your account is disabled. Contact admin.');
     await query('UPDATE users SET last_login_at = NOW() WHERE id = :id', { id: row.id });
     invalidateUserCache(row.id);

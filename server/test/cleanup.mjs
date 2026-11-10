@@ -34,6 +34,10 @@ for (const b of branches) {
     await tx.query('SET FOREIGN_KEY_CHECKS = 1');
   });
 }
+// rows left by branches removed earlier (no branch any more)
+for (const t of tables) {
+  await query(`DELETE FROM \`${t}\` WHERE branch_id IS NOT NULL AND branch_id NOT IN (SELECT id FROM branches)`).catch(() => {});
+}
 // cashier users the tests made (krl12345 / cash12345) that no longer have a branch
 const users = await query("SELECT id FROM users WHERE username REGEXP '^(krl|cash)[0-9]{5}$' AND NOT EXISTS (SELECT 1 FROM user_branches ub WHERE ub.user_id = users.id)");
 for (const u of users) {

@@ -177,7 +177,7 @@ router.get('/year-end-checks', permit('s_year_end', 'view'), async (req, res) =>
     query('SELECT b.name, (SELECT MAX(close_date) FROM day_closes d WHERE d.branch_id = b.id) last_close FROM branches b WHERE b.id IN (:b)', p),
   ]);
   const checks = [
-    { ok: dayjs().isAfter(dayjs(fy.end_date)), text: 'Billing date is past the year end', detail: `Today ${dayjs().format('DD/MM/YYYY')} · year ends ${dayjs(fy.end_date).format('DD/MM/YYYY')}` },
+    { ok: dayjs().isAfter(dayjs(fy.end_date)), text: dayjs().isAfter(dayjs(fy.end_date)) ? 'Billing date is in the new year' : 'The year is not over yet', detail: `Today ${dayjs().format('DD/MM/YYYY')} · year ends ${dayjs(fy.end_date).format('DD/MM/YYYY')}` },
     ...notClosed.map((x) => ({ ok: x.last_close && !dayjs(x.last_close).isBefore(dayjs(fy.end_date)), warn: true, text: `Day End up to year end · ${x.name}`, detail: x.last_close ? `Last day closed ${dayjs(x.last_close).format('DD/MM/YYYY')}` : 'No Day End record' })),
     { ok: true, text: 'Backup available', detail: 'Download a backup from Settings → Backup before closing' },
   ];

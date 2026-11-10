@@ -38,6 +38,12 @@ screens: day_close, acc_cashbook, cash_denomination
 
 # Day Close
 
-**Settings → Day Close** - list of closed days (last 60 days / all), who closed them, cash expected / counted. A Super Admin can **Reopen** the last closed day with a reason (to correct an entry) and close it again.
+**Settings → Day Close** - the billing date (OPEN) on top, then the closed days (**Last 60 days / All**): date, status, closed on, by, cash expected, cash in hand (counted), Pote Baki. The top right shows the billing date and how many days were re-opened.
+1. Click a day - the panel on the right shows it.
+2. **Day Details (F5)** opens the Day Report of that day.
+3. **Reopen Day (F3)** - only the last closed day, admin only: type the **reason** (e.g. *wrong release amount*) → Yes. Entries on that day are allowed again.
+4. Correct the entry, then **Close Again (F2)** - Day End.
+
+> A backup is taken by itself at every Day End (Backup → history shows *Auto (Day End)*).
 
 > Entries are not allowed on a closed day (System Control → *Lock closed days*). Back-dated entries need the *loan_backdate* permission.

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BadgeIndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge, Button, DataTable, Drawer, Field, Input, PageHeader, Select, Textarea } from '@/components/ui';
-import { useFetch, useLookups } from '@/hooks/useApi';
+import { useFetch, useLookups, useSettings } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { money, n, round2, today } from '@/lib/format';
@@ -22,9 +22,11 @@ export default function SalaryPage() {
     onSuccess: () => { toast.success('Salary saved & posted to accounts'); qc.invalidateQueries({ queryKey: ['/employees/salary'] }); setEdit(null); },
     onError: (e) => toast.error(e.message),
   });
+  const { data: settings } = useSettings();
+  const cut = settings?.EMP_CUT_ABSENT !== '0';   // desktop: Salary Sheet cuts salary for Absent / Half Day
   const open = (r) => setEdit({
     employee_id: r.employee_id, name: r.name, working_days: r.working_days || days, present_days: r.present_days || r.att_present || days,
-    basic: r.basic ?? round2((n(r.salary) / days) * n(r.present_days || r.att_present || days)), allowances: r.allowances || 0, deductions: r.deductions || 0,
+    basic: r.basic ?? (cut ? round2((n(r.salary) / days) * n(r.present_days || r.att_present || days)) : n(r.salary)), allowances: r.allowances || 0, deductions: r.deductions || 0,
     advance_recovery: r.advance_recovery || 0, payment_mode: r.payment_mode || 'CASH', paid_date: r.paid_date || today(), remarks: r.remarks || '',
   });
   const net = edit ? round2(n(edit.basic) + n(edit.allowances) - n(edit.deductions) - n(edit.advance_recovery)) : 0;

@@ -9,8 +9,9 @@ import { round2, num } from '#utils/money.js';
 import { createCrudRouter } from '#utils/crudFactory.js';
 import { audit } from '#services/audit.service.js';
 import { postVoucher, ledgerId, LEDGER } from '#services/accounting.service.js';
-import { getCurrentFy } from '#services/settings.service.js';
+import { getCurrentFy, getSettings } from '#services/settings.service.js';
 import { peekNumber } from '#services/sequence.service.js';
+import { writeBackupFile } from '#services/backup.service.js';
 import { mybookTrialBalance, mybookProfitLoss, mybookBalanceSheet } from '#services/mybookBooks.service.js';
 import { ensureDateOpen, lastClosedDate } from '#services/daycontrol.service.js';
 import * as acc from './accounts.service.js';
@@ -200,12 +201,17 @@ router.post('/day-close', permit('day_close', 'add'), requireBranch, async (req,
   await query('INSERT INTO day_closes (branch_id, close_date, opening_cash, closing_cash, summary, closed_by) VALUES (:b, :d, :o, :c, :s, :u)',
     { b: req.branchId, d: date, o: summary.cash.opening, c: summary.cash.closing, s: JSON.stringify(summary), u: req.user.id });
   audit(req, 'DAY_CLOSE', 'day_closes', date, { closing: summary.cash.closing });
+  // desktop: a backup is taken at every Day End ("Auto (Day End)")
+  try { await writeBackupFile({ type: 'Auto (Day End)', userId: req.user.id, keep: Number((await getSettings(0)).AUTO_BACKUP_KEEP) || 30 }); } catch { /* a failed backup must not stop the day close */ }
   res.json({ data: summary });
 });
 
 router.delete('/day-close/:date', permit('day_close', 'delete'), requireBranch, async (req, res) => {
   const last = await lastClosedDate(req.branchId);
   if (!last || dayjs(last).format('YYYY-MM-DD') !== req.params.date) throw ApiError.badRequest('Only the latest closed day can be re-opened');
+  // desktop DC..: admin can reopen a closed day only this many days before the billing date (0 = any)
+  const back = Number((await getSettings(req.branchId)).DAYCLOSE_REOPEN_DAYS || 0);
+  if (back > 0 && dayjs().diff(dayjs(req.params.date), 'day') > back) throw ApiError.badRequest(`Only days up to ${back} days back can be re-opened`);
   const reason = String(req.body?.reason || req.query.reason || '').trim();
   if (!reason) throw ApiError.badRequest('Enter the reason for re-opening the day');
   await query('DELETE FROM day_closes WHERE branch_id = :b AND close_date = :d', { b: req.branchId, d: req.params.date });

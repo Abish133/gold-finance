@@ -50,7 +50,7 @@ export default function TopUpPage() {
       const r = await api.post(`/loans/${l.id}/topup`, { date: today(), amount: n(amt), interest_amount: n(deduct), payments });
       setPayOpen(false);
       toast.success('Top-up given'); qc.invalidateQueries({ queryKey: ['/loans'] }); refresh();
-      const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); if (last) printTxn(r.data.loan, last);
+      const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); if (last && settings?.PRINT_AFTER_TOPUP !== '0') printTxn(r.data.loan, last);
     } catch (e) { toast.error(e.message); } finally { setSaving(false); }
   };
   useKeys({ f2: start, f5: () => l && setLedger(true), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, amt, deduct, pay]);

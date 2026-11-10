@@ -95,8 +95,8 @@ router.get('/next-number', anyLoan, requireBranch, async (req, res) => {
   const branch = await queryOne('SELECT loan_prefix FROM branches WHERE id = :id', { id: req.branchId });
   const last = await queryOne('SELECT MAX(loan_date) d FROM loans WHERE branch_id = :b', { b: req.branchId });
   // paper bill book: next = highest numeric bill book no + 1 (null until the first one is given)
-  const book = await queryOne("SELECT MAX(CAST(manual_bill_no AS UNSIGNED)) n FROM loans WHERE branch_id = :b AND manual_bill_no REGEXP '^[0-9]+$'", { b: req.branchId });
-  res.json({ data: { loan_no: no, bill_no: `${branch.loan_prefix || ''}${no}`, release_no: release, last_date: last?.d || null, bill_book_next: book?.n ? Number(book.n) + 1 : null } });
+  const bookNext = s.BILL_BOOK_AUTO !== '0' ? await svc.nextBillBook({ queryOne }, req.branchId, s) : null;
+  res.json({ data: { loan_no: no, bill_no: `${branch.loan_prefix || ''}${no}`, release_no: release, last_date: last?.d || null, bill_book_next: bookNext } });
 });
 
 /* is a paper bill book number free? */

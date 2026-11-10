@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getSettings } from '#services/settings.service.js';
 import dayjs from 'dayjs';
 import { query, queryOne, withTransaction } from '#config/db.js';
 import { permit } from '#middleware/auth.js';
@@ -27,6 +28,14 @@ const employees = createCrudRouter({
         { e: existing.id, d: dayjs().format('YYYY-MM-DD'), o: existing.salary, n: d.salary, r: req.body.salary_reason || 'Revision', u: req.user.id });
     }
     if (d.status === 'LEFT' && !d.left_date) d.left_date = dayjs().format('YYYY-MM-DD');
+    const st = await getSettings(req.branchId || 0);
+    // desktop: an employee cannot be saved with a mobile number another employee already has
+    if (st.EMP_UNIQUE_MOBILE !== '0' && d.phone) {
+      const dup = await queryOne('SELECT name FROM employees WHERE phone = :p AND id <> :id LIMIT 1', { p: d.phone, id: existing?.id || 0 });
+      if (dup) throw ApiError.conflict(`Mobile ${d.phone} is already used by ${dup.name}`);
+    }
+    // desktop: marking an employee as Left also makes that user inactive
+    if (st.EMP_LEFT_STOP_LOGIN !== '0' && existing && d.status === 'LEFT') await query('UPDATE users SET is_active = 0 WHERE employee_id = :id', { id: existing.id });
     return d;
   },
   extend: (r) => {

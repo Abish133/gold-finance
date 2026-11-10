@@ -11,6 +11,7 @@ import { useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, money, date, n, round2, today, weight } from '@/lib/format';
+import { whatsappAfterSave } from '@/lib/whatsapp';
 import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer, PhotoBox, Chip } from './desk';
 
 const MODES = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK', 'Bank / NEFT'], ['CARD', 'Card'], ['CHEQUE', 'Cheque']];
@@ -85,7 +86,8 @@ export default function PartPaymentPage() {
       toast.success('Saved');
       qc.invalidateQueries({ queryKey: ['/loans'] }); qc.invalidateQueries({ queryKey: ['/dashboard'] });
       refresh(); setMonths(0); setPartAmt(''); setLines([]);
-      if (print) { const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); if (last) printTxn(r.data.loan, last); }
+      { const lastT = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); whatsappAfterSave(settings, tab === 'INTEREST' ? 'INTEREST' : 'PART', r.data.loan, lastT); }
+      if (print && settings?.PRINT_PART_RECEIPT !== '0') { const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); if (last) printTxn(r.data.loan, last); }
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }
   };
   useKeys({

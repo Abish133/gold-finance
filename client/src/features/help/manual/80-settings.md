@@ -5,14 +5,17 @@ screens: s_users, s_system, s_print, s_company, s_audit
 ---
 # Users & Roles
 
-**Settings → Users & Roles → Users**
-- **Add User**: full name, username, password (eye shows it), role, mobile, e-mail, Active, **Branch access** (tick each branch). Edit: leave the password blank to keep it.
+**Settings → Users & Roles → Users** (User Accounts)
+- Search, Show *All / Active / Inactive*, Role filter; tiles Users / Active / Inactive / Roles.
+- **New User (Ctrl+N)**: full name, username, password (eye shows it), role, mobile, e-mail, Active, **Branch access** (tick each branch). **Edit User (F2)** - leave the password blank to keep it. **Delete User (Del)**. **Roles & Permissions (F6)**, **Print (F9)**.
 - A user who forgot the password: edit → type a new one → Save.
+- Three wrong passwords lock that user name for 30 seconds (System Control → Other).
 
 **Settings → Users & Roles → Roles & Permissions**
-- Each role has a tick list of screens with *view / add / edit / delete / export*.
-- *All branches* lets a role see every branch together.
-- Default roles: Super Admin, Branch Manager, Cashier, Accountant, Viewer. Add your own (e.g. *Appraiser*).
+- Left: the roles with users, menus and status. Under it: users in the role, role name, Active / Inactive, *Can view all branches*.
+- Right: the **menu tree** - every menu (Loan, Records, Auction, Bank, Accounts, Reports, Masters, Settings) with a tick for each screen. Tick a menu = all its screens; open the arrow of a screen for *view / add / edit / delete / print / export*.
+- **Tick All**, **Clear All**, **Expand All**, **Copy from Role** (start from another role), **New Role (Ctrl+N)**, **Save (F2)**, **Delete Role**.
+- Default roles: Super Admin (always everything), Branch Manager, Cashier, Accountant, Viewer. Add your own (e.g. *Appraiser*).
 
 # System Control
 **Settings → System Control** - how the app behaves (same codes as MyBook):
@@ -29,6 +32,24 @@ screens: s_users, s_system, s_print, s_company, s_audit
 | Release grace days | 0 |
 | Lock closed days | Yes |
 | Top-up allowed within days | 3 |
+
+Groups (same as MyBook): **Loan**, **Bill book**, **Print**, **Payment**, **Messages**, **Home page**, **Employee**, **Other**. Some useful ones:
+
+| Group | Setting (code) | What it does |
+|---|---|---|
+| Bill book | Manual bill book number (MBLN) | Ask for the hand-written bill book no with every loan (off = not asked) |
+| Bill book | Auto manual number (MLNG) | A new loan / re-loan gets the next bill book no by itself (1, 2, 3 …) |
+| Bill book | Prefix / digits / starts from (BBPX / BBDG / NBST) | e.g. prefix A, 4 digits → A0001; a separate series for new loans |
+| Bill book | Bill book no. on loan receipt (PMBN) | The receipt prints the bill book no instead of the loan no |
+| Bill book | Release by bill book no. (RBMLN) | Release opens with the Bill Book No search |
+| Print | Print after loan / release / top-up, part payment (PLR …) | Off = only saved, print later from Duplicate Bill |
+| Print | Preview before print (LRBP) | Off = straight to the printer |
+| Print | Duplicate: preview / DUPLICATE mark / copies (DB..) | How Duplicate Bill reprints |
+| Print | Sticker layout (STKL), stickers per row (STKC) | Desktop sticker or your own label fields |
+| Messages | WhatsApp: new loan / release / part payment / interest | WhatsApp opens with the message ready after saving |
+| Home page | Home: New Loan … Re-loan, Cash in hand, Loans today … | Show / hide each button and tile on the home page |
+| Employee | Cut salary for absent days, block same mobile, stop login when left | Salary Sheet and employee rules |
+| Other | Login tries / lock seconds, backup warning days, year end reminder | Security and reminders on the home page |
 
 Search (F3), Save Changes (F2), Print settings (F9).
 

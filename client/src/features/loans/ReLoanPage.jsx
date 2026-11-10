@@ -69,7 +69,7 @@ export default function ReLoanPage() {
       setPayOpen(false);
       toast.success(`Re-loan saved as #${r.data.loan.bill_no}`);
       qc.invalidateQueries({ queryKey: ['/loans'] });
-      printLoan(r.data);
+      if (settings?.PRINT_AFTER_LOAN !== '0') printLoan(r.data);
       setSp({ loan: r.data.loan.id });
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }
   };

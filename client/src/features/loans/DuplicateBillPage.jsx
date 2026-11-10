@@ -11,12 +11,12 @@ import { amount, date, today } from '@/lib/format';
 import { useKeys } from './desk';
 
 const QUICK = { Today: [0, 0], Yesterday: [1, 1], Week: [6, 0], Month: [29, 0] };
-const STATUS = { OPEN: 'Pending', CLOSED: 'Released', RENEWED: 'Re-loaned', AUCTIONED: 'Auctioned', CANCELLED: 'Cancelled' };
+const STATUS = { OPEN: 'Open', CLOSED: 'Released', RENEWED: 'Released', AUCTIONED: 'Auctioned', CANCELLED: 'Cancelled' };
 
 /** Duplicate Bill Print (desktop): find loans by date, loan no or customer and reprint the loan receipt marked DUPLICATE. */
 export default function DuplicateBillPage() {
   const navigate = useNavigate();
-  const { printLoans, printerUi, busy } = usePrinter();
+  const { printLoans, printerUi, busy, settings } = usePrinter();
   const [by, setBy] = useState('date');
   const [f, setF] = useState({ from: today(), to: today(), noFrom: '', noTo: '', customer: '', released: false, showBook: false });
   const [q, setQ] = useState('');
@@ -28,7 +28,11 @@ export default function DuplicateBillPage() {
     setLoading(true);
     try {
       const r = await api.get('/loans', { ...params, status: f.released ? '' : 'OPEN', pageSize: 200, sort: 'loan_no', order: 'asc' });
-      setRows(r.data); setSel(r.data.length === 1 ? [r.data[0].id] : []);
+      // desktop: a typed loan / bill book number finds that loan only (not every loan whose phone has the digits)
+      const typed = String(params.search || '').trim();
+      const exact = typed && /^[A-Za-z0-9/-]+$/.test(typed) ? r.data.filter((x) => String(x.bill_no) === typed || String(x.loan_no) === typed || String(x.manual_bill_no || '') === typed) : [];
+      const list = exact.length ? exact : r.data;
+      setRows(list); setSel(list.length === 1 ? [list[0].id] : []);
       if (!r.data.length) toast.info('No loans found');
     } catch (e) { toast.error(e.message); } finally { setLoading(false); }
   };
@@ -42,7 +46,7 @@ export default function DuplicateBillPage() {
   };
   const toggle = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   useKeys({ f10: print, f5: search, 'ctrl+a': () => setSel(rows.map((r) => r.id)), 'ctrl+u': () => setSel([]), escape: () => navigate('/') }, [rows, sel, f, by]);
-  const quick = (k) => { const [a, b] = QUICK[k]; setF({ ...f, from: dayjs().subtract(a, 'day').format('YYYY-MM-DD'), to: dayjs().subtract(b, 'day').format('YYYY-MM-DD') }); };
+  const quick = (k) => { const [a, b] = QUICK[k]; setF({ ...f, from: dayjs(today()).subtract(a, 'day').format('YYYY-MM-DD'), to: dayjs(today()).subtract(b, 'day').format('YYYY-MM-DD') }); };
 
   return (
     <div className="animate-rise space-y-3">
@@ -53,7 +57,7 @@ export default function DuplicateBillPage() {
           <Input className="h-10 w-56" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && find()} />
           <Button icon={Search} onClick={find}>Find (Enter)</Button>
         </div>
-        <div className="rounded-md bg-white/10 px-4 py-2 text-lg font-bold">{dayjs().format('DD/MM/YYYY')}</div>
+        <div className="rounded-md bg-white/10 px-4 py-2 text-lg font-bold">{dayjs(today()).format('DD/MM/YYYY')}</div>
       </section>
       <div className="grid items-stretch gap-3 xl:min-h-[calc(100vh-21rem)] xl:grid-cols-[340px_1fr]">
         <div className="card space-y-4 p-4">
@@ -89,8 +93,8 @@ export default function DuplicateBillPage() {
                   <tr key={r.id} onClick={() => toggle(r.id)} className={clsx('cursor-pointer', sel.includes(r.id) && 'bg-navy-50 dark:bg-ink-800')}>
                     <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.includes(r.id)} readOnly /></td>
                     <td className="px-2 font-semibold">{r.bill_no}</td>{f.showBook && <td className="px-2">{r.manual_bill_no || '-'}</td>}<td className="px-2">{date(r.loan_date)}</td>
-                    <td className="px-2">{r.customer_name}</td><td className="px-2">{r.customer_phone}</td><td className="px-2">{r.item_summary}</td><td className="num px-2 text-right">{amount(r.principal)}</td>
-                    <td className="px-2">{r.paid_by || 'CASH'}</td><td className="px-2">{STATUS[r.status] || r.status}</td><td className="num px-2 text-right">{Math.max(0, Number(r.receipt_prints || 0) - 1)}</td>
+                    <td className="px-2">{r.customer_name}</td><td className="px-2">{r.customer_phone}</td><td className="px-2 uppercase">{r.items_text || r.item_summary}</td><td className="num px-2 text-right">{amount(r.principal)}</td>
+                    <td className="px-2">{String(r.paid_by || 'CASH').split(',').map((m) => ({ CASH: 'Cash', UPI: 'UPI', BANK: 'Bank', CARD: 'Card', CHEQUE: 'Cheque' }[m] || m)).join(', ')}</td><td className="px-2 text-xs font-bold uppercase">{STATUS[r.status] || r.status}</td><td className="num px-2 text-right">{Math.max(0, Number(r.receipt_prints || 0) - 1)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -101,7 +105,7 @@ export default function DuplicateBillPage() {
       <div className="card flex flex-wrap items-center gap-3 px-3 py-2">
         <span className="rounded-md bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800">{sel.length} receipt(s) will be printed</span>
         <span className="text-sm text-ink-500">{rows.length ? 'Tick the loans and press F10.' : 'Search loans to reprint the receipt.'}</span>
-        <span className="ml-auto text-sm text-ink-500">Preview · DUPLICATE mark · 1 copy</span>
+        <span className="ml-auto text-sm text-ink-500">{[settings?.DUP_PREVIEW !== '0' ? 'Preview' : 'Straight to printer', settings?.DUP_MARK !== '0' ? 'DUPLICATE mark' : 'no DUPLICATE mark', `${Number(settings?.DUP_COPIES) || 1} cop${Number(settings?.DUP_COPIES) > 1 ? 'ies' : 'y'}`].join(' · ')}</span>
         <Button variant="outline" icon={RefreshCw} onClick={search}>Refresh (F5)</Button>
         <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
         <Button variant="gold" icon={Eye} loading={busy} disabled={!sel.length} onClick={print}>Preview &amp; Print (F10)</Button>

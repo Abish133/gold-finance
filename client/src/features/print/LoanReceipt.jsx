@@ -42,7 +42,7 @@ function InfoGrid({ L, d }) {
       <tbody>
         <tr><td className={k}>{L.branch}</td><td className={v}>{loan.branch_name}</td><td className={k}>{L.phone}</td><td className={v}>{loan.branch_phone || ''}</td></tr>
         <tr><td className={k}>{L.customerNo}</td><td className={v}>{loan.customer_no}</td><td className={k}>{L.date}</td><td className={v}>{date(loan.loan_date)}</td></tr>
-        <tr><td className={k}>{L.name}</td><td className={v}>{loan.customer_title ? `${loan.customer_title}. ` : ''}{loan.customer_name}</td><td className={k}>{L.loanNo}</td><td className={v}>{loan.bill_no}{loan.manual_bill_no ? ` (${loan.manual_bill_no})` : ''}</td></tr>
+        <tr><td className={k}>{L.name}</td><td className={v}>{loan.customer_title ? `${loan.customer_title} ` : ''}{loan.customer_name}</td><td className={k}>{L.loanNo}</td><td className={v}>{loan.bill_no}{loan.manual_bill_no ? ` (${loan.manual_bill_no})` : ''}</td></tr>
         <tr><td className={k} rowSpan={3}>{L.address}</td><td className={v} rowSpan={3}>{loan.relation_name ? `${loan.relation_type || ''} ${loan.relation_name}, ` : ''}{addr}</td><td className={k}>{L.scheme}</td><td className={v}>{loan.scheme_code}</td></tr>
         <tr><td className={k}>{L.dueDate}</td><td className={v}>{date(loan.due_date)}</td></tr>
         <tr><td className={k}>{L.amount}</td><td className={v}>{money(loan.principal)}</td></tr>
@@ -218,5 +218,8 @@ export const buildLoanPrintData = async ({ full, company, settings, schemes, cop
     JsBarcode(canvas, text, { format: 'CODE128', height: 40, width: 1.6, displayValue: false, margin: 0 });
     barcode = { src: canvas.toDataURL('image/png'), text };
   } catch { /* no barcode */ }
-  return { loan: full.loan, items: full.items, company: company || {}, settings: settings || {}, schemes: ordered, qr, copy, barcode };
+  // desktop PMBN / SOBO: print the hand-written bill book no in place of the system loan no
+  const bookOnly = (settings?.BILL_BOOK_ON_RECEIPT === '1' || settings?.BILL_BOOK_ONLY === '1') && full.loan.manual_bill_no;
+  const loan = bookOnly ? { ...full.loan, bill_no: full.loan.manual_bill_no, manual_bill_no: null } : full.loan;
+  return { loan, items: full.items, company: company || {}, settings: settings || {}, schemes: ordered, qr, copy, barcode };
 };

@@ -78,6 +78,23 @@ const ensureTodayRate = async (metalIds, date) => {
   }
 };
 
+/**
+ * Next paper bill book number (desktop "Auto manual number (last + 1)"): prefix + number with leading zeros.
+ * BILL_BOOK_NEW_START: new loans get their own series from this number while old loans are still being entered.
+ */
+export const nextBillBook = async (db, branchId, settings) => {
+  const prefix = String(settings.BILL_BOOK_PREFIX || '').trim();
+  const digits = Math.min(10, Math.max(0, Number(settings.BILL_BOOK_DIGITS) || 0));
+  const start = Number(settings.BILL_BOOK_NEW_START) || 0;
+  const safe = prefix.split('').map((ch) => (/[a-z0-9]/i.test(ch) ? ch : `[${ch}]`)).join('');   // letters / digits as they are, anything else literal
+  const re = '^' + safe + '[0-9]+$';
+  const row = await db.queryOne(`SELECT MAX(CAST(SUBSTRING(manual_bill_no, :len) AS UNSIGNED)) n FROM loans
+     WHERE branch_id = :b AND manual_bill_no REGEXP :re AND entry_type <> 'OLD'`, { b: branchId, len: prefix.length + 1, re });   // old paper loans keep their own numbers
+  let no = Number(row?.n || 0) + 1;
+  if (start && no < start) no = start;
+  return `${prefix}${digits ? String(no).padStart(digits, '0') : no}`;
+};
+
 const lockLoan = async (tx, req, id) => {
   const loan = await tx.queryOne('SELECT * FROM loans WHERE id = :id FOR UPDATE', { id });
   if (!loan) throw ApiError.notFound('Loan not found');
@@ -232,6 +249,8 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
     const seqFy = settings.LOAN_NO_RESET_YEARLY === '1' ? fy.id : 0;
     let loanNo;
     if (entryType === 'OLD' && !body.manual_bill_no) throw ApiError.badRequest('Bill book number is required for old loans');
+    // desktop MLNG: a new loan without a bill book no gets the next one (0 = leave it blank)
+    if (entryType === 'NEW' && !body.manual_bill_no && settings.BILL_BOOK_AUTO !== '0') body.manual_bill_no = await nextBillBook(tx, req.branchId, settings);
     if (body.manual_bill_no) {
       const dup = await tx.queryOne('SELECT bill_no FROM loans WHERE branch_id = :b AND manual_bill_no = :m LIMIT 1', { b: req.branchId, m: String(body.manual_bill_no) });
       if (dup) throw ApiError.conflict(`Bill book no ${body.manual_bill_no} is already used on loan ${dup.bill_no}`);
@@ -507,10 +526,7 @@ export const renewLoan = async (req, id, body) => {
     const marketValue = round2(old.items.reduce((s, i) => s + itemValue(i.net_wt, i.purity, rateOf(i.metal_code), basis), 0));
     // paper bill book: the given number, else the next one when the old loan had a bill book no (as the desktop app does)
     let billBook = body.manual_bill_no ? String(body.manual_bill_no) : null;
-    if (!billBook && loan.manual_bill_no) {
-      const bk = await tx.queryOne("SELECT MAX(CAST(manual_bill_no AS UNSIGNED)) n FROM loans WHERE branch_id = :b AND manual_bill_no REGEXP '^[0-9]+$'", { b: loan.branch_id });
-      if (bk?.n) billBook = String(Number(bk.n) + 1);
-    }
+    if (!billBook && (loan.manual_bill_no || settings.BILL_BOOK_AUTO !== '0')) billBook = await nextBillBook(tx, loan.branch_id, settings);
     if (billBook) {
       const dup = await tx.queryOne('SELECT bill_no FROM loans WHERE branch_id = :b AND manual_bill_no = :m LIMIT 1', { b: loan.branch_id, m: billBook });
       if (dup) throw ApiError.conflict(`Bill book no ${billBook} is already used on loan ${dup.bill_no}`);

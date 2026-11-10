@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
+import { whatsappAfterSave } from '@/lib/whatsapp';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, PaymentsGrid, useLoan, useApproval, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer, fineRate } from './desk';
 import { LoanDetailsDrawer } from './LoanDetailsDrawer';
 
@@ -64,7 +65,8 @@ export default function ReleasePage() {
       ['/loans', '/dashboard', '/dashboard/status', '/loans/next-number'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       refresh();
       const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1);
-      if (last) printTxn(r.data.loan, last);
+      if (last && settings?.PRINT_AFTER_RELEASE !== '0') printTxn(r.data.loan, last);
+      whatsappAfterSave(settings, 'RELEASE', r.data.loan, last);
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }
   };
   const clear = () => setSp({});
@@ -76,7 +78,7 @@ export default function ReleasePage() {
         title="Loan Release" subtitle="Settle a loan and give the items back"
         tiles={[{ label: 'Release no', value: l?.release_no || next.data?.release_no }, { label: 'Release date', value: dayjs(d).format('DD/MM/YYYY') }, { label: 'Gold · Silver', value: `${goldR ? amount(fineRate(goldR)) : '-'} · ${silverR ? amount(fineRate(silverR)) : '-'}`, gold: true }]}
         left={<>
-          <LoanFinder onLoad={(id) => setSp({ loan: id })} loading={isLoading} />
+          <LoanFinder onLoad={(id) => setSp({ loan: id })} loading={isLoading} defaultBy={settings?.RELEASE_BY_BILL_BOOK === '1' ? 'bill' : 'loan'} />
           <Panel title="Customer · F5 ledger">
             <CustomerCard customer={loanCustomer(l)} onLedger={l ? () => setLedger(true) : null} rows={[['Other open loans', otherOpen.length ? otherOpen.map((x) => `#${x.bill_no}`).join(', ') : 'none']]} />
           </Panel>
@@ -111,7 +113,7 @@ export default function ReleasePage() {
               <Line label="Loan amount" value={c ? amount(round2(c.principalOutstanding + partPaid)) : '-'} />
               <Line label={`Interest${c ? ` · ${c.monthsDue} month${c.monthsDue > 1 ? 's' : ''}` : ''}`} value={c ? amount(c.totalInterest) : '-'} />
               {/* desktop: info only - day-wise interest at the System Control default rate (% p.m.) for the actual days */}
-              <Line label={`Days interest (${c ? c.elapsedDays : 0} days) · info`} value={c ? amount(Math.round((c.principalOutstanding + partPaid) * (n(settings?.DEFAULT_INTEREST_RATE) || 1) / 100 / 30 * c.elapsedDays)) : '-'} tone="text-ink-500" />
+              {settings?.RELEASE_SHOW_DAYS_INTEREST !== '0' && <Line label={`Days interest (${c ? c.elapsedDays : 0} days) · info`} value={c ? amount(Math.round((c.principalOutstanding + partPaid) * (n(settings?.DEFAULT_INTEREST_RATE) || 1) / 100 / 30 * c.elapsedDays)) : '-'} tone="text-ink-500" />}
               {c?.penalDue > 0 && <Line label="Penal interest" value={amount(c.penalDue)} />}
               <Line minus label="Advance interest" value={l ? amount(l.advance_interest) : '-'} />
               <Line minus label="Interest already paid" value={amount(paidInterest)} />

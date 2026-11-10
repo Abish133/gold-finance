@@ -16,6 +16,7 @@ import { printElement } from '@/lib/print';
 import { Stickers } from '@/features/print/Sticker';
 import { api } from '@/lib/api';
 import { money, amount, n, round2, today, weight, date } from '@/lib/format';
+import { whatsappAfterSave } from '@/lib/whatsapp';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate } from './desk';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
@@ -72,8 +73,8 @@ function FindCustomerDrawer({ open, initial, by: by0, onClose, onPick, onNew }) 
 }
 
 /* Customer panel: Mobile / Name / A-c No / Loan No + card with open loans, interest due today, last loan */
-function CustomerSearch({ value, onChange, onNew }) {
-  const [by, setBy] = useState('name');
+function CustomerSearch({ value, onChange, onNew, nameFirst = true }) {
+  const [by, setBy] = useState(nameFirst ? 'name' : 'mobile');
   const [q, setQ] = useState('');
   const [find, setFind] = useState(false);
   const [ledger, setLedger] = useState(false);
@@ -241,7 +242,8 @@ export default function NewLoanPage({ mode = 'NEW' }) {
       toast.success(`Loan details saved · Loan No ${r.data.loan.bill_no}${r.data.loan.manual_bill_no ? ` · Bill Book No ${r.data.loan.manual_bill_no}` : ''}`);
       reset();
       setDone(r.data);
-      printLoan(r.data);   // desktop: receipt preview opens straight after saving
+      if (settings?.PRINT_AFTER_LOAN !== '0') printLoan(r.data);
+      if (!isOld) whatsappAfterSave(settings, 'LOAN', r.data);   // desktop: receipt opens straight after saving (System Control PLR)
     },
     onError: (e) => toast.error(e.message),
   });
@@ -253,7 +255,8 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   // after the LTV check: bill book number (new loans) -> pay customer -> save
   const proceed = () => {
     if (isOld) return save.mutate({});
-    if (!f.manual_bill_no && settings?.USE_BILL_BOOK !== '0') return setStep('book');
+    // desktop MBLN: ask for the hand-written bill book no (off = the next number is given by itself)
+    if (!f.manual_bill_no && settings?.BILL_BOOK_ASK === '1') return setStep('book');
     return netPay > 0 ? setStep('pay') : save.mutate({});
   };
   const trySave = () => {
@@ -317,7 +320,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
           : [{ label: 'Loan no', value: next.data?.bill_no }, { label: 'Bill book', value: f.manual_bill_no || next.data?.bill_book_next || '-' }, { label: 'Billing date', value: dayjs().format('DD/MM/YYYY') },
             { label: 'Gold · Silver', value: `${rates.gold ? amount(rates.gold) : '-'} · ${rates.silver ? amount(rates.silver) : '-'}`, gold: true }]}
         left={<>
-          <CustomerSearch value={customer} onChange={setCustomer} onNew={() => setNewCust(true)} />
+          <CustomerSearch nameFirst={settings?.NEWLOAN_SEARCH_NAME !== '0'} value={customer} onChange={setCustomer} onNew={() => setNewCust(true)} />
           <ItemPhotoPanel value={photo} onChange={setPhoto} customerId={customer?.id} />
         </>}
         center={<>

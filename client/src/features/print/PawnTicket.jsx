@@ -11,7 +11,8 @@ const words = (v) => `Rupees ${inWords(v).replace(/ Rupees Only$/, '')} Only`;
 function Copy({ data, label }) {
   const { loan, items = [], company, settings, barcode } = data;
   const tot = items.reduce((s, i) => ({ g: s.g + n(i.gross_wt), l: s.l + n(i.stone_wt), w: s.w + n(i.net_wt) }), { g: 0, l: 0, w: 0 });
-  const remark = items.map((i) => i.remarks).filter(Boolean).join(', ');
+  // desktop: a reprint says ** DUPLICATE COPY ** in the Item Remark line
+  const remark = [data.copy === 'DUPLICATE' ? '** DUPLICATE COPY **' : '', ...items.map((i) => i.remarks)].filter(Boolean).join(', ');
   return (
     <div className="border border-ink-300 text-black">
       <div className="flex items-start justify-between border-b-2 border-[#b8892b] px-5 py-3">
@@ -54,7 +55,7 @@ function Copy({ data, label }) {
         <tbody>
           <tr className="align-top">
             <td className="border border-ink-300 px-2 py-1 font-bold">{[...new Set(items.map((i) => i.metal_code || loan.loan_on))].join(' / ')}</td>
-            <td className="border border-ink-300 px-2 py-1">{items.map((i) => `${i.item_name} ${i.pcs}`).join(', ')}</td>
+            <td className="border border-ink-300 px-2 py-1">{items.map((i) => `${String(i.item_name).toUpperCase()} ${i.pcs}`).join(', ')}</td>
             <td className="border border-ink-300 px-2 py-1 text-right">{weight(tot.g)}</td>
             <td className="border border-ink-300 px-2 py-1 text-right">{weight(tot.l)}</td>
             <td className="border border-ink-300 px-2 py-1 text-right font-bold">{weight(tot.w)}</td>
@@ -80,7 +81,6 @@ function Copy({ data, label }) {
 export function PawnTicket({ data }) {
   return (
     <div className="mx-auto w-[194mm] space-y-4">
-      {data.copy === 'DUPLICATE' && <p className="text-right text-[10px] font-bold tracking-widest">DUPLICATE COPY</p>}
       <Copy data={data} label="CUSTOMER COPY" />
       <div className="border-t border-dashed border-ink-400" />
       <Copy data={data} label="OFFICE COPY" />
