@@ -69,6 +69,22 @@ const sale = (await get('/auction/sales')).find((x) => x.loan_id === mirror.loan
 eq(sale.principal_due, 12345, 'auction loan amount'); eq(sale.sale_amount, 20000, 'sold for'); eq(sale.surplus, 7655, 'auction release profit'); eq(sale.interest_due, 3482, 'interest due at auction');
 eq(20000 - (n(sale.principal_due) + n(sale.interest_due) + n(sale.charges)), 4173, 'auction report profit (vs total due)');
 
+// Tally Export after Day End of 05/11 (MyBook: Day End rows as Payment / Receipt vouchers, auction sale receipt)
+const post = async (url, body) => { const r = await fetch(B + url, { method: 'POST', headers: { 'content-type': 'application/json', cookie, 'x-branch-id': String(mirror.branch) }, body: JSON.stringify(body) }); const j = await r.json(); if (!r.ok) throw new Error(`${url} ${j.message}`); return j.data; };
+await post('/accounts/day-close', { date: D });
+const tx = await get(`/tools/tally/preview?from=${D}&to=${D}`);
+const want = [
+  ['Payment', 'Auction', 'Cash', 12345], ['Receipt', 'Cash', 'Auction', 20000], ['Payment', 'Girvi', 'Cash', 50000], ['Receipt', 'Cash', 'Girvi', 62345],
+  ['Receipt', 'Cash', 'Interest', 750], ['Receipt', 'Cash', 'Ashal Jama', 6000], ['Receipt', 'Cash', 'Interest Jama', 740], ['Payment', 'Potali', 'Cash', 30000],
+  ['Receipt', 'Cash', 'Potali', 30000], ['Payment', 'Potali Interst', 'Cash', 10], ['Payment', 'Bank Loan Charges', 'Cash', 100],
+];
+const got = tx.vouchers.map((v) => [v.type, v.debit, v.credit, v.amount]);
+if (JSON.stringify(got) !== JSON.stringify(want)) fails.push(`tally vouchers differ:
+ ours   ${JSON.stringify(got)}
+ MyBook ${JSON.stringify(want)}`);
+eq(tx.totals.receipts, 6, 'tally receipts'); eq(tx.totals.payments, 5, 'tally payments');
+if (tx.vouchers[3].no !== tx.vouchers[2].no + '-2') fails.push(`second side numbering ${tx.vouchers[2].no} / ${tx.vouchers[3].no}`);
+
 function sum(list, k) { return list.reduce((s, x) => s + Number(x[k] || 0), 0); }
 function n(v) { return Number(v || 0); }
 console.log(fails.length ? `FAILED ${fails.length}:\n${fails.join('\n')}` : 'ALL MYBOOK REPORT FIGURES MATCH');

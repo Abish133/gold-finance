@@ -20,7 +20,8 @@ export default function RateBoardPage() {
   const qc = useQueryClient();
   const { data: company } = useCompany();
   const { data: settings } = useSettings();
-  const [d, setD] = useState(today());
+  // opened from Day End with ?date=<new billing date> (desktop opens Rate Update after closing a day)
+  const [d, setD] = useState(() => new URLSearchParams(window.location.search).get('date') || today());
   const { data, refetch } = useFetch('/desk/rate-board', { date: d });
   const [rows, setRows] = useState([]);
   const [hist, setHist] = useState('GOLD');

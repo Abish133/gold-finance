@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { Search, RefreshCw, FileDown, FileSpreadsheet, Coins, CalendarCheck, Printer, Check, X } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Checkbox, Input } from '@/components/ui';
+import { Button, Checkbox, Drawer, Input } from '@/components/ui';
 import { useFetch, useCompany, useLookups } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -39,17 +39,22 @@ export default function DayReportPage({ mode = 'report' }) {
   const print = () => printTable({ title: `Day Report ${dayjs(q.from).format('DD/MM/YYYY')}${q.to !== q.from ? ` - ${dayjs(q.to).format('DD/MM/YYYY')}` : ''}`, company, columns: cols, rows: data?.accounts || [],
     totals: { jama: data?.jama, nave: data?.nave } });
   const modeAmt = (dir, m) => n((data?.modes || []).find((x) => x.dir === dir && x.mode === m)?.amount);
-  const closeDay = async () => {
+  const [check, setCheck] = useState(false);
+  const closeDay = async (force) => {
     if (isAllBranches) return toast.error('Select a branch to close the day');
     if (q.from !== q.to) return toast.error('Day End closes one day - set From and To to the same date');
     if (data?.dayClosed) return toast.error('This day is already closed');
+    // desktop: "Day End check failed - Cash has not been counted" -> Day Report / close anyway / go back
+    if (force !== true && t?.counted == null) return setCheck(true);
+    setCheck(false);
     setClosing(true);
     try {
       if (printFirst) await print();
       await api.post('/accounts/day-close', { date: q.to });
       toast.success(`Day ${dayjs(q.to).format('DD/MM/YYYY')} closed. Billing date is now ${dayjs(nextDay).format('DD/MM/YYYY')}`);
       ['/desk/billing-date', '/desk/day-report', '/accounts/day-close', '/dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
-      if (dayjs(nextDay).isAfter(dayjs(), 'day')) refetch(); else { setR({ from: nextDay, to: nextDay }); setQ({ from: nextDay, to: nextDay }); }
+      // desktop: Metal Rate Update opens for the new billing date
+      if (!dayjs(nextDay).isAfter(dayjs(), 'day')) navigate(`/masters/rates?date=${nextDay}`); else refetch();
     } catch (e) { toast.error(e.message); } finally { setClosing(false); }
   };
   useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => navigate('/accounts/denomination'), f10: () => (isEnd ? closeDay() : navigate('/settings/day-end')), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, q, data, printFirst, isEnd]);
@@ -127,6 +132,10 @@ export default function DayReportPage({ mode = 'report' }) {
           <div className="grid grid-cols-2 gap-2"><Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button><ExitButton /></div>
         </div>
       </div>
+      <Drawer open={check} onClose={() => setCheck(false)} size="sm" icon={CalendarCheck} title={`Day End check failed for ${dayjs(q.to).format('DD/MM/YYYY')}`}
+        footer={<><Button variant="outline" onClick={() => setCheck(false)}>Go back (Esc)</Button><Button variant="outline" onClick={() => closeDay(true)}>Close the day anyway</Button><Button variant="gold" onClick={() => { setCheck(false); navigate('/accounts/day-report'); }}>Open Day Report</Button></>}>
+        <ul className="list-disc space-y-1 pl-5 text-sm"><li>Cash has not been counted.</li></ul>
+      </Drawer>
     </div>
   );
 }

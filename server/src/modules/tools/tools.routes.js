@@ -11,6 +11,8 @@ import { nextNumber, setNumber } from '#services/sequence.service.js';
 import { writeBackupFile } from '#services/backup.service.js';
 import { createLoan } from '#modules/loans/loans.service.js';
 import { openingBalance } from '#modules/accounts/accounts.service.js';
+import { getSettings, saveSettings } from '#services/settings.service.js';
+import { tallyVouchers, tallyXml, postToTally, TALLY_GROUPS } from '#services/tally.service.js';
 
 const router = Router();
 
@@ -44,52 +46,61 @@ router.put('/bank-reco', permit('acc_bank_reco', 'edit'), async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ============================================================ Tally export */
+/* ============================================================ Tally export (desktop: Day End rows, old loan journals, auction sales) */
 
-const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const TALLY_GROUP = { 'Cash-in-Hand': 'Cash-in-Hand', 'Bank Accounts': 'Bank Accounts', 'Loans & Advances (Asset)': 'Loans & Advances (Asset)',
-  'Current Assets': 'Current Assets', 'Fixed Assets': 'Fixed Assets', 'Capital Account': 'Capital Account', 'Loans (Liability)': 'Loans (Liability)',
-  'Current Liabilities': 'Current Liabilities', 'Direct Income': 'Direct Incomes', 'Indirect Income': 'Indirect Incomes', 'Direct Expenses': 'Direct Expenses', 'Indirect Expenses': 'Indirect Expenses' };
-const VCH_TYPE = { RECEIPT: 'Receipt', PAYMENT: 'Payment', JOURNAL: 'Journal', CONTRA: 'Contra', SYSTEM: 'Journal' };
-
-const tallyData = async (req) => {
-  const from = req.query.from || dayjs().startOf('month').format('YYYY-MM-DD');
-  const to = req.query.to || dayjs().format('YYYY-MM-DD');
-  const vouchers = await query(`SELECT v.id, v.voucher_no, v.voucher_date, v.voucher_type, v.narration FROM vouchers v
-    WHERE v.branch_id IN (:b) AND v.is_void = 0 AND v.voucher_date BETWEEN :f AND :t ORDER BY v.voucher_date, v.id`, { b: req.branchIds, f: from, t: to });
-  const lines = vouchers.length ? await query(`SELECT e.voucher_id, e.debit, e.credit, l.name ledger_name FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id
-    WHERE e.voucher_id IN (:ids)`, { ids: vouchers.map((v) => v.id) }) : [];
-  const ledgers = await query(`SELECT l.name, g.name group_name FROM ledgers l JOIN ledger_groups g ON g.id = l.group_id WHERE l.is_active = 1`);
-  const byV = {};
-  for (const l of lines) (byV[l.voucher_id] ||= []).push(l);
-  return { from, to, vouchers: vouchers.map((v) => ({ ...v, lines: byV[v.id] || [] })), ledgers };
-};
+const tallyRange = (req) => ({ branchIds: req.branchIds, from: req.query.from || req.body?.from || dayjs().startOf('month').format('YYYY-MM-DD'), to: req.query.to || req.body?.to || dayjs().format('YYYY-MM-DD') });
+const logTally = (req, d, how, result) => query("INSERT INTO export_logs (branch_id, export_type, from_date, to_date, records, created_by) VALUES (:b, 'TALLY', :f, :t, :n, :u)",
+  { b: req.branchId || req.branchIds[0], f: d.from, t: d.to, n: d.vouchers.length, u: req.user.id }).then(() => audit(req, 'TALLY_EXPORT', 'vouchers', null, { from: d.from, to: d.to, count: d.vouchers.length, how, ...result }));
 
 router.get('/tally/preview', permit('acc_tally', 'view'), async (req, res) => {
-  const d = await tallyData(req);
-  const sum = (t) => round2(d.vouchers.filter((v) => v.voucher_type === t).reduce((s, v) => s + v.lines.reduce((a, l) => a + num(l.debit), 0), 0));
+  const d = await tallyVouchers(tallyRange(req));
+  const s = await getSettings(0);
   const last = await queryOne("SELECT * FROM export_logs WHERE export_type = 'TALLY' AND branch_id IN (:b) ORDER BY id DESC LIMIT 1", { b: req.branchIds });
-  res.json({ data: { ...d, totals: { receipts: sum('RECEIPT'), payments: sum('PAYMENT'), contra: sum('CONTRA'), journal: round2(sum('JOURNAL') + sum('SYSTEM')) }, lastSent: last } });
+  res.json({ data: { ...d, lastSent: last, groups: TALLY_GROUPS, tally: { host: s.TALLY_HOST, port: s.TALLY_PORT, company: s.TALLY_COMPANY } } });
 });
 
 router.get('/tally/xml', permit('acc_tally', 'export'), async (req, res) => {
-  const d = await tallyData(req);
-  const company = esc(req.query.company || (await queryOne('SELECT name FROM company LIMIT 1'))?.name || '');
-  const masters = d.ledgers.map((l) => `<TALLYMESSAGE xmlns:UDF="TallyUDF"><LEDGER NAME="${esc(l.name)}" ACTION="Create"><NAME>${esc(l.name)}</NAME><PARENT>${esc(TALLY_GROUP[l.group_name] || l.group_name)}</PARENT></LEDGER></TALLYMESSAGE>`).join('');
-  const vch = d.vouchers.map((v) => `<TALLYMESSAGE xmlns:UDF="TallyUDF"><VOUCHER VCHTYPE="${VCH_TYPE[v.voucher_type]}" ACTION="Create">
-<DATE>${dayjs(v.voucher_date).format('YYYYMMDD')}</DATE><VOUCHERTYPENAME>${VCH_TYPE[v.voucher_type]}</VOUCHERTYPENAME><VOUCHERNUMBER>${esc(v.voucher_no)}</VOUCHERNUMBER><NARRATION>${esc(v.narration)}</NARRATION>
-${v.lines.map((l) => `<ALLLEDGERENTRIES.LIST><LEDGERNAME>${esc(l.ledger_name)}</LEDGERNAME><ISDEEMEDPOSITIVE>${num(l.debit) > 0 ? 'Yes' : 'No'}</ISDEEMEDPOSITIVE><AMOUNT>${num(l.debit) > 0 ? -num(l.debit) : num(l.credit)}</AMOUNT></ALLLEDGERENTRIES.LIST>`).join('')}
-</VOUCHER></TALLYMESSAGE>`).join('\n');
-  const xml = `<ENVELOPE><HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER><BODY><IMPORTDATA><REQUESTDESC><REPORTNAME>All Masters</REPORTNAME><STATICVARIABLES><SVCURRENTCOMPANY>${company}</SVCURRENTCOMPANY></STATICVARIABLES></REQUESTDESC><REQUESTDATA>
-${masters}
-${vch}
-</REQUESTDATA></IMPORTDATA></BODY></ENVELOPE>`;
-  await query("INSERT INTO export_logs (branch_id, export_type, from_date, to_date, records, created_by) VALUES (:b, 'TALLY', :f, :t, :n, :u)",
-    { b: req.branchId || req.branchIds[0], f: d.from, t: d.to, n: d.vouchers.length, u: req.user.id });
-  audit(req, 'TALLY_EXPORT', 'vouchers', null, { from: d.from, to: d.to, count: d.vouchers.length });
+  const d = await tallyVouchers(tallyRange(req));
+  const s = await getSettings(0);
+  const company = req.query.company || s.TALLY_COMPANY || (await queryOne('SELECT name FROM company LIMIT 1'))?.name || '';
+  await logTally(req, d, 'xml');
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="tally-${d.from}-to-${d.to}.xml"`);
-  res.send(xml);
+  res.send(tallyXml(d, company));
+});
+
+/* Send to Tally: the server posts the XML to TallyPrime on the shop computer */
+router.post('/tally/send', permit('acc_tally', 'export'), async (req, res) => {
+  const d = await tallyVouchers(tallyRange(req));
+  if (!d.vouchers.length) throw ApiError.badRequest('No vouchers to send - close the days (Day End) first');
+  const s = await getSettings(0);
+  const company = req.body.company || s.TALLY_COMPANY || (await queryOne('SELECT name FROM company LIMIT 1'))?.name || '';
+  let r;
+  try { r = await postToTally(tallyXml(d, company), s.TALLY_HOST, s.TALLY_PORT); } catch (e) { throw ApiError.badRequest(`Tally not reachable at ${s.TALLY_HOST || 'localhost'}:${s.TALLY_PORT || 9000} - open TallyPrime and switch on "acts as Server" (${e.message})`); }
+  if (!r.ok) throw ApiError.badRequest(`Tally refused: ${r.errors} error(s). ${r.raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 200)}`);
+  await logTally(req, d, 'send', { created: r.created });
+  res.json({ data: { sent: d.vouchers.length, created: r.created, altered: r.altered } });
+});
+
+router.post('/tally/test', permit('acc_tally', 'view'), async (req, res) => {
+  const host = req.body.host || 'localhost'; const port = req.body.port || 9000;
+  try {
+    const r = await fetch(`http://${host}:${port}`, { signal: AbortSignal.timeout(5000) });
+    res.json({ data: { ok: true, message: (await r.text()).replace(/<[^>]+>/g, ' ').trim().slice(0, 120) || 'Tally answered' } });
+  } catch (e) { res.json({ data: { ok: false, message: `No answer from ${host}:${port} (${e.message})` } }); }
+});
+
+/* Ledgers tab: Tally ledger names / groups + Tally address */
+router.put('/tally/settings', permit('acc_tally', 'edit'), async (req, res) => {
+  const b = req.body || {};
+  const map = Object.fromEntries((b.ledgers || []).filter((l) => l.key).map((l) => [l.key, { name: String(l.name || '').slice(0, 100), group: l.group }]));
+  const values = { TALLY_LEDGER_MAP: JSON.stringify(map) };
+  if (b.host != null) values.TALLY_HOST = String(b.host);
+  if (b.port != null) values.TALLY_PORT = String(b.port);
+  if (b.company != null) values.TALLY_COMPANY = String(b.company);
+  await saveSettings(values, 0);
+  audit(req, 'UPDATE', 'settings', 0, { tally: true });
+  res.json({ ok: true });
 });
 
 router.get('/tally/history', permit('acc_tally', 'view'), async (req, res) => {

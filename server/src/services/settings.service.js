@@ -81,6 +81,12 @@ export const DEFAULTS = {
   AUTO_BACKUP_ENABLED: '1',
   AUTO_BACKUP_TIME: '21:00',
   AUTO_BACKUP_KEEP: '30',
+  // Tally export
+  TALLY_HOST: 'localhost',
+  TALLY_PORT: '9000',
+  TALLY_COMPANY: '',
+  TALLY_VCH_PREFIX: 'GF',
+  TALLY_LEDGER_MAP: '{}',
   // day control
   ENFORCE_DAY_CLOSE: '1',
 };
