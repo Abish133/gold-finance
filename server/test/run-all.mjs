@@ -9,7 +9,7 @@ const dir = fileURLToPath(new URL('.', import.meta.url));
 const API = process.env.API_URL || 'http://localhost:5000';
 try { await fetch(`${API}/api/health`); } catch { console.error(`API is not running on ${API} - start it with "npm run dev" first`); process.exit(1); }
 
-const order = ['smoke', 'parity', 'desk', 'flows', 'sweep', 'backup'];
+const order = ['interest', 'mybook', 'smoke', 'parity', 'desk', 'flows', 'sweep', 'backup'];
 const want = process.argv.slice(2);
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.test.mjs'))
   .sort((a, b) => order.indexOf(a.split('.')[0]) - order.indexOf(b.split('.')[0]))

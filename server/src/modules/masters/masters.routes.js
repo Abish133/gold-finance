@@ -110,7 +110,7 @@ router.get('/lookups', permitAny(['loan_new', 'loan_old', 'loan_list', 'customer
     query('SELECT id, code, name, local_name FROM metals WHERE is_active = 1 ORDER BY id'),
     query('SELECT id, metal_id, name, purity FROM purities WHERE is_active = 1 ORDER BY purity DESC'),
     query('SELECT id, name, local_name, category_id FROM items WHERE is_active = 1 ORDER BY name'),
-    query('SELECT * FROM schemes WHERE is_active = 1 AND (branch_id IS NULL OR branch_id IN (:b)) ORDER BY code', { b: req.branchIds }),
+    query("SELECT * FROM schemes WHERE is_active = 1 AND (branch_id IS NULL OR branch_id IN (:b)) ORDER BY calc_mode = 'MYBOOK' DESC, code", { b: req.branchIds }),
     query('SELECT id, branch_id, bank_name, account_no, used_for FROM bank_accounts WHERE is_active = 1 AND branch_id IN (:b) ORDER BY bank_name', { b: req.branchIds }),
     query(`SELECT r.metal_id, r.purity, r.market_rate, r.loan_rate, r.rate_date FROM metal_rates r
             WHERE r.id IN (SELECT MAX(id) FROM metal_rates GROUP BY metal_id)`),

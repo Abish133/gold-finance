@@ -113,6 +113,7 @@ const run = async () => {
     const s75 = JSON.stringify([{ upto_months: 3, rate: 15 }, { upto_months: 6, rate: 18 }, { upto_months: 12, rate: 20 }, { upto_months: null, rate: 24 }]);
     const s80 = JSON.stringify([{ upto_months: 3, rate: 18 }, { upto_months: 6, rate: 20 }, { upto_months: 12, rate: 22 }, { upto_months: null, rate: 24 }]);
     await query(`INSERT INTO schemes (code, name, metal_id, ltv_percent, rate_type, calc_mode, slab_mode, slabs, min_days, tenure_months, description) VALUES
+      ('GL000', 'Gold Loan (MyBook)', NULL, 75, 'MONTHLY', 'MYBOOK', 'FROM_LOAN_DATE', '[{"upto_months":null,"rate":1.5}]', 0, 12, 'Rate per month, every started month charged, interest on the loan amount'),
       ('GL001', 'Gold Loan 75% LTV', :g, 75, 'YEARLY', 'DAYS', 'FROM_LOAN_DATE', :s75, 7, 12, 'Up to 75% of daily rate'),
       ('GL002', 'Gold Loan 80% LTV', :g, 80, 'YEARLY', 'DAYS', 'FROM_LOAN_DATE', :s80, 7, 12, 'Up to 80% of daily rate'),
       ('SL001', 'Silver Loan', :s, 60, 'MONTHLY', 'MONTHS', 'FROM_LOAN_DATE', :sl, 15, 12, 'Silver articles')`,

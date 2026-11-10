@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS schemes (
   branch_id INT NULL,                         -- NULL = all branches
   ltv_percent DECIMAL(6,2) NOT NULL DEFAULT 75,
   rate_type ENUM('YEARLY','MONTHLY') NOT NULL DEFAULT 'YEARLY',
-  calc_mode ENUM('DAYS','MONTHS') NOT NULL DEFAULT 'DAYS',
+  calc_mode ENUM('DAYS','MONTHS','MYBOOK') NOT NULL DEFAULT 'MYBOOK',
   slab_mode ENUM('FROM_LOAN_DATE','STEPPED') NOT NULL DEFAULT 'FROM_LOAN_DATE',
   slabs JSON NOT NULL,                        -- [{upto_months:3, rate:15}, ... {upto_months:null, rate:24}]
   min_days INT NOT NULL DEFAULT 7,

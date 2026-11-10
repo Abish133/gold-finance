@@ -33,7 +33,7 @@ export default function SchemesPage() {
     <ResourcePage
       title="Loan Schemes" singular="Scheme" endpoint="/masters/schemes" screen="m_schemes" icon={ListChecks} drawerSize="lg" cols={3}
       subtitle="LTV, interest slabs, minimum days, tenure, charges"
-      defaults={{ ltv_percent: 75, rate_type: 'YEARLY', calc_mode: 'DAYS', slab_mode: 'FROM_LOAN_DATE', min_days: 7, tenure_months: 12, is_active: 1,
+      defaults={{ ltv_percent: 75, rate_type: 'MONTHLY', calc_mode: 'MYBOOK', slab_mode: 'FROM_LOAN_DATE', min_days: 0, tenure_months: 12, is_active: 1,
         slabs: [{ upto_months: 3, rate: 15 }, { upto_months: 6, rate: 18 }, { upto_months: 12, rate: 20 }, { upto_months: '', rate: 24 }] }}
       fromRecord={(r) => ({ ...r, slabs: parse(r.slabs) })}
       toPayload={(v) => ({ ...v, slabs: (v.slabs || []).filter((s) => s.rate !== '').map((s) => ({ upto_months: s.upto_months === '' || s.upto_months == null ? null : Number(s.upto_months), rate: Number(s.rate) })) })}
@@ -49,7 +49,7 @@ export default function SchemesPage() {
         { name: 'metal_id', label: 'Metal', type: 'async-select', endpoint: '/masters/metals' },
         { name: 'ltv_percent', label: 'LTV % of rate', type: 'number', step: '0.01', required: true },
         { name: 'rate_type', label: 'Rate type', type: 'select', options: [{ value: 'YEARLY', label: '% per year' }, { value: 'MONTHLY', label: '% per month' }], placeholder: undefined },
-        { name: 'calc_mode', label: 'Calculate by', type: 'select', options: [{ value: 'DAYS', label: 'Exact days' }, { value: 'MONTHS', label: 'Months (half/full)' }], placeholder: undefined },
+        { name: 'calc_mode', label: 'Calculate by', type: 'select', options: [{ value: 'MYBOOK', label: 'MyBook (every started month, rate p.m.)' }, { value: 'DAYS', label: 'Exact days' }, { value: 'MONTHS', label: 'Months (half/full)' }], placeholder: undefined },
         { name: 'slab_mode', label: 'Slab mode', type: 'select', options: [{ value: 'FROM_LOAN_DATE', label: 'From loan date' }, { value: 'STEPPED', label: 'Stepped' }], placeholder: undefined },
         { name: 'min_days', label: 'Minimum days', type: 'number' }, { name: 'tenure_months', label: 'Tenure (months)', type: 'number' },
         { name: 'grace_days', label: 'Grace days', type: 'number' }, { name: 'penal_rate', label: 'Penal % p.a. after due', type: 'number', step: '0.01' },

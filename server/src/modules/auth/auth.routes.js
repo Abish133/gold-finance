@@ -12,7 +12,7 @@ import { SCREENS } from '#config/screens.js';
 
 const router = Router();
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false,
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, skipSuccessfulRequests: true, // only wrong passwords count
   message: { message: 'Too many login attempts. Try again in 15 minutes.' } });
 
 const cookieOpts = { httpOnly: true, sameSite: 'lax', secure: env.isProd, path: '/', maxAge: 12 * 3600 * 1000 };

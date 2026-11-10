@@ -6,6 +6,7 @@ import { round2, roundTo, num } from '#utils/money.js';
  *
  *   rate_type      YEARLY -> % per annum   | MONTHLY -> % per month
  *   calc_mode      DAYS   -> exact days    | MONTHS  -> months with half/full rounding
+ *                  MYBOOK -> the desktop MyBook rules (see mybookInterest below)
  *   slab_mode      FROM_LOAN_DATE -> slab reached applies to the whole period (as on the printed bill)
  *                  STEPPED        -> every slab period charged at its own rate
  *   interest_type  SIMPLE | COMPOUND -> unpaid interest is added to the base every `compoundMonths`
@@ -40,7 +41,63 @@ export const billedMonths = (from, to, halfDays = 15, graceDays = 0) => {
 
 export const monthlyRate = (rate, rateType) => (rateType === 'MONTHLY' ? rate / 100 : rate / 100 / 12);
 
+/** Whole months the desktop way: every started month is a full month (after the grace days), at least 1. */
+export const mybookMonths = (from, to, graceDays = 0) => {
+  const a = dayjs(from).startOf('day');
+  const b = dayjs(to).startOf('day');
+  if (!b.isAfter(a)) return 1;
+  const full = b.diff(a, 'month');
+  const extra = b.diff(a.add(full, 'month'), 'day');
+  return Math.max(1, extra > graceDays ? full + 1 : full);
+};
+
+/**
+ * MyBook interest (checked figure by figure against the desktop Interest Calculation and Release screens):
+ *  - interest is on the loan amount (part payments do not lower it; top-ups add to it)
+ *  - flat:     round(amount x rate per month) x months
+ *  - compound: each full 12 months, that year's interest is added to the amount; total rounded at the end
+ *  - due = total - advance interest - interest already received
+ */
+const mybookInterest = ({ loan, scheme, txns, asOf, options }) => {
+  const rateType = loan.rate_type || scheme.rate_type || 'MONTHLY';
+  const rate = num(loan.interest_rate, parseSlabs(loan.slabs_snapshot ?? scheme.slabs)[0]?.rate);
+  const r = monthlyRate(rate, rateType);
+  const compound = (loan.interest_type || scheme.interest_type) === 'COMPOUND';
+  const end = dayjs(asOf || new Date()).startOf('day');
+  const valid = txns.filter((t) => !t.is_void);
+  const moves = valid.filter((t) => ['DISBURSE', 'TOPUP', 'PART_PAYMENT'].includes(t.txn_type));
+  const hasDisburse = moves.some((t) => t.txn_type === 'DISBURSE');
+  const base = (hasDisburse ? 0 : num(loan.principal)) + moves.filter((t) => t.txn_type !== 'PART_PAYMENT').reduce((x, t) => x + num(t.principal_amount), 0);
+  const outstanding = round2(Math.max(0, (hasDisburse ? 0 : num(loan.principal)) + moves.reduce((x, t) => x + num(t.principal_amount), 0)));
+  const months = mybookMonths(loan.loan_date, end, num(options.graceDays, 0));
+  const monthly = Math.round(base * r);
+  let total;
+  if (compound) {
+    let amount = base; let acc = 0; let left = months;
+    while (left > 0) { const m = Math.min(12, left); const yi = amount * r * m; acc += yi; left -= m; if (m === 12) amount += yi; }
+    total = Math.round(acc + 1e-9);
+  } else total = monthly * months;
+  const received = valid.filter((t) => num(t.interest_amount) > 0 && t.txn_type !== 'DISBURSE').reduce((x, t) => x + num(t.interest_amount), 0);
+  const interestPaid = round2(num(loan.advance_interest) + received);
+  const interestDue = round2(Math.max(0, total - interestPaid));
+  const elapsedDays = Math.max(0, end.diff(dayjs(loan.loan_date).startOf('day'), 'day'));
+  const monthsPaid = monthly > 0 ? Math.floor((interestPaid + 0.5) / monthly) : 0;
+  const isOverdue = loan.due_date ? end.isAfter(dayjs(loan.due_date)) : false;
+  return {
+    asOf: end.format('YYYY-MM-DD'), mode: 'MYBOOK',
+    elapsedDays, chargeDays: months * 30, months, monthsElapsed: round2(elapsedDays / 30),
+    rate, rateType, interestType: compound ? 'COMPOUND' : 'SIMPLE', slabs: [{ upto_months: null, rate }], segments: [{ fromDay: 0, days: elapsedDays, principal: round2(base) }],
+    principalOutstanding: outstanding, capitalised: 0,
+    totalInterest: round2(total), interestPaid, interestDue, excessInterest: round2(Math.max(0, interestPaid - total)), penalDue: 0, overdueDays: isOverdue ? end.diff(dayjs(loan.due_date), 'day') : 0, isOverdue,
+    totalPayable: round2(outstanding + interestDue),
+    monthlyInterest: monthly, monthsPaid, monthsDue: months,
+    paidUpTo: dayjs(loan.loan_date).add(monthsPaid, 'month').format('YYYY-MM-DD'),
+    currentSlabEndsOn: null, nextSlabRate: null,
+  };
+};
+
 export const calculateInterest = ({ loan, scheme = {}, txns = [], asOf, options = {} }) => {
+  if ((scheme.calc_mode || options.calcMode) === 'MYBOOK') return mybookInterest({ loan, scheme, txns, asOf, options });
   const halfDays = num(options.monthRoundHalfDays, 15);
   const roundStep = num(options.roundInterestTo, 1);
   const compoundMonths = Math.max(1, num(options.compoundMonths, 12));
@@ -146,13 +203,13 @@ export const calculateInterest = ({ loan, scheme = {}, txns = [], asOf, options 
 };
 
 /**
- * Value of one jewel the way the desktop app shows it: fine weight x 100% rate, rounded down to the nearest 100.
+ * Value of one jewel the way the desktop app shows it: fine weight x 100% rate, rounded to the nearest 100.
  * rate is given at purity `basis` (100 = fine rate; 91.6 / 92.5 = ornament rate) and converted to the fine rate.
  */
 export const itemValue = (netWt, purity, rate, basis = 100) => {
   const fine = Math.round(((num(netWt) * num(purity, 91.6)) / 100) * 1000) / 1000;
   const fineRate = (num(rate) * 100) / (num(basis) || 100);
-  return Math.floor((fine * fineRate) / 100) * 100;
+  return Math.round((fine * fineRate) / 100) * 100;
 };
 
 /** Eligible loan from items + scheme LTV. Silver items use the silver rate. */

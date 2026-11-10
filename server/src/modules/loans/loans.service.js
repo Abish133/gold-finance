@@ -512,7 +512,7 @@ export const renewLoan = async (req, id, body) => {
     );
     const newLoanId = r.insertId;
     await tx.query(`INSERT INTO loan_items (loan_id, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, rate_per_gram, value, remarks)
-      SELECT :n, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, :lr, FLOOR(net_wt * purity / 100 * :lr * 100 / :basis / 100) * 100, remarks FROM loan_items WHERE loan_id = :o`,
+      SELECT :n, item_id, metal_id, item_name, pcs, gross_wt, stone_wt, net_wt, purity, fine_wt, :lr, ROUND(ROUND(net_wt * purity / 100, 3) * :lr * 100 / :basis / 100) * 100, remarks FROM loan_items WHERE loan_id = :o`,
     { n: newLoanId, o: loan.id, lr: loanRate, basis });
     if (Array.isArray(body.add_items) && body.add_items.length) {
       const extra = prepareItems(body.add_items, loanRate);

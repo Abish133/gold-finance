@@ -372,8 +372,8 @@ export const blankItem = (metal) => ({ key: crypto.randomUUID(), item_name: '', 
 /** 100% (fine) rate from a board rate row: rate at its purity x 100 / purity. */
 export const fineRate = (r) => (r && n(r.market_rate) ? round2((n(r.market_rate) * 100) / (n(r.purity) || 100)) : null);
 
-/** Desktop valuation: fine weight x 100% rate, rounded down to the nearest 100. */
-export const valueOf = (fine, rate) => Math.floor((n(fine) * n(rate)) / 100) * 100;
+/** Desktop valuation: fine weight x 100% rate, rounded to the nearest 100. */
+export const valueOf = (fine, rate) => Math.round((n(fine) * n(rate)) / 100) * 100;
 
 /** Compute net, fine and value for a jewel row. `rates` are 100% (fine) rates per gram. */
 export const computeItem = (it, rates) => {

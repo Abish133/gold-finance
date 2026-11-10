@@ -61,6 +61,14 @@ const run = async () => {
   await conn.query("UPDATE customers SET id_proof_type = 'Aadhaar Card' WHERE id_proof_type = 'Aadhaar'");
   await conn.query("UPDATE customers SET id_proof_type = 'PAN Card' WHERE id_proof_type = 'PAN'");
   await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (2, 'Desktop parity: mix loans, compound interest, release no, bank reco')");
+  // MyBook interest mode + the desktop-style default scheme (rate per month, whole months, interest on the loan amount)
+  await conn.query("ALTER TABLE schemes MODIFY calc_mode ENUM('DAYS','MONTHS','MYBOOK') NOT NULL DEFAULT 'MYBOOK'");
+  const [[mb]] = await conn.query("SELECT COUNT(*) c FROM schemes WHERE calc_mode = 'MYBOOK'");
+  if (!mb.c) {
+    await conn.query(`INSERT INTO schemes (code, name, metal_id, ltv_percent, rate_type, calc_mode, slab_mode, slabs, min_days, grace_days, tenure_months, description)
+      VALUES ('GL000', 'Gold Loan (MyBook)', NULL, 75, 'MONTHLY', 'MYBOOK', 'FROM_LOAN_DATE', '[{"upto_months":null,"rate":1.5}]', 0, 0, 12, 'Rate per month, every started month charged, interest on the loan amount')`);
+  }
+  await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (3, 'MyBook interest mode')");
   await conn.end();
   console.log(`✔ Database "${env.db.database}" is up to date`);
 };
