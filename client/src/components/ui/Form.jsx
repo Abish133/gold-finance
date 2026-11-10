@@ -1,4 +1,5 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef, useId, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import clsx from 'clsx';
 
 export function Field({ label, error, hint, required, children, className }) {
@@ -11,7 +12,24 @@ export function Field({ label, error, hint, required, children, className }) {
   );
 }
 
+/** Password box with a show / hide eye (every password field uses Input type="password"). */
+const PasswordInput = forwardRef(function PasswordInput({ className, prefix, ...props }, ref) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      {prefix && <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-ink-400">{prefix}</span>}
+      <input ref={ref} className={clsx('input pr-10', prefix && 'pl-8', className)} {...props} type={show ? 'text' : 'password'} />
+      <button type="button" tabIndex={-1} title={show ? 'Hide password' : 'Show password'} aria-label={show ? 'Hide password' : 'Show password'}
+        onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShow((v) => !v); }}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink-400 hover:text-navy-900 dark:hover:text-white">
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+});
+
 export const Input = forwardRef(function Input({ className, prefix, suffix, ...props }, ref) {
+  if (props.type === 'password') return <PasswordInput ref={ref} className={className} prefix={prefix} {...props} />;
   if (!prefix && !suffix) return <input ref={ref} className={clsx('input', className)} {...props} />;
   return (
     <div className="relative">
