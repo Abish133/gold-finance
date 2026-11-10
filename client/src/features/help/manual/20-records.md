@@ -7,9 +7,13 @@ screens: loan_list, customers, stock
 
 **Records → Pledge Book** - the register of all loans.
 
-- Tiles: pending (open) / released / auctioned / at bank with amounts.
-- Filters: date range, status, metal, scheme, search (F3).
-- Double-click a loan for its details. **Print (F9)**, **Excel (Ctrl+E)**, **Refresh (F5)**.
+- Tiles: **Total loans**, **Pending**, **Released**, **In Bank**, **Auctioned**, **Cancelled** - count and amount.
+- Each row: loan no, bill book no, loan date, customer, metal, items (e.g. *CHAIN 1* = item and pieces), weights, **loan amount** (the first amount + any top-up), ROI %, advance interest, item value, settle-before date, **status** and release no.
+- Status words: **Pending** (open, in the shop), **In Bank** (open, pledged with a bank), **Released** (closed - also an old loan closed by Re-loan), **Auctioned**, **Cancelled**.
+- Filters: date range (loan date or release date), metal, loan amount from - to, search (F3). Oldest loans first.
+- Double-click a loan for its details. **Print (F9)**, **PDF (Ctrl+P)**, **Excel (Ctrl+E)**, **Refresh (Ctrl+R)**.
+
+Example (one day of the sample data): 4 loans ₹82,500 - Pending 1 (₹3,500), Released 2 (₹54,000: loan 1 ₹51,000 with its ₹1,000 top-up, loan 2 ₹3,000), In Bank 1 (₹25,000).
 
 # Customers (F3)
 

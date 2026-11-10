@@ -33,6 +33,8 @@ screens: day_close, acc_cashbook, cash_denomination
    - *Account posting: N rows will be written* counts the loan-counter rows (Girvi, Interest, Ashal Jama, Interest Jama, Potali, bank charges). Auction sales and your own vouchers are already in the books.
    - If the cash was not counted: "Day End check failed - Cash has not been counted" → **Open Day Report** / **Close the day anyway** / **Go back**.
 5. The day is locked, the billing date moves to the next day and **Gold / Silver Rate** opens for the new date.
+   - Work goes on in the new date straight away: a customer who comes after Day End (say at 7 pm) is entered on **tomorrow's date**, as in the desktop app. The header, dashboard and every new entry use the billing date.
+   - Enter (or copy - **Copy Previous Rate (F5)**) the rate for the new date before giving a new loan.
 
 # Day Close
 

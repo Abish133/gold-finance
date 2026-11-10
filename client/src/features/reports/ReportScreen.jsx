@@ -53,7 +53,8 @@ export function ReportScreen({ title, subtitle, dateLabel = 'From', filters, f, 
     return out;
   }, [shown, daily, dateKey, columns]);
   const sum = (k) => shown.reduce((s, r) => s + n(r[k]), 0);
-  const foot = Object.fromEntries(columns.filter((c) => c.total).map((c) => [c.key, sum(c.key)]));
+  // total: true = sum of the column; total: (rows) => value = a computed total (e.g. weighted %)
+  const foot = Object.fromEntries(columns.filter((c) => c.total).map((c) => [c.key, typeof c.total === 'function' ? c.total(shown) : sum(c.key)]));
   const titleFull = `${title} · ${date(f.from)} - ${date(f.to)}`;
   const preview = () => printTable({ title: titleFull, company, columns: columns.map((c) => ({ ...c, print: c.print })), rows: shown, totals: { ...foot, ...totals } });
   const excel = () => exportCsv(title, columns, shown);

@@ -57,10 +57,10 @@ export function LoanReleaseSummaryPage() {
       </div>
       <div className="grid grid-cols-5 gap-3">
         <Tile label="Opening balance" value={amount(data?.opening || 0)} hint={params && `on ${date(params.from)}`} cls="border-t-navy-800" />
-        <Tile label="Loans given" value={amount(sum('given'))} hint={`${sum('given_count')} loans`} cls="border-t-amber-600" />
-        <Tile label="Released" value={amount(sum('released'))} hint={`${sum('released_count')} loans`} cls="border-t-emerald-700" />
-        <Tile label="Auctioned" value={amount(sum('auctioned'))} hint={`${sum('auctioned_count')} loans`} cls="border-t-rose-600" />
-        <Tile label="Closing balance" value={amount(data?.closing || 0)} hint={params && `on ${date(params.to)} · outstanding ${amount(data?.outstanding || 0)}`} dark />
+        <Tile label="Loans given" value={amount(sum('given'))} hint={`${sum('given_count')} loan${sum('given_count') === 1 ? '' : 's'}`} cls="border-t-amber-600" />
+        <Tile label="Released" value={amount(sum('released'))} hint={`${sum('released_count')} loan${sum('released_count') === 1 ? '' : 's'}`} cls="border-t-emerald-700" />
+        <Tile label="Auctioned" value={amount(sum('auctioned'))} hint={`${sum('auctioned_count')} loan${sum('auctioned_count') === 1 ? '' : 's'}`} cls="border-t-rose-600" />
+        <Tile label="Closing balance" value={amount(data?.closing || 0)} hint={params && `on ${date(data?.to || params.to)} · outstanding ${amount(data?.outstanding || 0)}`} dark />
       </div>
       <div className="grid items-stretch gap-3 xl:grid-cols-[1fr_320px]">
         <div className="card min-h-[calc(100vh-27rem)] overflow-auto">
@@ -75,7 +75,7 @@ export function LoanReleaseSummaryPage() {
                 </tr>
               ))}
             </tbody>
-            <tfoot className="navy-gradient text-white"><tr className="font-bold"><td className="px-2 py-2">Total · {date(params?.to)}</td><td className="num px-2 text-right">{amount(sum('given'))} · {sum('given_count')}</td><td className="num px-2 text-right">{amount(sum('released'))} · {sum('released_count')}</td>
+            <tfoot className="navy-gradient text-white"><tr className="font-bold"><td className="px-2 py-2">Total · {date(data?.to || params?.to)}</td><td className="num px-2 text-right">{amount(sum('given'))} · {sum('given_count')}</td><td className="num px-2 text-right">{amount(sum('released'))} · {sum('released_count')}</td>
               <td className="num px-2 text-right">{amount(sum('auctioned'))} · {sum('auctioned_count')}</td><td className="num px-2 text-right">{amount(sum('part_paid'))}</td><td className="num px-2 text-right">{amount(data?.closing || 0)}</td><td className="num px-2 text-right">{amount(data?.outstanding || 0)}</td></tr></tfoot>
           </table>
         </div>
@@ -84,7 +84,7 @@ export function LoanReleaseSummaryPage() {
           <SideLine k="Opening balance" v={amount(data?.opening || 0)} />
           <SideHead>Loans given</SideHead>{['GOLD', 'SILVER', 'MIX'].map((m) => <SideLine key={m} k={`${m.charAt(0) + m.slice(1).toLowerCase()} · ${metal(m, 'c')}`} v={amount(metal(m, 'a'))} />)}
           <SideHead>Closed</SideHead><SideLine k={`Released · ${sum('released_count')}`} v={amount(sum('released'))} /><SideLine k={`Auctioned · ${sum('auctioned_count')}`} v={amount(sum('auctioned'))} />
-          <SideHead>Other</SideHead><SideLine k="Part paid (loan amt)" v={amount(sum('part_paid'))} /><SideLine k="Top-up given" v={amount(sum('topup'))} />
+          <SideHead>Other</SideHead><SideLine k="Part paid (loan amt)" v={amount(sum('part_paid'))} />
           <SideLine k="Closing balance" v={amount(data?.closing || 0)} bold /><SideLine k="Outstanding" v={amount(data?.outstanding || 0)} bold />
         </div>
       </div>

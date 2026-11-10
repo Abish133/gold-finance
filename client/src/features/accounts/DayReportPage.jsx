@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
-import { amount, n, today } from '@/lib/format';
+import { amount, n, today, setWorkDate } from '@/lib/format';
 import { ExitButton, Line, useKeys } from '@/features/loans/desk';
 import { CashCountDrawer } from './DenominationPage';
 
@@ -60,7 +60,7 @@ export default function DayReportPage({ mode = 'report' }) {
       toast.success(`Day ${dayjs(q.to).format('DD/MM/YYYY')} closed. Billing date is now ${dayjs(nextDay).format('DD/MM/YYYY')}`);
       ['/desk/billing-date', '/desk/day-report', '/accounts/day-close', '/dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       // desktop: Metal Rate Update opens for the new billing date
-      if (!dayjs(nextDay).isAfter(dayjs(), 'day')) navigate(`/masters/rates?date=${nextDay}`); else refetch();
+      setWorkDate(nextDay); navigate(`/masters/rates?date=${nextDay}`);
     } catch (e) { toast.error(e.message); } finally { setClosing(false); }
   };
   useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => setCount(true), f10: () => (isEnd ? closeDay() : navigate('/settings/day-end')), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, q, data, printFirst, isEnd]);

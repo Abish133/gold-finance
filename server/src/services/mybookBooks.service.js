@@ -89,6 +89,10 @@ export const mybookBalanceSheet = async (branchIds, to, from) => {
   const assets = bsRows.filter((r) => r.nature !== 'EQUITY' && r.balance > 0).map((r) => ({
     ...r, section: r.code === '1' ? 'Loans (Girvi)' : r.system_key === 'CASH' ? 'Cash' : 'Other assets', amount: r.balance,
   })).sort((a, b) => ['Loans (Girvi)', 'Other assets', 'Cash'].indexOf(a.section) - ['Loans (Girvi)', 'Other assets', 'Cash'].indexOf(b.section));
+  // the desktop also lists the bank accounts under Other assets, even at 0.00 ("Hide zero accounts" hides them)
+  const banks = await query("SELECT ba.ledger_id, CONCAT(ba.bank_name, ' ', COALESCE(ba.bank_branch, ''), ' A/c') name FROM bank_accounts ba WHERE ba.branch_id IN (:b) OR ba.branch_id IS NULL", { b: branchIds });
+  for (const k of banks) if (!assets.some((a) => a.ledger_id && a.ledger_id === k.ledger_id)) assets.push({ id: `BA${k.ledger_id}`, ledger_id: k.ledger_id, name: k.name.replace(/\s+/g, ' '), section: 'Other assets', amount: 0, zero: true });
+  assets.sort((a, b) => ['Loans (Girvi)', 'Other assets', 'Cash'].indexOf(a.section) - ['Loans (Girvi)', 'Other assets', 'Cash'].indexOf(b.section));
   const ta = round2(assets.reduce((s, r) => s + r.amount, 0));
   const tl = round2(liabilities.reduce((s, r) => s + r.amount, 0));
   return { assets, liabilities, totalAssets: ta, totalLiabilities: tl, difference: round2(ta - tl), books: 'mybook' };

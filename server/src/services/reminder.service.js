@@ -33,7 +33,7 @@ export const runDueReminders = async (branchId) => {
   for (const l of loans) {
     const before = (await query("SELECT COUNT(*) c FROM message_queue WHERE loan_id = :l AND event_key = 'DUE_REMINDER'", { l: l.id }))[0].c;
     await queueMessage({ branchId, event: 'DUE_REMINDER', phone: l.phone, loanId: l.id,
-      vars: { name: l.customer_name, loan_no: l.bill_no, amount: l.current_principal, date: dayjs(l.loan_date).format('DD-MM-YYYY'), due_date: dayjs(l.due_date).format('DD-MM-YYYY') } });
+      vars: { name: l.customer_name, loan_no: l.bill_no, amount: l.current_principal, date: dayjs(l.loan_date).format('DD/MM/YYYY'), due_date: dayjs(l.due_date).format('DD/MM/YYYY') } });
     const after = (await query("SELECT COUNT(*) c FROM message_queue WHERE loan_id = :l AND event_key = 'DUE_REMINDER'", { l: l.id }))[0].c;
     if (after > before) queued++;
   }

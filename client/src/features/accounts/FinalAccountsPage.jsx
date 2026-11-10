@@ -124,7 +124,7 @@ export default function FinalAccountsPage() {
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
           <TSide title="Capital & Liabilities" rows={(b?.liabilities || []).map((r) => (mb ? { ...r, group_name: '' } : r))} total={b?.totalLiabilities || 0} />
-          <TSide title="Assets" rows={(b?.assets || []).map((r) => (mb ? { ...r, group_name: '' } : r))} total={b?.totalAssets || 0} />
+          <TSide title="Assets" rows={(b?.assets || []).filter((r) => !(q.hideZero && r.zero)).map((r) => (mb ? { ...r, group_name: '' } : r))} total={b?.totalAssets || 0} />
         </div>
         <p className="text-sm text-ink-500">Balance Sheet accounts on {date(q.to)}. A Jama balance is shown under Capital / Liabilities, a Nave balance under Assets.</p>
       </>)}

@@ -17,8 +17,8 @@ import { LoanDetailsDrawer } from '@/features/loans/LoanDetailsDrawer';
 
 const cols = [
   { key: 'sno', label: 'S.No' }, { key: 'bill_no', label: 'Loan No' }, { key: 'manual_bill_no', label: 'Bill Book No' }, { key: 'loan_date', label: 'Pledge Date', type: 'date' },
-  { key: 'customer_name', label: 'Customer' }, { key: 'loan_on', label: 'Metal' }, { key: 'item_summary', label: 'Pledged Items' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' },
-  { key: 'current_principal', label: 'Amount', type: 'money' }, { key: 'state', label: 'Checked' }, { key: 'checked_by_name', label: 'Checked By' },
+  { key: 'customer_name', label: 'Customer' }, { key: 'loan_on', label: 'Metal' }, { key: 'items_text', label: 'Pledged Items', print: (r) => (r.items_text || r.item_summary || '').toUpperCase() }, { key: 'net_wt', label: 'Net Wt', type: 'weight' },
+  { key: 'loan_amount', label: 'Amount', type: 'money' }, { key: 'state', label: 'Checked' }, { key: 'checked_by_name', label: 'Checked By' },
 ];
 
 /** Current Stock Check (desktop): physical check of pledged items in hand - scan or type each loan. */
@@ -55,7 +55,7 @@ export default function StockCheckPage() {
     .filter((r) => !q || `${r.bill_no} ${r.manual_bill_no || ''} ${r.customer_name} ${r.item_summary}`.toLowerCase().includes(q.toLowerCase()))
     .map((r, i) => ({ ...r, sno: i + 1, state: isChecked(r) ? dayjs(r.checked_at).format('DD/MM HH:mm') : n(r.missing) ? 'MISSING' : '-' })), [inHand, show, metal, q]); // eslint-disable-line react-hooks/exhaustive-deps
   const sum = (list, k) => list.reduce((s, r) => s + n(r[k]), 0);
-  const tag = (list) => `Rs. ${amount(sum(list, 'current_principal'))} · ${weight(sum(list, 'net_wt'))} g`;
+  const tag = (list) => `Rs. ${amount(sum(list, 'loan_amount'))} · ${weight(sum(list, 'net_wt'))} g`;
 
   const scan = async (e) => {
     e.preventDefault();
@@ -77,7 +77,7 @@ export default function StockCheckPage() {
   const newCheck = async () => { try { await api.del(`/auction/stock-check?date=${d}`); setAsk(null); setLast(null); refresh(); toast.success('New stock check started'); } catch (e) { toast.error(e.message); } };
   const saveNote = async () => { try { await api.put(`/desk/stock-note/${note.id}`, { date: d, remarks: note.remarks }); setNote(null); refresh(); toast.success('Correction note saved'); } catch (e) { toast.error(e.message); } };
   const open = async (r) => { if (r) setDetails((await api.get(`/loans/${r.id}`)).data); };
-  const print = () => printTable({ title: `Current Stock Check · ${date(d)} · ${checked.length} of ${inHand.length} checked`, company, columns: cols, rows, totals: { net_wt: sum(rows, 'net_wt'), current_principal: sum(rows, 'current_principal') } });
+  const print = () => printTable({ title: `Current Stock Check · ${date(d)} · ${checked.length} of ${inHand.length} checked`, company, columns: cols, rows, totals: { net_wt: sum(rows, 'net_wt'), loan_amount: sum(rows, 'loan_amount') } });
   useKeys({
     'ctrl+n': () => setAsk(true), delete: uncheck, f7: () => sel && navigate(`/loans/release?loan=${sel.id}`), f6: markMissing, f5: () => refetch(), f8: print, 'ctrl+p': print,
     'ctrl+e': () => exportCsv('stock-check', cols, rows), f3: () => input.current?.focus(), f4: () => document.getElementById('sc-search')?.focus(), f9: () => navigate('/loans/old'), escape: () => navigate('/'),
@@ -116,7 +116,7 @@ export default function StockCheckPage() {
         {tile('In stock (to check)', inHand.length, tag(inHand), 'border-t-navy-800 bg-cream-100')}
         {tile('Checked', checked.length, tag(checked), 'border-t-emerald-700')}
         {tile('Not checked yet', notChecked.length, tag(notChecked), 'border-t-rose-600')}
-        {tile('In bank (not in hand)', bank.length, `Rs. ${amount(sum(bank, 'current_principal'))} · not in the list`, 'border-t-violet-600')}
+        {tile('In bank (not in hand)', bank.length, `Rs. ${amount(sum(bank, 'loan_amount'))} · not in the list`, 'border-t-violet-600')}
         {tile('Scanned today', scannedToday.length, date(new Date()), 'border-t-amber-500')}
         {tile('Marked missing', missing.length, missing.length ? missing.map((m) => m.bill_no).join(', ') : 'none', 'border-t-orange-600')}
       </div>
@@ -130,8 +130,8 @@ export default function StockCheckPage() {
                 <td className="px-2 py-1.5 text-center font-bold text-emerald-700">{isChecked(r) ? '✓' : n(r.missing) ? <span className="text-orange-600">!</span> : ''}</td>
                 <td className="px-2">{r.sno}</td><td className="px-2 font-semibold">{r.bill_no}</td><td className="px-2">{r.manual_bill_no || '-'}</td><td className="px-2">{date(r.loan_date)}</td>
                 <td className="px-2"><b>{r.customer_name}</b>{r.relation_name ? <span className="text-ink-500"> {r.relation_type} {r.relation_name}</span> : ''}<span className="block text-[11px] text-ink-500">{r.customer_phone}</span></td>
-                <td className="px-2"><span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{r.loan_on}</span></td><td className="px-2">{r.item_summary}{r.remarks ? <span className="block text-[11px] text-amber-700">{r.remarks}</span> : ''}</td>
-                <td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{amount(r.current_principal)}</td>
+                <td className="px-2"><span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{r.loan_on}</span></td><td className="px-2 uppercase">{r.items_text || r.item_summary}{r.remarks ? <span className="block text-[11px] text-amber-700">{r.remarks}</span> : ''}</td>
+                <td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{amount(r.loan_amount)}</td>
                 <td className={clsx('px-2', n(r.missing) && 'font-bold text-orange-600')}>{r.state}</td><td className="px-2">{r.checked_by_name || '-'}</td>
                 <td className="px-2"><button type="button" title="Correction note" onClick={(e) => { e.stopPropagation(); setNote({ id: r.id, bill_no: r.bill_no, remarks: r.remarks || '' }); }}><StickyNote className="size-4 text-ink-500" /></button></td>
               </tr>
@@ -139,7 +139,7 @@ export default function StockCheckPage() {
           </tbody>
           <tfoot className="navy-gradient text-white"><tr className="font-bold">
             <td colSpan={5} /><td className="px-2 py-2">Total - {rows.length} loan{rows.length === 1 ? '' : 's'}</td><td /><td className="px-2">Checked {rows.filter(isChecked).length} · not checked {rows.filter((r) => !isChecked(r)).length}</td>
-            <td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'current_principal'))}</td><td colSpan={3} />
+            <td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'loan_amount'))}</td><td colSpan={3} />
           </tr></tfoot>
         </table>
       </div>

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { workDate } from '#services/daycontrol.service.js';
 import { query, queryOne, withTransaction } from '#config/db.js';
 import { permit, permitAny } from '#middleware/auth.js';
 import { requireBranch, assertBranch } from '#middleware/branch.js';
@@ -55,7 +56,8 @@ router.get('/', listPerm, async (req, res) => {
     query(`${SELECT.replace('FROM customers c', ", (SELECT MAX(l.loan_date) FROM loans l WHERE l.customer_id = c.id) AS last_loan, (SELECT COUNT(*) FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN') AS open_loans FROM customers c")} WHERE ${w} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
     query(`SELECT COUNT(*) total FROM customers c WHERE ${w}`, p),
     query(`SELECT COUNT(*) total, SUM(c.status = 'ACTIVE') active, SUM(c.status = 'BLOCKED') blocked,
-             SUM(EXISTS (SELECT 1 FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN')) with_open
+             SUM(EXISTS (SELECT 1 FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN')) with_open,
+             SUM((SELECT COUNT(*) FROM loans l WHERE l.customer_id = c.id AND l.status = 'OPEN')) open_loans
            FROM customers c WHERE c.branch_id IN (:b) AND c.merged_into IS NULL`, { b: req.branchIds }),
   ]);
   res.json({ ...paged(rows, total, lq), tiles });
@@ -82,7 +84,8 @@ router.get('/:id', listPerm, async (req, res) => res.json({ data: await loadCust
 router.get('/:id/summary', listPerm, async (req, res) => {
   const customer = await loadCustomer(req, req.params.id);
   const loans = await query(
-    `SELECT l.id, l.bill_no, l.loan_date, l.due_date, l.principal, l.current_principal, l.net_wt, l.item_summary, l.status, l.close_date, m.name AS metal_name
+    `SELECT l.id, l.bill_no, l.loan_date, l.due_date, l.principal, l.current_principal, l.net_wt, l.item_summary, l.status, l.close_date, l.bank_pledge_id, m.name AS metal_name,
+            (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) AS items_text
        FROM loans l JOIN metals m ON m.id = l.metal_id WHERE l.customer_id = :id ORDER BY l.loan_date DESC, l.id DESC`, { id: customer.id });
   const totals = await queryOne(
     `SELECT COUNT(*) AS total_loans, SUM(l.status = 'OPEN') AS open_loans, COALESCE(SUM(l.principal),0) AS total_lent,
@@ -104,11 +107,18 @@ router.get('/:id/ledger', listPerm, async (req, res) => {
     FROM loan_transactions t JOIN loans l ON l.id = t.loan_id WHERE l.customer_id = :c AND t.is_void = 0 ORDER BY t.txn_date, t.id`, { c: customer.id });
   let bal = 0;
   const entries = rows.map((r) => { bal += Number(r.principal_amount); return { ...r, balance: Math.round(bal * 100) / 100 }; });
-  const loanRows = await query(`SELECT l.*, c.name customer_name FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.customer_id = :c ORDER BY l.loan_date DESC, l.id DESC`, { c: customer.id });
-  const calc = await withCalc(loanRows, new Date(), customer.branch_id);
-  const loans = loanRows.map((l, i) => ({ ...calc[i], loan_on: l.loan_on, status: l.status, close_date: l.close_date }));
+  const loanRows = await query(`SELECT l.*, c.name customer_name,
+      (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text
+    FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.customer_id = :c ORDER BY l.loan_date DESC, l.id DESC`, { c: customer.id });
+  // interest as on the working (billing) date, as the desktop
+  const asOn = await workDate(customer.branch_id);
+  const calc = await withCalc(loanRows, new Date(`${asOn}T12:00:00`), customer.branch_id);
+  const loans = loanRows.map((l, i) => ({ ...calc[i], loan_on: l.loan_on, status: l.status, close_date: l.close_date, bank_pledge_id: l.bank_pledge_id, items_text: l.items_text }));
   const docs = await queryOne("SELECT COUNT(*) c FROM documents WHERE owner_type = 'CUSTOMER' AND owner_id = :c", { c: customer.id });
-  res.json({ data: { customer, entries, loans, documents: docs.c } });
+  // desktop header: customer since = first loan (old loans included); released by other = last time someone else took the jewels
+  const since = await queryOne('SELECT MIN(loan_date) d FROM loans WHERE customer_id = :c', { c: customer.id });
+  const other = await queryOne('SELECT MAX(l.close_date) d FROM release_by_other r JOIN loans l ON l.id = r.loan_id WHERE l.customer_id = :c', { c: customer.id });
+  res.json({ data: { customer, entries, loans, documents: docs.c, asOn, since: since?.d || customer.created_at, releasedByOther: other?.d || null } });
 });
 
 router.post('/', permitAny(['customers', 'loan_new', 'loan_old'], 'add'), requireBranch, async (req, res) => {

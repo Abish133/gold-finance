@@ -14,19 +14,19 @@ import { ExitButton, useKeys, CustomerLedgerDrawer } from '@/features/loans/desk
 import { CustomerFormDrawer } from './CustomerFormDrawer';
 import { CustomerDetailDrawer } from './CustomerDetailDrawer';
 
-const address = (r) => [r.door_no, r.street, r.area, r.city, r.pincode].filter(Boolean).join(', ');
+const address = (r) => [[r.door_no, r.street, r.area, r.city].filter(Boolean).join(', '), r.pincode].filter(Boolean).join(' - ');   // desktop: 5-43, Main Road, Kappiyarai, Nagercoil - 629157
 
 export const customerColumns = [
   { key: 'customer_no', label: 'A/c No', sortable: true, width: 80, render: (r) => <span className="num font-bold text-navy-800">{r.customer_no}</span> },
   { key: 'name', label: 'Customer', sortable: true, render: (r) => (
     <div className="flex items-center gap-3">
       <Avatar src={r.photo} name={r.name} size="sm" />
-      <div className="min-w-0"><p className="truncate font-semibold text-navy-900 dark:text-white">{r.title ? `${r.title}. ` : ''}{r.name}</p><p className="truncate text-xs text-ink-500">{r.relation_type} {r.relation_name}</p></div>
+      <div className="min-w-0"><p className="truncate font-semibold text-navy-900 dark:text-white">{r.title ? `${r.title} ` : ''}{r.name}</p><p className="truncate text-xs text-ink-500">{r.relation_type} {r.relation_name}</p></div>
     </div>
   ) },
   { key: 'address', label: 'Address', render: (r) => <span className="text-xs">{address(r)}</span>, print: (r) => address(r) },
   { key: 'phone', label: 'Phone' },
-  { key: 'open_loans', label: 'Open Loans', type: 'number' },
+  { key: 'open_loans', label: 'Open Loans', render: (r) => (Number(r.open_loans) ? r.open_loans : ''), print: (r) => (Number(r.open_loans) ? r.open_loans : '') },
   { key: 'last_loan', label: 'Last Loan', type: 'date' },
   { key: 'status', label: 'Status', type: 'status' },
 ];
@@ -37,7 +37,7 @@ export default function CustomersPage() {
   const { can, isAllBranches } = useAuth();
   const { data: company } = useCompany();
   const [params, setParams] = useSearchParams();
-  const [state, set] = useTableState({ sort: 'customer_no', order: 'desc', status: '', loans: '', pageSize: 50 });
+  const [state, set] = useTableState({ sort: 'customer_no', order: 'asc', status: '', loans: '', pageSize: 50 });
   const search = useDebounce(state.search);
   const list = useList('/customers', { ...state, search });
   const areas = useFetch('/customers/areas');
@@ -77,7 +77,7 @@ export default function CustomersPage() {
       </div>
       <div className="grid gap-3 sm:grid-cols-4">
         {[['Total customers', tiles.total, 'in this shop', 'border-t-navy-800 bg-cream-100'], ['Active', tiles.active, 'can take loans', 'border-t-emerald-600'],
-          ['Blocked', tiles.blocked, 'new loan not allowed', 'border-t-rose-600'], ['With open loans', tiles.with_open, `${tiles.with_open || 0} open loans`, 'border-t-navy-500']].map(([l, v, h, cls]) => (
+          ['Blocked', tiles.blocked, 'new loan not allowed', 'border-t-rose-600'], ['With open loans', tiles.with_open, `${tiles.open_loans ?? tiles.with_open ?? 0} open loans`, 'border-t-navy-500']].map(([l, v, h, cls]) => (
           <div key={l} className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-700 uppercase">{l}</p><p className="num text-2xl font-bold text-navy-900">{v || 0}</p><p className="text-xs text-ink-500">{h}</p></div>
         ))}
       </div>

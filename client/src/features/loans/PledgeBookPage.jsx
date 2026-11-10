@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { RefreshCw, Eye, FileDown, FileSpreadsheet, Image, ScrollText } from 'lucide-react';
 import clsx from 'clsx';
+import { bookStatus } from '@/lib/loanStatus';
 import dayjs from 'dayjs';
 import { Button, DataTable, Field, Input, SearchInput } from '@/components/ui';
 import { useList, useCompany } from '@/hooks/useApi';
@@ -21,6 +22,8 @@ const TILES = [['', 'Total loans', 'border-t-navy-700 bg-cream-100'], ['PENDING'
   ['IN_BANK', 'In bank', 'border-t-violet-600'], ['AUCTIONED', 'Auctioned', 'border-t-emerald-700'], ['CANCELLED', 'Cancelled', 'border-t-fuchsia-600']];
 const STATUS_PARAM = { PENDING: { status: 'OPEN', bank: '0' }, RELEASED: { status: 'CLOSED,RENEWED' }, IN_BANK: { status: 'OPEN', bank: '1' }, AUCTIONED: { status: 'AUCTIONED' }, CANCELLED: { status: 'CANCELLED' } };
 
+const STATUS_TONE = { Pending: 'bg-navy-700 text-white', Released: 'bg-rose-700 text-white', 'In Bank': 'bg-violet-700 text-white', Auctioned: 'bg-amber-600 text-white', Cancelled: 'bg-ink-500 text-white' };
+
 const columns = [
   { key: 'sno', label: 'S.No', render: (r) => r.__i, print: (r, i) => i + 1 },
   { key: 'bill_no', label: 'Loan No', sortable: true, render: (r) => <b>{r.bill_no}</b> },
@@ -28,15 +31,15 @@ const columns = [
   { key: 'loan_date', label: 'Loan Date', type: 'date', sortable: true },
   { key: 'customer_name', label: 'Customer', sortable: true, render: (r) => <div><p className="font-semibold">{r.customer_name}</p><p className="text-[11px] text-ink-500">{[r.relation_name && `${r.relation_type || ''} ${r.relation_name}`, r.customer_phone].filter(Boolean).join(' · ')}</p></div> },
   { key: 'loan_on', label: 'Metal', render: (r) => <span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{r.loan_on || r.metal_name}</span>, print: (r) => r.loan_on || r.metal_name },
-  { key: 'item_summary', label: 'Pledged Items', className: 'max-w-56 truncate' },
+  { key: 'items_text', label: 'Pledged Items', className: 'max-w-56 truncate uppercase', render: (r) => r.items_text || r.item_summary, print: (r) => (r.items_text || r.item_summary || '').toUpperCase() },
   { key: 'gross_wt', label: 'Gross Wt', type: 'weight' },
   { key: 'net_wt', label: 'Net Wt', type: 'weight', sortable: true },
-  { key: 'principal', label: 'Loan Amount', type: 'money', sortable: true },
+  { key: 'loan_amount', label: 'Loan Amount', type: 'money', sortable: true },
   { key: 'interest_rate', label: 'ROI %', type: 'number' },
   { key: 'advance_interest', label: 'Adv. Int.', type: 'money' },
   { key: 'market_value', label: 'Item Value', type: 'money' },
   { key: 'due_date', label: 'Settle Before', type: 'date', sortable: true },
-  { key: 'status', label: 'Status', type: 'status' },
+  { key: 'status', label: 'Status', render: (r) => <span className={clsx('rounded px-1.5 py-0.5 text-[10px] font-bold', STATUS_TONE[bookStatus(r)])}>{bookStatus(r)}</span>, print: (r) => bookStatus(r) },
   { key: 'release_no', label: 'Release No', type: 'number' },
   { key: 'close_date', label: 'Release Date', type: 'date' },
 ];
@@ -52,7 +55,7 @@ export default function PledgeBookPage() {
   const [amt, setAmt] = useState({ from: '', to: '' });
   const [tile, setTile] = useState('');
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState({ page: 1, pageSize: 50, sort: 'loan_date', order: 'desc' });
+  const [page, setPage] = useState({ page: 1, pageSize: 50, sort: 'loan_date', order: 'asc' });
   const ds = useDebounce(search);
   const params = { ...page, date_on: dateOn, from, to, loan_on: metal, amount_from: amt.from, amount_to: amt.to, search: ds, ...(STATUS_PARAM[tile] || {}) };
   const list = useList('/loans', params);
@@ -100,7 +103,7 @@ export default function PledgeBookPage() {
       <DataTable dense columns={cols} rows={rows} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
         sort={page.sort} order={page.order} onSort={(sort, order) => setPage({ ...page, sort, order })} onPage={(p) => setPage({ ...page, page: p })} onPageSize={(s) => setPage({ ...page, pageSize: s, page: 1 })}
         onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}
-        totals={rows.length ? { gross_wt: rows.reduce((s, r) => s + n(r.gross_wt), 0), net_wt: rows.reduce((s, r) => s + n(r.net_wt), 0), principal: rows.reduce((s, r) => s + n(r.principal), 0), market_value: rows.reduce((s, r) => s + n(r.market_value), 0) } : undefined} />
+        totals={rows.length ? { gross_wt: rows.reduce((s, r) => s + n(r.gross_wt), 0), net_wt: rows.reduce((s, r) => s + n(r.net_wt), 0), loan_amount: rows.reduce((s, r) => s + n(r.loan_amount), 0), market_value: rows.reduce((s, r) => s + n(r.market_value), 0) } : undefined} />
       <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
         <Button variant="outline" icon={RefreshCw} onClick={() => list.refetch()}>Refresh (Ctrl+R)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>

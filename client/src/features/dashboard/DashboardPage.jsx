@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const t = data.today.transactions;
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const goldToday = data.rates.some((r) => dayjs(r.rate_date).isSame(dayjs(), 'day'));
+  const goldToday = data.rates.some((r) => dayjs(r.rate_date).isSame(dayjs(billing?.billingDate || undefined), 'day'));
   const interestToday = n(data.today.loans.advance_interest) + Object.values(t).reduce((s, x) => s + n(x.interest) + n(x.penal), 0);
   const trend = data.trend.map((r) => ({ month: dayjs(`${r.m}-01`).format('MMM'), lent: n(r.lent), collected: n(r.collected), released: n(r.released) }));
   const actions = ACTIONS.filter((a) => allowed(can, a.screen) && !(isAllBranches && ['loan_new', 'loan_old'].includes(a.screen)));
@@ -73,7 +73,7 @@ export default function DashboardPage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold sm:text-3xl">{greet}, {user.full_name.split(' ')[0].toUpperCase()}</h1>
           <p className="mt-1 text-sm text-coral-400 sm:text-base">
-            {dayjs().format('dddd, DD MMMM YYYY')} <span className="mx-2">·</span> Billing date <span className={clsx(billing?.behind && 'font-bold text-rose-300')}>{dayjs(billing?.billingDate).format('DD/MM/YYYY')}</span>
+            {dayjs(billing?.billingDate || undefined).format('dddd, DD MMMM YYYY')} <span className="mx-2">·</span> Billing date <span className={clsx(billing?.behind && 'font-bold text-rose-300')}>{dayjs(billing?.billingDate).format('DD/MM/YYYY')}</span>
             <span className="mx-2">·</span> {goldToday ? <span className="text-gold-300">Gold rate entered</span> : 'Gold rate NOT entered'}
             <span className="mx-2">·</span> <span className="text-navy-100">{isAllBranches ? 'All branches' : currentBranch?.name}</span>
           </p>
@@ -113,11 +113,11 @@ export default function DashboardPage() {
 
         <div className="flex flex-col gap-4">
           <Card title="Today" actions={<span className="text-xs text-ink-500">last entries</span>} bodyClassName="p-0" className="flex-1">
-            {!data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(), 'day')).length ? (
+            {!data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(billing?.billingDate || undefined), 'day')).length ? (
               <div className="flex flex-col items-center justify-center py-14 text-ink-500"><CalendarDays className="size-7 text-rose-500" /><p className="mt-3">No entries yet today</p></div>
             ) : (
               <ul className="divide-y divide-ink-200 dark:divide-ink-800">
-                {data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(), 'day')).map((r) => (
+                {data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(billing?.billingDate || undefined), 'day')).map((r) => (
                   <li key={r.id}>
                     <button type="button" onClick={() => navigate(`/loans/counter?loan=${r.loan_id}`)} className="flex w-full items-center gap-3 px-5 py-2.5 text-left hover:bg-navy-50/50 dark:hover:bg-ink-800/40">
                       <Badge tone={TXN_TONE[r.txn_type]}>{TXN_LABEL[r.txn_type]}</Badge>

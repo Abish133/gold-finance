@@ -10,7 +10,7 @@ import { useFetch, useAction, useCompany, useSettings } from '@/hooks/useApi';
 import { useHotkey } from '@/hooks/useUtils';
 import { Button, Drawer, Spinner, Field, Input, Badge } from '@/components/ui';
 import { GlobalSearch } from './GlobalSearch';
-import { amount } from '@/lib/format';
+import { amount, setWorkDate, today } from '@/lib/format';
 
 const useTheme = () => {
   const [dark, setDark] = useState(() => localStorage.getItem('gf.theme') === 'dark');
@@ -198,9 +198,10 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
   const { data: years = [] } = useFetch('/admin/financial-years', undefined, { staleTime: 30 * 60_000 });
   const fy = years.find((y) => y.is_current);
   const { data: billing } = useFetch('/desk/billing-date', undefined, { staleTime: 60_000 });
+  setWorkDate(billing?.billingDate);
   const gold = rates.find((r) => r.metal_code === 'GOLD');
   const silver = rates.find((r) => r.metal_code === 'SILVER');
-  const todayRate = gold && dayjs(gold.rate_date).isSame(dayjs(), 'day');
+  const todayRate = gold && dayjs(gold.rate_date).isSame(dayjs(today()), 'day');
   const name = company?.name || 'Gold Finance';
 
   return (

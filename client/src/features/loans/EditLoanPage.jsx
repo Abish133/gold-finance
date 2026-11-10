@@ -1,9 +1,11 @@
+import { bookStatus } from '@/lib/loanStatus';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Save, Undo2, UserCog, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Drawer, Field, Input, Select, StatusBadge } from '@/components/ui';
+import clsx from 'clsx';
+import { Button, Drawer, Field, Input, Select } from '@/components/ui';
 import { CustomerPicker } from '@/components/common/CustomerPicker';
 import { useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
@@ -69,7 +71,7 @@ export default function EditLoanPage() {
       <div className="card flex flex-wrap items-end gap-3 px-4 py-3">
         <Field label="Loan no / bill book no"><Input autoFocus className="w-56 bg-gold-50 font-bold" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && find()} /></Field>
         <Button onClick={find}>Find (Enter)</Button>
-        <div className="ml-4"><p className="label">Status</p>{l ? <StatusBadge status={l.status} /> : '-'}</div>
+        <div className="ml-4"><p className="label">Status</p>{l ? <span className={clsx('inline-block rounded px-4 py-1 text-xs font-bold text-white uppercase', { Pending: 'bg-navy-700', 'In Bank': 'bg-violet-700', Released: 'bg-rose-700', Auctioned: 'bg-amber-600', Cancelled: 'bg-ink-500' }[bookStatus(l)])}>{bookStatus(l)}</span> : '-'}</div>
         {locked && <p className="text-sm text-gold-700">Receipts exist - amount, interest and date are locked</p>}
       </div>
       <div className="grid gap-3 xl:grid-cols-[380px_1fr]">

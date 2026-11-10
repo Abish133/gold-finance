@@ -14,7 +14,7 @@ import { calculateInterest } from '#services/interest.service.js';
 import { ledgerId, LEDGER } from '#services/accounting.service.js';
 import { calcOptions } from '#modules/loans/loans.service.js';
 import { openingBalance } from '#modules/accounts/accounts.service.js';
-import { lastClosedDate } from '#services/daycontrol.service.js';
+import { lastClosedDate, workDate } from '#services/daycontrol.service.js';
 import { withCalc } from '#services/loanCalc.service.js';
 import { upload, publicPath } from '#middleware/upload.js';
 import { saveSettings } from '#services/settings.service.js';
@@ -80,10 +80,14 @@ router.get('/interest-due', permitAny(['interest_calculator', 'reports_loan']), 
   if (num(req.query.older)) { where.push('l.loan_date <= DATE_SUB(:u, INTERVAL :om MONTH)'); p.om = num(req.query.older); }
   if (req.query.search) { where.push('(l.bill_no LIKE :s OR c.name LIKE :s OR c.phone LIKE :s)'); p.s = `%${req.query.search}%`; }
   p.u = upto;
-  const loans = await query(`SELECT l.*, c.name customer_name, c.phone customer_phone FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${where.join(' AND ')} ORDER BY l.loan_date LIMIT 3000`, p);
+  const loans = await query(`SELECT l.*, c.name customer_name, c.phone customer_phone, c.relation_type, c.relation_name,
+      (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text
+    FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${where.join(' AND ')} ORDER BY l.loan_date, l.loan_no LIMIT 3000`, p);
   const rows = await withCalc(loans, upto, req.branchId);
   const sum = (k) => round2(rows.reduce((s, r) => s + num(r[k]), 0));
-  const avgAge = rows.length ? round2(rows.reduce((s, r) => s + r.months, 0) / rows.length) : 0;
+  // desktop: average age weighted by loan amount
+  const lent = rows.reduce((s, r) => s + num(r.principal), 0);
+  const avgAge = lent ? Math.round((rows.reduce((s, r) => s + num(r.months) * num(r.principal), 0) / lent) * 10) / 10 : 0;
   res.json({ data: { rows, summary: { open: rows.length, over12: rows.filter((r) => r.months > 12).length, loanDue: sum('loan_due'), partPaid: sum('part_paid'), interestDue: sum('interest_due'), totalDue: sum('total_due'), avgAge } } });
 });
 
@@ -223,7 +227,8 @@ router.get('/billing-date', async (req, res) => {
   // old loan entries (opening loans) are not the first working day
   const firstEntry = (await queryOne("SELECT MIN(txn_date) d FROM loan_transactions WHERE branch_id = :b AND is_void = 0 AND NOT (txn_type = 'DISBURSE' AND COALESCE(remarks, '') = 'Old loan entry')", { b: req.branchId }))?.d;
   let billing = last ? dayjs(last).add(1, 'day').format('YYYY-MM-DD') : (firstEntry || t);
-  if (dayjs(billing).isAfter(dayjs(t))) billing = t;
+  // after today's Day End work moves to tomorrow (as the desktop app); never further ahead
+  if (dayjs(billing).isAfter(dayjs(t))) billing = await workDate(req.branchId);
   const oldestOpen = (await queryOne("SELECT MIN(loan_date) d FROM loans WHERE branch_id = :b AND status = 'OPEN'", { b: req.branchId }))?.d || null;
   res.json({ data: { billingDate: billing, lastClosed: last, behind: dayjs(billing).isBefore(dayjs(t), 'day'), oldestOpen } });
 });

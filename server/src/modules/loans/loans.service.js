@@ -65,12 +65,15 @@ export const checkApproval = async (req, amount, settings, what = 'Discount') =>
 };
 
 /** Desktop rule: no new loan until today's gold / silver rate is entered. */
-const ensureTodayRate = async (metalIds) => {
+const ensureTodayRate = async (metalIds, date) => {
   for (const id of metalIds) {
-    const r = await queryOne('SELECT id FROM metal_rates WHERE metal_id = :m AND rate_date = CURDATE() LIMIT 1', { m: id });
+    // the working day (today, or tomorrow after Day End) needs its own rate; a back-dated loan needs any rate up to today
+    const back = date && dayjs(date).isBefore(dayjs(), 'day');
+    const r = await queryOne(back ? 'SELECT id FROM metal_rates WHERE metal_id = :m AND rate_date <= CURDATE() LIMIT 1'
+      : 'SELECT id FROM metal_rates WHERE metal_id = :m AND rate_date = COALESCE(:d, CURDATE()) LIMIT 1', { m: id, d: date || null });
     if (!r) {
       const m = await queryOne('SELECT name FROM metals WHERE id = :m', { m: id });
-      throw ApiError.badRequest(`Today's ${m?.name || 'metal'} rate is not entered. Enter it in Masters → Gold / Silver Rate first.`);
+      throw ApiError.badRequest(`${m?.name || 'Metal'} rate for ${dayjs(date || undefined).format('DD/MM/YYYY')} is not entered. Enter it in Masters → Gold / Silver Rate first.`);
     }
   }
 };
@@ -168,7 +171,7 @@ const itemSummary = (items) => items.map((i) => (i.pcs > 1 ? `${i.item_name} x${
 
 export const createLoan = async (req, body, entryType = 'NEW') => {
   const settings = await getSettings(req.branchId);
-  const date = entryType === 'OLD' ? dayjs(body.loan_date).format('YYYY-MM-DD') : await ensureDateOpen(req, body.loan_date || dayjs().format('YYYY-MM-DD'));
+  const date = entryType === 'OLD' ? dayjs(body.loan_date).format('YYYY-MM-DD') : await ensureDateOpen(req, body.loan_date);
 
   const customer = await queryOne('SELECT * FROM customers WHERE id = :id', { id: body.customer_id });
   if (!customer) throw ApiError.badRequest('Select a customer');
@@ -193,7 +196,7 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
   const metalId = loanOn === 'SILVER' ? silverId : loanOn === 'GOLD' ? (body.metal_id || scheme.metal_id || goldId) : goldId;
   if (!metalId) throw ApiError.badRequest('Select metal');
   if (entryType === 'NEW' && settings.REQUIRE_TODAY_RATE === '1') {
-    await ensureTodayRate([...new Set((body.items || []).map((i) => i.metal_id))]);
+    await ensureTodayRate([...new Set((body.items || []).map((i) => i.metal_id))], date);
   }
   const loanRate = num(body.rate_per_gram);
   const items = prepareItems(body.items, loanRate);
@@ -296,7 +299,7 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
   audit(req, entryType === 'OLD' ? 'OLD_LOAN' : 'NEW_LOAN', 'loans', result.loanId, { bill_no: result.billNo, principal });
   if (entryType === 'NEW') {
     queueMessage({ branchId: req.branchId, event: 'NEW_LOAN', phone: customer.phone, loanId: result.loanId,
-      vars: { name: customer.name, loan_no: result.billNo, amount: principal, date: dayjs(date).format('DD-MM-YYYY'), weight: totals.net_wt } });
+      vars: { name: customer.name, loan_no: result.billNo, amount: principal, date: dayjs(date).format('DD/MM/YYYY'), weight: totals.net_wt } });
   }
   return result.loanId;
 };
@@ -485,7 +488,10 @@ export const renewLoan = async (req, id, body) => {
     const close = await insertTxn(tx, req, loan, {
       date, type: 'RELEASE', principal: -calc.principalOutstanding, interest, discount, total: round2(calc.principalOutstanding + interest - discount), upto: date, remarks: 'Renewed',
     }, []);
-    await tx.query("UPDATE loans SET status = 'RENEWED', current_principal = 0, close_date = :d, closed_by = :u WHERE id = :id", { d: date, u: req.user.id, id: loan.id });
+    // the desktop gives the old loan a release number too (Re-loan = release + new loan)
+    const relNo = await nextNumber(tx, { branchId: loan.branch_id, key: 'RELEASE', fyId: fy.id });
+    await tx.query("UPDATE loans SET status = 'RENEWED', current_principal = 0, close_date = :d, closed_by = :u, release_no = :rn WHERE id = :id", { d: date, u: req.user.id, id: loan.id, rn: relNo });
+    await tx.query('UPDATE loan_transactions SET release_no = :rn WHERE id = :t', { rn: relNo, t: close.id });
 
     // create the new loan inside this same transaction by re-using the numbering + insert
     const seqFy = settings.LOAN_NO_RESET_YEARLY === '1' ? fy.id : 0;
@@ -689,7 +695,7 @@ export const editLoan = async (req, id, body) => {
 const notify = async (req, loan, event, extra) => {
   const c = await queryOne('SELECT name, phone FROM customers WHERE id = :id', { id: loan.customer_id });
   queueMessage({ branchId: loan.branch_id, event, phone: c?.phone, loanId: loan.id,
-    vars: { name: c?.name, loan_no: loan.bill_no, amount: extra.amount, date: dayjs(extra.date).format('DD-MM-YYYY') } });
+    vars: { name: c?.name, loan_no: loan.bill_no, amount: extra.amount, date: dayjs(extra.date).format('DD/MM/YYYY') } });
 };
 
 /* ============================================================ mark old loans (desktop: frmMarkOldLoan) */

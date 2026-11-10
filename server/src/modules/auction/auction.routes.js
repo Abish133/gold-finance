@@ -126,7 +126,7 @@ const saveSale = async (tx, req, loanId, b) => {
   if (sale.sale_date && !req.user.is_super_admin) throw ApiError.forbidden('Only an Admin can change a saved sale');
   const amountSold = round2(b.sale_amount);
   if (amountSold <= 0) throw ApiError.badRequest('Enter what the items sold for');
-  const date = await ensureDateOpen(req, b.sale_date || dayjs().format('YYYY-MM-DD'));
+  const date = await ensureDateOpen(req, b.sale_date);
   if (dayjs(date).isBefore(dayjs(sale.auction_date))) throw ApiError.badRequest('Sale date cannot be before the auction date');
   await removeSaleVoucher(tx, sale);
   const principal = num(sale.principal_due);
@@ -218,6 +218,8 @@ router.post('/sales/:loanId/undo', permit('auction_sale', 'delete'), requireBran
 router.get('/stock-check', permit('stock', 'view'), requireBranch, async (req, res) => {
   const date = req.query.date || dayjs().format('YYYY-MM-DD');
   const rows = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.barcode, l.loan_date, l.loan_on, l.net_wt, l.total_pcs, l.item_summary, l.current_principal, l.bank_pledge_id,
+      l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0) loan_amount,
+      (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text,
       c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone, IF(s.checked_by IS NULL AND s.missing = 0, NULL, s.checked_at) checked_at, s.missing, s.remarks, u.full_name checked_by_name
     FROM loans l JOIN customers c ON c.id = l.customer_id
     LEFT JOIN stock_checks s ON s.loan_id = l.id AND s.check_date = :d LEFT JOIN users u ON u.id = s.checked_by

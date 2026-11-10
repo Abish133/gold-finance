@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { FolderOpen, RefreshCw, Eye, FileDown, FileSpreadsheet, LogOut, FileText } from 'lucide-react';
 import clsx from 'clsx';
@@ -29,6 +29,8 @@ export default function StockAnalysisPage() {
   const { data: company } = useCompany();
   const [f, setF] = useState({ from: fyStart(), to: today(), as_on: today(), age: 0, loan_on: '', where: '', search: '' });
   const [q, setQ] = useState(null);
+  const { data: billing } = useFetch('/desk/billing-date');
+  useEffect(() => { if (billing?.oldestOpen) setF((x) => (x.from === fyStart() ? { ...x, from: billing.oldestOpen } : x)); }, [billing?.oldestOpen]);
   const [result, setResult] = useState('');
   const [sel, setSel] = useState(null);
   const [details, setDetails] = useState(null);
@@ -89,9 +91,9 @@ export default function StockAnalysisPage() {
                 <td className="px-2 py-1.5">{r.sno}</td><td className="px-2"><span className={clsx('rounded px-2 py-0.5 text-xs font-bold', RESULT[r.result][1])}>{RESULT[r.result][0]}</span></td>
                 <td className="px-2 font-semibold">{r.bill_no}</td><td className="px-2">{r.manual_bill_no || '-'}</td><td className="px-2">{date(r.loan_date)}</td>
                 <td className="px-2"><b>{r.customer_name}</b>{r.relation_name ? <span className="text-xs text-ink-500"> {r.relation_type} {r.relation_name}</span> : ''}</td>
-                <td className="px-2">{r.loan_on}</td><td className="px-2">{r.where}</td><td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{n(r.purity)}</td>
-                <td className="num px-2 text-right">{n(r.months).toFixed(1)}</td><td className="num px-2 text-right">{n(r.interest_rate)}</td><td className="num px-2 text-right">{amount(r.principal)}</td>
-                <td className="num px-2 text-right">{amount(r.part_paid)}</td><td className="num px-2 text-right">{amount(r.balance)}</td><td className="num px-2 text-right">{amount(r.interest_due)}</td>
+                <td className="px-2">{r.loan_on}</td><td className={clsx('px-2', r.where === 'Bank' && 'text-violet-700')}>{r.where === 'Bank' ? 'In bank' : r.where === 'Hand' ? 'In hand' : r.where}</td><td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{n(r.purity)}</td>
+                <td className="num px-2 text-right">{Math.round(n(r.months) * 10) / 10}</td><td className="num px-2 text-right">{n(r.interest_rate)}</td><td className="num px-2 text-right">{amount(r.principal)}</td>
+                <td className="num px-2 text-right">{n(r.part_paid) ? amount(r.part_paid) : '-'}</td><td className="num px-2 text-right">{amount(r.balance)}</td><td className="num px-2 text-right">{amount(r.interest_due)}</td>
                 <td className="num px-2 text-right font-bold">{amount(r.total_due)}</td><td className="num px-2 text-right">{amount(r.market_value)}</td>
                 <td className={clsx('num px-2 text-right font-semibold', n(r.margin) < 0 ? 'text-rose-600' : 'text-emerald-700')}>{amount(r.margin)}</td><td className="num px-2 text-right">{r.margin_pct ?? '-'}</td>
               </tr>

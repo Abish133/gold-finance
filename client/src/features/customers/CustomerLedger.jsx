@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, FileDown, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Button, Drawer, Field, Input, Spinner, Textarea } from '@/components/ui';
@@ -15,7 +15,7 @@ import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, weight } from '@/lib/format';
 
-const STATUS = { OPEN: ['Pending', 'bg-blue-600 text-white'], CLOSED: ['Released', 'bg-emerald-600 text-white'], RENEWED: ['Re-loaned', 'bg-sky-600 text-white'], AUCTIONED: ['Auctioned', 'bg-rose-600 text-white'], CANCELLED: ['Cancelled', 'bg-ink-400 text-white'] };
+const STATUS = { OPEN: ['Pending', 'bg-blue-600 text-white'], CLOSED: ['Released', 'bg-emerald-600 text-white'], RENEWED: ['Released', 'bg-emerald-600 text-white'], IN_BANK: ['In Bank', 'bg-violet-700 text-white'], AUCTIONED: ['Auctioned', 'bg-rose-600 text-white'], CANCELLED: ['Cancelled', 'bg-ink-400 text-white'] };
 const SHOW = { pending: (l) => l.status === 'OPEN', released: (l) => ['CLOSED', 'RENEWED'].includes(l.status), auctioned: (l) => l.status === 'AUCTIONED', all: () => true };
 const cols = [
   { key: 'bill_no', label: 'Loan No' }, { key: 'manual_bill_no', label: 'Bill Book' }, { key: 'loan_date', label: 'Loan Date', type: 'date' }, { key: 'loan_on', label: 'Metal' },
@@ -48,8 +48,8 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
   const auctioned = by(SHOW.auctioned);
   const partCount = loans.filter((l) => n(l.part_paid) > 0);
   const wt = (m) => { const list = rows.filter((l) => (m ? l.loan_on === m : true)); return `${weight(sum(list, 'net_wt'))} g · Rs. ${amount(sum(list, 'principal'))} · ${list.length}`; };
-  const address = c && [c.door_no, c.street, c.area, c.city, c.pincode].filter(Boolean).join(', ');
-  const printRows = rows.map((r) => ({ ...r, status: STATUS[r.status]?.[0] || r.status }));
+  const address = c && [[c.door_no, c.street, c.area, c.city].filter(Boolean).join(', '), c.pincode].filter(Boolean).join(' - ');
+  const printRows = rows.map((r) => ({ ...r, item_summary: r.items_text || r.item_summary, status: STATUS[r.status === 'OPEN' && r.bank_pledge_id ? 'IN_BANK' : r.status]?.[0] || r.status }));
   const print = () => printTable({ title: `Customer Ledger · ${c.name} (A/c ${c.customer_no})`, company, rows: printRows, columns: cols, totals: { net_wt: sum(rows, 'net_wt'), principal: sum(rows, 'principal'), interest_due: sum(rows, 'interest_due'), total_due: sum(rows, 'total_due') } });
   const whatsapp = () => {
     const text = `${company?.name || ''}\nDear ${c.name}, your pending loans:\n${pending.map((l) => `Loan ${l.bill_no} (${date(l.loan_date)}) - Rs ${amount(l.principal)}, interest due Rs ${amount(l.interest_due)}`).join('\n')}`;
@@ -76,6 +76,7 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
           <span className="flex-1" />
           <Button variant="outline" icon={MessageCircle} className="text-emerald-700" onClick={whatsapp}>WhatsApp (Ctrl+W)</Button>
           <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
+          <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
           <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('customer-ledger', cols, printRows)}>Excel (Ctrl+E)</Button>
           <Button variant="outline" icon={ArrowLeft} onClick={onClose}>Back (Esc)</Button>
         </>
@@ -93,7 +94,7 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
               ))}
             </div>
             <div className="min-w-64 space-y-2 text-sm">
-              {[['Customer since', date(c.created_at)], ['Last loan', loans[0] ? date(loans[0].loan_date) : 'Never'], ['Documents', data.documents ? `${data.documents} file(s)` : 'None'], ['Blocked reason', c.block_reason]].filter(([, v]) => v).map(([k, v]) => (
+              {[['Customer since', date(data.since || c.created_at)], ['Last loan', loans[0] ? date(loans[0].loan_date) : 'Never'], ['Documents', data.documents ? `${data.documents} file(s)` : 'None'], ['Released by other', data.releasedByOther ? date(data.releasedByOther) : 'Never'], ['Blocked reason', c.block_reason]].filter(([, v]) => v).map(([k, v]) => (
                 <p key={k} className="grid grid-cols-[130px_1fr]"><span className="text-ink-500">{k}</span><b>{v}</b></p>
               ))}
             </div>
@@ -106,7 +107,7 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
           </div>
           <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
             {[['All loans', loans.length, `Rs. ${amount(sum(loans, 'principal'))}`, 'border-t-navy-800', 'all'], ['Pending', pending.length, `Rs. ${amount(sum(pending, 'principal'))}`, 'border-t-blue-600', 'pending'],
-              ['Interest due today', `Rs. ${amount(sum(pending, 'interest_due'))}`, `on pending loans, as on ${date(new Date())}`, 'border-t-amber-600'],
+              ['Interest due today', `Rs. ${amount(sum(pending, 'interest_due'))}`, `on pending loans, as on ${date(data.asOn || new Date())}`, 'border-t-amber-600'],
               ['Released', released.length, `Rs. ${amount(sum(released, 'principal'))} · int. ${amount(sum(released, 'interest_received'))}`, 'border-t-rose-600', 'released'],
               ['Auctioned', auctioned.length, `Rs. ${amount(sum(auctioned, 'principal'))}`, 'border-t-emerald-700', 'auctioned'], ['Part payments', partCount.length, `Rs. ${amount(sum(loans, 'part_paid'))}`, 'border-t-violet-600']].map(([l, v, h, cls, k]) => (
               <button key={l} type="button" disabled={!k} onClick={() => k && setShow(k)} className={clsx('card border-t-4 px-4 py-3 text-left', cls, k && show === k && 'bg-amber-50/60 dark:bg-ink-800')}>
@@ -130,11 +131,11 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
                 {rows.map((l) => (
                   <tr key={l.id} className="cursor-pointer hover:bg-navy-50/60" onDoubleClick={() => { onClose(); navigate(`/loans/counter?loan=${l.id}`); }}>
                     <td className="px-2 py-1.5 font-semibold">{l.bill_no}</td><td className="px-2">{l.manual_bill_no || '-'}</td><td className="px-2">{date(l.loan_date)}</td>
-                    <td className="px-2"><span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{l.loan_on}</span></td><td className="px-2">{l.item_summary}</td>
+                    <td className="px-2"><span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{l.loan_on}</span></td><td className="px-2 uppercase">{l.items_text || l.item_summary}</td>
                     <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right font-bold">{amount(l.principal)}</td><td className="num px-2 text-right">{n(l.interest_rate)}</td>
                     <td className="num px-2 text-right">{Math.ceil(n(l.months)) || n(l.months_due)}</td><td className="num px-2 text-right">{amount(l.interest_due)}</td><td className="num px-2 text-right">{amount(l.total_due)}</td>
                     <td className="px-2">{l.close_date ? date(l.close_date) : ''}</td>
-                    <td className="px-2"><span className={clsx('rounded px-2 py-0.5 text-[11px] font-bold', STATUS[l.status]?.[1])}>{STATUS[l.status]?.[0] || l.status}</span></td>
+                    <td className="px-2"><span className={clsx('rounded px-2 py-0.5 text-[11px] font-bold', STATUS[l.status === 'OPEN' && l.bank_pledge_id ? 'IN_BANK' : l.status]?.[1])}>{STATUS[l.status === 'OPEN' && l.bank_pledge_id ? 'IN_BANK' : l.status]?.[0] || l.status}</span></td>
                     <td className="px-2">{l.item_photo ? <a href={l.item_photo} target="_blank" rel="noreferrer" className="text-xs font-semibold underline">View</a> : <span className="text-xs text-ink-400">-</span>}</td>
                   </tr>
                 ))}

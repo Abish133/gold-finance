@@ -122,8 +122,18 @@ await step('denomination + day close + undo', async () => {
   await call('POST', '/accounts/denominations', { date: today, notes: { 500: 10 } }).catch((e) => { throw new Error('denominations: ' + e.message); });
   const c = (await call('POST', '/accounts/day-close', { date: today })).data;
   await call('POST', '/loans', { customer_id: cust.id, scheme_id: scheme.id, principal: 1000, rate_per_gram: 7900, loan_date: today, items: [{ item_name: 'Ring', pcs: 1, gross_wt: 1, stone_wt: 0, purity: 91.6 }], payments: [{ mode: 'CASH', amount: 1000 }] }, true);
+  // desktop: after Day End work moves to tomorrow - billing date and new entries go there
+  const tomorrow = new Date(new Date(`${today}T00:00:00Z`).getTime() + 864e5).toISOString().slice(0, 10);
+  const bd = (await call('GET', '/desk/billing-date')).data;
+  if (bd.billingDate !== tomorrow) throw new Error(`billing date after Day End ${bd.billingDate}, expected ${tomorrow}`);
+  const lk2 = (await call('GET', '/accounts/ledgers?pageSize=500')).data;
+  const misc = (lk2.rows || lk2).find((l) => /Miscellaneous/.test(l.name));
+  const v = (await call('POST', '/accounts/vouchers', { voucher_type: 'PAYMENT', ledger_id: misc.id, amount: 10, mode: 'CASH', narration: 'after day end' })).data;
+  const saved = (await call('GET', `/accounts/vouchers/${v.id}`)).data;
+  if (saved.voucher_date !== tomorrow) throw new Error(`entry after Day End dated ${saved.voucher_date}, expected ${tomorrow}`);
+  await call('DELETE', `/accounts/vouchers/${v.id}`);
   await call('DELETE', `/accounts/day-close/${today}`);
-  return `closing ${c.cash?.closing} · entry on closed day blocked · reopened${day ? '' : ''}`;
+  return `closing ${c.cash?.closing} · entry on closed day blocked · after Day End entries go on ${tomorrow} · reopened${day ? '' : ''}`;
 });
 
 // reports in this branch

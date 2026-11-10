@@ -59,9 +59,11 @@ export const dayReport = async ({ branchIds, branchId, from, to }) => {
   const always = new Set([1, 2, 4, 5, 6, 9, 10]); // the desktop always lists these
   const accounts = [
     // post: rows the Day End writes to the books (auction sales and other vouchers are already vouchers)
-    ...Object.values(rows).filter((r) => always.has(r.id) || r.jama || r.nave).map((r) => ({ ...r, jama: round2(r.jama), nave: round2(r.nave), muted: !r.jama && !r.nave, post: r.id !== 8 })),
+    ...Object.values(rows).filter((r) => r.id !== 8 && (always.has(r.id) || r.jama || r.nave)).map((r) => ({ ...r, jama: round2(r.jama), nave: round2(r.nave), muted: !r.jama && !r.nave, post: true })),
     ...extra.map((x) => ({ ...x, post: x.id === 11 })), ...others.map((o) => ({ id: o.code || o.id, ledger_id: o.id, nature: o.nature, system_key: o.system_key, name: o.name, jama: num(o.jama), nave: num(o.nave) })),
   ];
+  // desktop order: Auction comes last
+  if (rows.auction.jama || rows.auction.nave) accounts.push({ ...rows.auction, jama: round2(rows.auction.jama), nave: round2(rows.auction.nave), post: false });
   const opening = await openingBalance(cashId, b, from);
   const jama = round2(accounts.reduce((s2, a) => s2 + num(a.jama), 0));
   const nave = round2(accounts.reduce((s2, a) => s2 + num(a.nave), 0));

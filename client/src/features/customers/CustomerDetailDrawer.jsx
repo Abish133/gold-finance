@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { bookStatus } from '@/lib/loanStatus';
 import { User, Pencil, FilePlus2, Phone, MessageCircle, Printer } from 'lucide-react';
 import { Avatar, Badge, Button, DataTable, Drawer, KeyValue, Spinner, Stat, StatusBadge, Tabs } from '@/components/ui';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
@@ -18,13 +19,15 @@ export function CustomerDetailDrawer({ id, onClose, onEdit }) {
   const [tab, setTab] = useState('loans');
   const c = data?.customer;
   const t = data?.totals;
-  const address = c && [c.door_no, c.street, c.area, c.city, c.pincode].filter(Boolean).join(', ');
+  // desktop: customer since = first loan (old loans included)
+  const since = (data?.loans || []).reduce((m, l) => (!m || l.loan_date < m ? l.loan_date : m), null) || c?.created_at;
+  const address = c && [[c.door_no, c.street, c.area, c.city].filter(Boolean).join(', '), c.pincode].filter(Boolean).join(' - ');
   const printDetails = () => printElement(<DetailsSheet company={company} title="Customer Details" photo={c.photo} groups={[
     ['Personal', [['Customer no', c.customer_no], ['Name', `${c.title || ''} ${c.name}`], ['Relation', c.relation_name && `${c.relation_type || ''} ${c.relation_name}`], ['Date of birth', c.dob && date(c.dob)], ['Gender', c.gender], ['Occupation', c.occupation]]],
     ['Contact', [['Mobile', c.phone], ['Alternate', c.alt_phone], ['Email', c.email], ['Address', address]]],
-    ['KYC', [['ID proof', c.id_proof_type && `${c.id_proof_type}: ${c.id_proof_no || ''}`], ['Nominee', c.nominee_name && `${c.nominee_name} (${c.nominee_relation || ''})`], ['Status', c.status], ['Branch', c.branch_name], ['Customer since', date(c.created_at)]]],
+    ['KYC', [['ID proof', c.id_proof_type && `${c.id_proof_type}: ${c.id_proof_no || ''}`], ['Nominee', c.nominee_name && `${c.nominee_name} (${c.nominee_relation || ''})`], ['Status', c.status], ['Branch', c.branch_name], ['Customer since', date(since)]]],
     ['Summary', [['Open loans', String(t.open_loans || 0)], ['Outstanding', money(t.outstanding)], ['Gold held', grams(t.gold_in_custody)], ['Total lent', money(t.total_lent)], ['Interest paid', money(t.interest_paid)]]],
-  ]} tables={[{ title: 'Loans', rows: data.loans, columns: [['bill_no', 'Loan'], ['loan_date', 'Date', (r) => date(r.loan_date)], ['item_summary', 'Items'], ['net_wt', 'Net', (r) => weight(r.net_wt)], ['principal', 'Loan', (r) => money(r.principal)], ['current_principal', 'Balance', (r) => money(r.current_principal)], ['status', 'Status']] }]} />, { title: 'Customer details' });
+  ]} tables={[{ title: 'Loans', rows: data.loans, columns: [['bill_no', 'Loan'], ['loan_date', 'Date', (r) => date(r.loan_date)], ['item_summary', 'Items'], ['net_wt', 'Net', (r) => weight(r.net_wt)], ['principal', 'Loan', (r) => money(r.principal)], ['current_principal', 'Balance', (r) => money(r.current_principal)], ['status', 'Status', (r) => bookStatus(r)]] }]} />, { title: 'Customer details' });
 
   return (
     <Drawer open={!!id} onClose={onClose} size="xl" icon={User} title={c ? c.name : 'Customer'} subtitle={c ? `Customer #${c.customer_no} · ${c.branch_name}` : ''}
@@ -50,7 +53,7 @@ export function CustomerDetailDrawer({ id, onClose, onEdit }) {
               {c.status === 'BLOCKED' && <Badge tone="red" className="mt-2">Blocked: {c.block_reason}</Badge>}
               <div className="mt-4"><KeyValue cols={3} items={[
                 ['Mobile', c.phone], ['Alternate', c.alt_phone], ['ID proof', c.id_proof_type ? `${c.id_proof_type}: ${c.id_proof_no || ''}` : null],
-                ['Address', address], ['Nominee', c.nominee_name ? `${c.nominee_name} (${c.nominee_relation || ''})` : null], ['Customer since', date(c.created_at)],
+                ['Address', address], ['Nominee', c.nominee_name ? `${c.nominee_name} (${c.nominee_relation || ''})` : null], ['Customer since', date(since)],
               ]} /></div>
             </div>
           </div>
@@ -66,11 +69,11 @@ export function CustomerDetailDrawer({ id, onClose, onEdit }) {
             columns={[
               { key: 'bill_no', label: 'Loan no', render: (r) => <span className="font-semibold">#{r.bill_no}</span> },
               { key: 'loan_date', label: 'Date', type: 'date' },
-              { key: 'item_summary', label: 'Items' },
+              { key: 'item_summary', label: 'Items', render: (r) => <span className="uppercase">{r.items_text || r.item_summary}</span> },
               { key: 'net_wt', label: 'Net wt', type: 'weight' },
               { key: 'principal', label: 'Loan', type: 'money' },
               { key: 'current_principal', label: 'Balance', type: 'money' },
-              { key: 'status', label: 'Status', type: 'status' },
+              { key: 'status', label: 'Status', render: (r) => bookStatus(r) },
             ]}
             rows={data.loans}
             onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}

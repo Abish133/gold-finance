@@ -13,10 +13,19 @@ export const compact = (v) => `₹${compactFmt.format(n(v))}`;
 export const weight = (v) => `${n(v).toFixed(3)}`;
 export const grams = (v) => `${n(v).toFixed(3)} g`;
 export const pct = (v) => `${n(v)}%`;
-export const date = (v) => (v ? dayjs(v).format('DD-MM-YYYY') : '—');
-export const dateTime = (v) => (v ? dayjs(v).format('DD-MM-YYYY hh:mm A') : '—');
-export const today = () => dayjs().format('YYYY-MM-DD');
-export const monthStart = () => dayjs().startOf('month').format('YYYY-MM-DD');
+export const date = (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
+export const dateTime = (v) => (v ? dayjs(v).format('DD/MM/YYYY hh:mm A') : '—');
+/* Working (billing) date: after Day End closes today, entries go on tomorrow's date (as the desktop app).
+   The header keeps it up to date from /desk/billing-date; a saved value older than today is ignored. */
+let workDay = (() => { try { return localStorage.getItem('gf.workDate'); } catch { return null; } })();
+export const setWorkDate = (d) => {
+  if (!d || d === workDay) return;
+  workDay = d;
+  try { localStorage.setItem('gf.workDate', d); } catch { /* private mode */ }
+};
+export const realToday = () => dayjs().format('YYYY-MM-DD');
+export const today = () => { const t = realToday(); return workDay && workDay > t ? workDay : t; };
+export const monthStart = () => dayjs(today()).startOf('month').format('YYYY-MM-DD');
 export const round2 = (v) => Math.round(n(v) * 100) / 100;
 export const round3 = (v) => Math.round(n(v) * 1000) / 1000;
 

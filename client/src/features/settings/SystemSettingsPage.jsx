@@ -14,7 +14,7 @@ import { ExitButton, useKeys } from '@/features/loans/desk';
 export const SETTING_GROUPS = [
   { key: 'loan', label: 'Loan', items: [
     ['DEFAULT_ADVANCE_INTEREST', 'AI', 'Advance interest', 'Deduct the first month\'s interest when the loan is given', 'bool'],
-    ['DEFAULT_INTEREST_TYPE', 'ITYP', 'Default interest type', 'Compound or simple for new loans', 'select', [['COMPOUND', 'Compound'], ['SIMPLE', 'Simple']]],
+    ['DEFAULT_INTEREST_TYPE', 'ITYP', 'Default interest type', 'Compound or flat for new loans', 'select', [['COMPOUND', 'Compound Interest'], ['SIMPLE', 'Flat Interest Calculation']]],
     ['DEFAULT_INTEREST_RATE', 'GROI', 'Default interest rate', 'Interest rate used for day-wise interest (number)', 'number'],
     ['ALLOW_BACKDATE_BILLING', 'OEBCBD', 'Allow back-date billing', 'Billing date can be set before today', 'bool'],
     ['DISCOUNT_APPROVAL_LIMIT', 'RDAL', 'Release: discount without admin (₹)', 'A bigger discount needs the admin password (0 = no limit)', 'number'],

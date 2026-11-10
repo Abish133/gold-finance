@@ -13,9 +13,9 @@ import QuoteCalculator from './InterestCalculatorPage';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'customer_name', label: 'Customer' },
-  { key: 'loan_on', label: 'Metal' }, { key: 'loan_due', label: 'Loan Amt', type: 'money' }, { key: 'interest_rate', label: 'ROI %', type: 'number' },
-  { key: 'interest_type', label: 'Type', render: (r) => (r.interest_type === 'COMPOUND' ? 'Compound' : 'Simple') }, { key: 'months', label: 'Months', type: 'number' },
-  { key: 'part_paid', label: 'Part Paid', type: 'money' }, { key: 'interest_due', label: 'Interest Due', type: 'money' }, { key: 'total_due', label: 'Total Due', type: 'money' },
+  { key: 'loan_on', label: 'Metal' }, { key: 'principal', label: 'Loan Amt', type: 'money' }, { key: 'interest_rate', label: 'ROI %', type: 'number' },
+  { key: 'interest_type', label: 'Type', render: (r) => (r.interest_type === 'COMPOUND' ? 'Compound' : 'Flat'), print: (r) => (r.interest_type === 'COMPOUND' ? 'Compound' : 'Flat') }, { key: 'months', label: 'Months', type: 'number' },
+  { key: 'part_paid', label: 'Part Paid', render: (r) => (n(r.part_paid) ? amount(r.part_paid) : ''), print: (r) => (n(r.part_paid) ? r.part_paid : '') }, { key: 'interest_due', label: 'Interest Due', type: 'money' }, { key: 'total_due', label: 'Total Due', type: 'money' },
 ];
 
 /** Interest Calculation (desktop: frmInterestCalculation) - interest due on open loans up to a date. */
@@ -53,17 +53,17 @@ export default function InterestDuePage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-5">
             <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Open loans</p><p className="num text-2xl font-bold">{s?.open || 0}</p><p className="text-[11px]">{s?.over12 || 0} over 12 months</p></div>
-            {[['Loan amount due', s?.loanDue, `part paid ${amount(s?.partPaid || 0)}`, 'border-t-navy-500'], ['Interest due', s?.interestDue, `up to ${date(q.upto)}`, 'border-t-gold-500'], ['Total due', s?.totalDue, 'loan amount + interest', 'border-t-navy-700'], ['Average age', `${s?.avgAge || 0} m`, 'by loan amount', 'border-t-ink-400']].map(([l, v, h, c]) => (
+            {[['Loan amount due', s?.loanDue, `part paid ${amount(s?.partPaid || 0)}`, 'border-t-navy-500'], ['Interest due', s?.interestDue, `up to ${date(q.upto)}`, 'border-t-gold-500'], ['Total due', s?.totalDue, 'loan amount + interest', 'border-t-navy-700'], ['Average age', `${n(s?.avgAge || 0).toFixed(1)} m`, 'by loan amount', 'border-t-ink-400']].map(([l, v, h, c]) => (
               <div key={l} className={clsx('card border-t-4 px-4 py-3', c)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold text-navy-900">{typeof v === 'number' ? amount(v) : v ?? 0}</p><p className="text-[11px] text-ink-500">{h}</p></div>
             ))}
           </div>
           <div className="grid items-start gap-3 xl:grid-cols-[1fr_300px]">
             <DataTable dense rows={rows} columns={cols} loading={isFetching && !data} onRowClick={setSel} rowClassName={(r) => (sel?.id === r.id ? 'bg-cream-200' : r.months > overdueMonths ? 'bg-rose-50/60' : '')} />
             <div className="card space-y-1 p-4 text-sm">
-              <p className="text-xs font-bold text-gold-700 uppercase">Select a loan</p>
+              <p className="text-xs font-bold text-gold-700 uppercase">{sel ? `Loan ${sel.bill_no} - ${sel.customer_name}` : 'Select a loan'}</p>
               <Line label="Pledged" value={sel ? date(sel.loan_date) : '-'} />
-              <Line label="Items" value={sel ? `${sel.total_items} · ${n(sel.net_wt).toFixed(3)} g` : '-'} />
-              <Line label="ROI / type" value={sel ? `${n(sel.interest_rate)}% ${sel.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'} · ${sel.interest_type === 'COMPOUND' ? 'C' : 'S'}` : '-'} />
+              <Line label="Items" value={sel ? (sel.items_text || '').toUpperCase() || `${sel.total_items} · ${n(sel.net_wt).toFixed(3)} g` : '-'} />
+              <Line label="ROI / type" value={sel ? `${n(sel.interest_rate).toFixed(2)} %${sel.rate_type === 'MONTHLY' ? '' : ' p.a.'} · ${sel.interest_type === 'COMPOUND' ? 'Compound' : 'Flat'}` : '-'} />
               <Line label="Months (T / P / D)" value={sel ? `${sel.months} / ${sel.months_paid} / ${Math.max(0, sel.months_due - sel.months_paid)}` : '-'} />
               <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Loan amount</p>
               <Line label="Loan amount" value={sel ? amount(sel.principal) : '-'} />

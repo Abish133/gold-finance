@@ -68,6 +68,15 @@ router.get('/vouchers', permitAny(['acc_voucher', 'acc_cashbook']), async (req, 
      FROM vouchers v JOIN branches b ON b.id = v.branch_id LEFT JOIN users u ON u.id = v.created_by
      WHERE ${w} ${lq.orderBy}, v.id DESC LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p);
   const [{ total }] = await query(`SELECT COUNT(*) total FROM vouchers v WHERE ${w}`, p);
+  // Voucher Entry (as the desktop): a loan closed by auction shows as an "Auction" paid row next to its sale receipt
+  if (req.query.manual === '1' && lq.offset === 0) {
+    const auc = await query(`SELECT t.id, t.txn_date, ABS(t.principal_amount) amount, l.bill_no, l.manual_bill_no FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+       WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_type = 'AUCTION' AND t.txn_date BETWEEN :f AND :t ORDER BY t.id`, p);
+    for (const a of auc) {
+      rows.push({ id: `A${a.id}`, voucher_no: '-', voucher_date: a.txn_date, voucher_type: 'PAYMENT', source_type: 'AUCTION', account: 'Auction', mode: 'Cash',
+        narration: `Auction - Loan ${a.manual_bill_no ? `${a.manual_bill_no} / ` : ''}${a.bill_no}`, amount: num(a.amount) });
+    }
+  }
   res.json(paged(rows, total, lq));
 });
 

@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import { query } from '#config/db.js';
 import { permitAny } from '#middleware/auth.js';
 import { round2, num } from '#utils/money.js';
+import { workDate } from '#services/daycontrol.service.js';
 
 /**
  * Report screens of the desktop Reports menu: Loan, Release, Release in Details, Part Payment,
@@ -14,6 +15,11 @@ const metalSql = (q, p, col = 'l.loan_on') => { if (!q.metal) return ''; p.metal
 const searchSql = (q, p) => { if (!q.search) return ''; p.s = `%${q.search}%`; return ' AND (l.bill_no LIKE :s OR l.manual_bill_no LIKE :s OR c.name LIKE :s OR c.phone LIKE :s OR l.item_summary LIKE :s)'; };
 const modes = `(SELECT GROUP_CONCAT(DISTINCT p.mode) FROM transaction_payments p WHERE p.transaction_id = t.id)`;
 const cashPart = `(SELECT COALESCE(SUM(p.amount),0) FROM transaction_payments p WHERE p.transaction_id = t.id AND p.mode = 'CASH')`;
+// money received by UPI / card / cheque (a re-loan's old loan has no payment lines - it is settled in cash with the new loan)
+const onlinePart = `(SELECT COALESCE(SUM(p.amount),0) FROM transaction_payments p WHERE p.transaction_id = t.id AND p.mode <> 'CASH')`;
+// desktop shows the loan amount with top-ups, and items as "CHAIN 1"
+const LOAN_AMT = "(l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0))";
+const ITEMS = "(SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id)";
 const rep = permitAny(['reports_loan', 'reports_release', 'reports_collection', 'reports_summary']);
 
 /* Loan Report: loans given between dates with their status today */
@@ -25,7 +31,7 @@ router.get('/loans', rep, async (req, res) => {
   if (q.status === 'AUCTION') w += " AND l.status = 'AUCTIONED'";
   if (q.status === 'BANK') w += " AND l.status = 'OPEN' AND l.bank_pledge_id IS NOT NULL";
   const rows = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.loan_date, l.loan_on, l.item_summary, l.gross_wt, l.stone_wt, l.net_wt, l.principal, l.advance_interest, l.doc_charges, l.other_charges,
-      l.status, l.bank_pledge_id, l.entry_type, c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone
+      l.status, l.bank_pledge_id, l.entry_type, l.close_date, ${ITEMS} items_text, ${LOAN_AMT} loan_amount, c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone
     FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${w} ORDER BY l.loan_date, l.loan_no`, p);
   res.json({ data: rows.map((r) => ({ ...r, status_today: r.status === 'OPEN' ? (r.bank_pledge_id ? 'BANK' : 'OPEN') : r.status === 'AUCTIONED' ? 'AUCTION' : r.status === 'CANCELLED' ? 'CANCELLED' : 'RELEASED' })) });
 });
@@ -34,8 +40,8 @@ router.get('/loans', rep, async (req, res) => {
 router.get('/releases', rep, async (req, res) => {
   const q = req.query; const p = { b: req.branchIds, ...range(q) };
   const w = "t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_type = 'RELEASE' AND t.txn_date BETWEEN :f AND :t" + metalSql(q, p) + searchSql(q, p);
-  const rows = await query(`SELECT t.id txn_id, t.txn_date, t.principal_amount, t.interest_amount, t.penal_amount, t.charges, t.discount, t.total_amount, t.months_paid, ${modes} paid_by, ${cashPart} cash_amount,
-      l.id, l.bill_no, l.manual_bill_no, l.release_no, l.loan_date, l.loan_on, l.item_summary, l.net_wt, l.principal, l.interest_rate, l.rate_type, l.advance_interest, l.status,
+  const rows = await query(`SELECT t.id txn_id, t.txn_date, t.principal_amount, t.interest_amount, t.penal_amount, t.charges, t.discount, t.total_amount, t.months_paid, ${modes} paid_by, ${cashPart} cash_amount, ${onlinePart} online_part,
+      l.id, l.bill_no, l.manual_bill_no, l.release_no, l.loan_date, l.loan_on, l.item_summary, ${ITEMS} items_text, l.net_wt, l.principal, l.interest_rate, l.rate_type, l.advance_interest, l.status,
       c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone,
       (SELECT COALESCE(SUM(-x.principal_amount),0) FROM loan_transactions x WHERE x.loan_id = l.id AND x.is_void = 0 AND x.txn_type = 'PART_PAYMENT' AND x.id < t.id) part_paid,
       (SELECT COALESCE(SUM(x.interest_amount),0) FROM loan_transactions x WHERE x.loan_id = l.id AND x.is_void = 0 AND x.txn_type IN ('INTEREST','PART_PAYMENT') AND x.id < t.id) interest_earlier,
@@ -43,13 +49,16 @@ router.get('/releases', rep, async (req, res) => {
     FROM loan_transactions t JOIN loans l ON l.id = t.loan_id JOIN customers c ON c.id = l.customer_id WHERE ${w} ORDER BY t.txn_date, t.id`, p);
   let out = rows.map((r) => {
     const days = Math.max(1, dayjs(r.txn_date).diff(dayjs(r.loan_date), 'day'));
+    // every started month counts (desktop)
+    const fullM = dayjs(r.txn_date).diff(dayjs(r.loan_date), 'month');
+    const months = Math.max(1, fullM + (dayjs(r.loan_date).add(fullM, 'month').isBefore(dayjs(r.txn_date), 'day') ? 1 : 0));
     const amt = num(r.loan_amount) || num(r.principal);
     const interestTotal = round2(num(r.interest_amount) + num(r.penal_amount) + num(r.advance_interest) + num(r.interest_earlier));
     // desktop: yearly % on the actual days (x 365), month = year / 12
     const py = amt ? (interestTotal / amt / days) * 365 * 100 : 0;
     const pm = round2(py / 12);
-    const online = round2(num(r.total_amount) - num(r.cash_amount));
-    return { ...r, days, loan_amt: amt, principal_back: round2(-num(r.principal_amount)), interest_received: round2(num(r.interest_amount) + num(r.penal_amount)), total_interest: interestTotal,
+    const online = round2(num(r.online_part));
+    return { ...r, days, months, loan_amt: amt, principal_back: round2(-num(r.principal_amount)), interest_received: round2(num(r.interest_amount) + num(r.penal_amount)), total_interest: interestTotal,
       due_at_release: round2(num(r.interest_amount) + num(r.penal_amount) + num(r.discount)), pct_month: pm, pct_year: round2(py), online_amount: online, paid_by: r.paid_by || 'CASH' };
   });
   if (q.paid === 'cash') out = out.filter((r) => num(r.online_amount) === 0);
@@ -66,7 +75,7 @@ router.get('/part-payments', rep, async (req, res) => {
   if (q.type === 'principal') w += ' AND t.principal_amount < 0';
   if (q.type === 'interest') w += ' AND t.interest_amount > 0';
   const rows = await query(`SELECT t.id txn_id, t.txn_date, t.txn_type, t.principal_amount, t.interest_amount, t.penal_amount, t.total_amount, t.months_paid, ${modes} paid_by, ${cashPart} cash_amount,
-      l.id, l.bill_no, l.loan_date, l.loan_on, l.item_summary, l.principal, l.current_principal, l.status, c.name customer_name, c.relation_type, c.relation_name
+      l.id, l.bill_no, l.loan_date, l.loan_on, l.item_summary, ${ITEMS} items_text, l.principal, l.current_principal, l.status, c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone
     FROM loan_transactions t JOIN loans l ON l.id = t.loan_id JOIN customers c ON c.id = l.customer_id WHERE ${w} ORDER BY t.txn_date, l.loan_no, t.id`, p);
   res.json({ data: rows.map((r) => ({ ...r, part_amount: round2(-num(r.principal_amount)), interest: round2(num(r.interest_amount) + num(r.penal_amount)),
     type: num(r.principal_amount) < 0 && num(r.interest_amount) > 0 ? 'Loan amount + interest' : num(r.principal_amount) < 0 ? 'Loan amount' : 'Interest', paid_by: r.paid_by || 'CASH', online_amount: round2(num(r.total_amount) - num(r.cash_amount)) })) });
@@ -83,7 +92,8 @@ const movement = async (b, f, t, unit) => {
   const fmt = unit === 'day' ? '%Y-%m-%d' : '%Y-%m';
   const p = { b, f, t };
   const [given, closed, parts, opening, openingAmt] = await Promise.all([
-    query(`SELECT DATE_FORMAT(l.loan_date, '${fmt}') k, l.loan_on, COUNT(*) c, SUM(l.principal) a FROM loans l WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.loan_date BETWEEN :f AND :t GROUP BY k, l.loan_on`, p),
+    // desktop: loans given at their loan amount with top-ups
+    query(`SELECT DATE_FORMAT(l.loan_date, '${fmt}') k, l.loan_on, COUNT(*) c, SUM(${LOAN_AMT}) a FROM loans l WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.loan_date BETWEEN :f AND :t GROUP BY k, l.loan_on`, p),
     query(`SELECT DATE_FORMAT(t.txn_date, '${fmt}') k, t.txn_type, COUNT(*) c, SUM(-t.principal_amount) a, SUM(l.principal + COALESCE((SELECT SUM(u.principal_amount) FROM loan_transactions u WHERE u.loan_id = l.id AND u.is_void = 0 AND u.txn_type = 'TOPUP'), 0)) la FROM loan_transactions t JOIN loans l ON l.id = t.loan_id WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_type IN ('RELEASE','AUCTION') AND t.txn_date BETWEEN :f AND :t GROUP BY k, t.txn_type`, p),
     query(`SELECT DATE_FORMAT(t.txn_date, '${fmt}') k, SUM(-t.principal_amount) a, SUM(t.principal_amount) up FROM loan_transactions t WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_type IN ('PART_PAYMENT','TOPUP') AND t.txn_date BETWEEN :f AND :t GROUP BY k, t.txn_type`, p),
     query(`SELECT COALESCE(SUM(x.principal_amount),0) a FROM loan_transactions x JOIN loans l ON l.id = x.loan_id WHERE x.branch_id IN (:b) AND x.is_void = 0 AND x.txn_date < :f AND l.status <> 'CANCELLED'`, p),
@@ -97,7 +107,10 @@ const movement = async (b, f, t, unit) => {
 /* Loan & Release Summary: A/c year month-wise, or one month day-wise, with the running balance */
 router.get('/summary', rep, async (req, res) => {
   const q = req.query;
-  const f = q.from; const t = q.to;
+  const f = q.from;
+  // desktop: the current year runs only up to the billing date
+  const work = await workDate(req.branchId);
+  const t = q.to && dayjs(q.to).isAfter(dayjs(work)) && !dayjs(f).isAfter(dayjs(work)) ? work : q.to;
   const unit = q.view === 'day' ? 'day' : 'month';
   const m = await movement(req.branchIds, f, t, unit);
   const keys = [];
@@ -112,13 +125,13 @@ router.get('/summary', rep, async (req, res) => {
     const partPaid = round2(pp.reduce((s, x) => s + Math.max(0, num(x.a)), 0));
     const topup = round2(pp.reduce((s, x) => s + Math.max(0, num(x.up)), 0));
     const relAmt = round2(rel.reduce((s, x) => s + num(x.a), 0)); const aucAmt = round2(auc.reduce((s, x) => s + num(x.a), 0));
-    bal = round2(bal + givenAmt + topup - relAmt - aucAmt - partPaid);
-    amtBal = round2(amtBal + givenAmt + topup - rel.reduce((s, x) => s + num(x.la), 0) - auc.reduce((s, x) => s + num(x.la), 0));
+    bal = round2(bal + givenAmt - relAmt - aucAmt - partPaid);   // top-ups are inside the loan amount given
+    amtBal = round2(amtBal + givenAmt - rel.reduce((s, x) => s + num(x.la), 0) - auc.reduce((s, x) => s + num(x.la), 0));
     return { key: k, given: givenAmt, given_count: g.reduce((s, x) => s + num(x.c), 0), released: relAmt, released_count: rel.reduce((s, x) => s + num(x.c), 0),
       auctioned: aucAmt, auctioned_count: auc.reduce((s, x) => s + num(x.c), 0), part_paid: partPaid, topup, balance: amtBal, outstanding: bal,
       by_metal: Object.fromEntries(['GOLD', 'SILVER', 'MIX'].map((mt) => [mt, { c: g.filter((x) => x.loan_on === mt).reduce((s, x) => s + num(x.c), 0), a: round2(g.filter((x) => x.loan_on === mt).reduce((s, x) => s + num(x.a), 0)) }])) };
   });
-  res.json({ data: { opening: m.openingAmt, openingOutstanding: m.opening, rows, closing: amtBal, outstanding: bal } });
+  res.json({ data: { opening: m.openingAmt, openingOutstanding: m.opening, rows, closing: amtBal, outstanding: bal, to: t } });
 });
 
 /* Loan & Release Comparison: two periods side by side */
@@ -129,7 +142,7 @@ router.get('/compare', rep, async (req, res) => {
   const load = async (k, f, t) => {
     const p = { b: req.branchIds, f, t, m: metal };
     if (k === 'loan') {
-      return query(`SELECT l.loan_date d, l.loan_on, l.principal a, l.net_wt w, l.customer_id,
+      return query(`SELECT l.loan_date d, l.loan_on, ${LOAN_AMT} a, l.net_wt w, l.customer_id,
           (SELECT MIN(x.loan_date) FROM loans x WHERE x.customer_id = l.customer_id) first_loan
         FROM loans l WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.loan_date BETWEEN :f AND :t ${metal ? 'AND l.loan_on = :m' : ''}`, p);
     }

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import dayjs from 'dayjs';
+import { workDate } from '#services/daycontrol.service.js';
 import { query, queryOne } from '#config/db.js';
 import { permit, can } from '#middleware/auth.js';
 import { daySummary } from '#modules/accounts/accounts.service.js';
@@ -8,8 +9,8 @@ const router = Router();
 
 router.get('/', permit('dashboard', 'view'), async (req, res) => {
   const b = req.branchIds;
-  // desktop home works on the billing date (moves on at Day End); never ahead of today
-  const asked = req.query.date && dayjs(req.query.date).isValid() && !dayjs(req.query.date).isAfter(dayjs(), 'day') ? dayjs(req.query.date) : dayjs();
+  // desktop home works on the billing date (moves on at Day End, at most to tomorrow)
+  const asked = req.query.date && dayjs(req.query.date).isValid() && !dayjs(req.query.date).isAfter(dayjs().add(1, 'day'), 'day') ? dayjs(req.query.date) : dayjs();
   const today = asked.format('YYYY-MM-DD');
   const monthStart = asked.startOf('month').format('YYYY-MM-DD');
   const sixMonths = dayjs().subtract(5, 'month').startOf('month').format('YYYY-MM-DD');
@@ -92,14 +93,14 @@ router.get('/alerts', async (req, res) => {
   const b = req.branchIds;
   const [overdue, rateMissing, notClosed] = await Promise.all([
     queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date <= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)", { b }),
-    queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = CURDATE()'),
+    queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = :d', { d: await workDate(req.branchId) }),
     req.branchId ? queryOne('SELECT MAX(close_date) d FROM day_closes WHERE branch_id = :b', { b: req.branchId }) : null,
   ]);
   const alerts = [];
   if (overdue.c) alerts.push({ type: 'warning', key: 'overdue', text: `${overdue.c} loans are open for over 12 months`, link: '/auction' });
-  if (!rateMissing.c) alerts.push({ type: 'info', key: 'rate', text: "Today's gold rate is not updated", link: '/masters/rates' });
+  if (!rateMissing.c) alerts.push({ type: 'info', key: 'rate', text: `Gold rate for ${dayjs(await workDate(req.branchId)).format('DD/MM/YYYY')} is not updated`, link: '/masters/rates' });
   if (notClosed && notClosed.d && dayjs().diff(dayjs(notClosed.d), 'day') > 1) {
-    alerts.push({ type: 'info', key: 'dayclose', text: `Day close pending since ${dayjs(notClosed.d).add(1, 'day').format('DD-MM-YYYY')}`, link: '/accounts/day-close' });
+    alerts.push({ type: 'info', key: 'dayclose', text: `Day close pending since ${dayjs(notClosed.d).add(1, 'day').format('DD/MM/YYYY')}`, link: '/accounts/day-close' });
   }
   res.json({ data: alerts });
 });

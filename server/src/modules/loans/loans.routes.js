@@ -17,9 +17,11 @@ const router = Router();
 const anyLoan = permitAny(['loan_list', 'loan_new', 'loan_interest', 'loan_release', 'loan_part_payment', 'loan_topup', 'loan_renewal', 'loan_print', 'loan_edit', 'stock', 'auction']);
 
 /* ---------------- pledge book ---------------- */
+// loan amount as the desktop shows it: first amount + top-ups given on the same loan
+const LOAN_AMOUNT = "(l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0))";
 router.get('/', anyLoan, async (req, res) => {
   const lq = parseListQuery(req.query, {
-    sortable: { loan_date: 'l.loan_date', loan_no: 'l.loan_no', principal: 'l.principal', due_date: 'l.due_date', customer_name: 'c.name', net_wt: 'l.net_wt' },
+    sortable: { loan_date: 'l.loan_date', loan_no: 'l.loan_no', principal: 'l.principal', loan_amount: LOAN_AMOUNT, due_date: 'l.due_date', customer_name: 'c.name', net_wt: 'l.net_wt' },
     defaultSort: 'loan_date',
   });
   const where = ['l.branch_id IN (:b)'];
@@ -60,11 +62,13 @@ router.get('/', anyLoan, async (req, res) => {
              c.id AS customer_id, c.customer_no, c.name AS customer_name, c.phone AS customer_phone, c.relation_type, c.relation_name, c.area, m.name AS metal_name, s.code AS scheme_code,
              b.name AS branch_name, DATEDIFF(CURDATE(), l.loan_date) AS age_days,
              (SELECT COUNT(*) FROM print_logs pl WHERE pl.loan_id = l.id AND pl.doc_type = 'LOAN_RECEIPT') AS receipt_prints,
-             (SELECT GROUP_CONCAT(DISTINCT pp.mode) FROM loan_transactions lt JOIN transaction_payments pp ON pp.transaction_id = lt.id WHERE lt.loan_id = l.id AND lt.txn_type = 'DISBURSE') AS paid_by
-           ${base} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
-    query(`SELECT COUNT(*) total, COALESCE(SUM(l.principal),0) principal, COALESCE(SUM(l.current_principal),0) outstanding, COALESCE(SUM(l.net_wt),0) net_wt ${base}`, p),
+             (SELECT GROUP_CONCAT(DISTINCT pp.mode) FROM loan_transactions lt JOIN transaction_payments pp ON pp.transaction_id = lt.id WHERE lt.loan_id = l.id AND lt.txn_type = 'DISBURSE') AS paid_by,
+             ${LOAN_AMOUNT} AS loan_amount,
+             (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) AS items_text
+           ${base} ${lq.orderBy}, l.loan_no LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p),
+    query(`SELECT COUNT(*) total, COALESCE(SUM(l.principal),0) principal, COALESCE(SUM(${LOAN_AMOUNT}),0) loan_amount, COALESCE(SUM(l.current_principal),0) outstanding, COALESCE(SUM(l.net_wt),0) net_wt ${base}`, p),
     query(`SELECT CASE WHEN l.status = 'OPEN' AND l.bank_pledge_id IS NOT NULL THEN 'IN_BANK' WHEN l.status = 'OPEN' THEN 'PENDING'
-             WHEN l.status IN ('CLOSED','RENEWED') THEN 'RELEASED' ELSE l.status END st, COUNT(*) cnt, COALESCE(SUM(l.principal),0) amount
+             WHEN l.status IN ('CLOSED','RENEWED') THEN 'RELEASED' ELSE l.status END st, COUNT(*) cnt, COALESCE(SUM(${LOAN_AMOUNT}),0) amount
            ${joins} WHERE ${wNoStatus} GROUP BY st`, p),
   ]);
   res.json({ ...paged(rows, agg.total, lq), summary: agg, tiles: Object.fromEntries(tiles.map((t) => [t.st, t])) });
