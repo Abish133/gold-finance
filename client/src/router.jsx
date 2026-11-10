@@ -74,6 +74,8 @@ const P = {
   CompareRep: lazy(() => import('@/features/reports/SummaryReports').then((m) => ({ default: m.ComparisonReportPage }))),
   BillBook: lazy(() => import('@/features/tools/BillBookCheckPage')),
   Advisory: lazy(() => import('@/features/tools/AdvisoryPage')),
+  Manual: lazy(() => import('@/features/help/ManualPage')),
+  GettingStarted: lazy(() => import('@/features/help/GettingStartedPage')),
   BankReco: lazy(() => import('@/features/accounts/BankRecoPage')),
   Tally: lazy(() => import('@/features/accounts/TallyExportPage')),
 };
@@ -172,6 +174,8 @@ export const router = createBrowserRouter([
       r('loans/bill-book-check', P.BillBook, 'loan_list'),
       r('loans/duplicate', P.DuplicateBill, 'loan_print'),
       r('advisory', P.Advisory, 'dashboard'),
+      r('help/manual', P.Manual, 'dashboard'),
+      r('getting-started', P.GettingStarted, 'dashboard'),
       r('accounts/bank-reco', P.BankReco, 'acc_bank_reco'),
       r('accounts/tally', P.Tally, 'acc_tally'),
       { path: '*', element: <Empty title="Page not found" message="The page you are looking for does not exist." /> },

@@ -81,6 +81,7 @@ export const DEFAULTS = {
   AUTO_BACKUP_ENABLED: '1',
   AUTO_BACKUP_TIME: '21:00',
   AUTO_BACKUP_KEEP: '30',
+  SETUP_DONE: '{}',                       // Getting Started checklist: steps marked done / skipped
   // Tally export
   TALLY_HOST: 'localhost',
   TALLY_PORT: '9000',

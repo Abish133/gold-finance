@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import {
@@ -43,6 +44,13 @@ export default function DashboardPage() {
   const showDue = settings?.HOME_SHOW_DUE_SOON !== '0';
   const { user, can, isAllBranches, currentBranch } = useAuth();
   const navigate = useNavigate();
+  // owner on a new install: Getting Started opens by itself once; afterwards a banner until it is finished
+  const { data: setup } = useFetch(user?.is_super_admin ? '/desk/setup-status' : null);
+  useEffect(() => {
+    if (!setup || setup.done > 2) return;
+    try { if (localStorage.getItem('gf.setupShown')) return; localStorage.setItem('gf.setupShown', '1'); } catch { return; }
+    navigate('/getting-started');
+  }, [setup]); // eslint-disable-line react-hooks/exhaustive-deps
   if (isLoading || !data) return <Spinner label="Preparing your dashboard…" />;
 
   const t = data.today.transactions;
@@ -55,6 +63,11 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-rise space-y-4">
+      {setup && setup.done < setup.total && (
+        <button type="button" onClick={() => navigate('/getting-started')} className="flex w-full items-center gap-3 rounded-md border border-gold-300 bg-gold-50 px-4 py-2 text-left text-sm text-gold-900 hover:bg-gold-100 dark:bg-ink-800 dark:text-gold-200">
+          <span className="font-bold">Setup {setup.done} of {setup.total} done.</span><span className="flex-1">Finish Getting Started before the shop starts real work.</span><span className="font-bold underline">Continue setup →</span>
+        </button>
+      )}
       {/* greeting banner */}
       <section className="navy-gradient flex flex-wrap items-center gap-4 rounded-md border-l-[6px] border-gold-500 px-6 py-5 text-white">
         <div className="min-w-0 flex-1">

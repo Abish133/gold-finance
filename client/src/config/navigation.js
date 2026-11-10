@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, UserX, Merge, FilePlus2, History, BookOpen, HandCoins, Wallet, ArrowUpCircle, RefreshCcw, Unlock, Printer, Tag,
   Calculator, Landmark, Building2, Gavel, Boxes, ScanLine, BookText, Receipt, NotebookPen, Scale, Coins, Lock, BarChart3, UserCog, CalendarCheck,
   BadgeIndianRupee, Gem, TrendingUp, Layers, ListChecks, Briefcase, Building, Shield, KeyRound, Settings2, MessageSquare, ScrollText,
-  DatabaseBackup, CalendarRange, UserPlus, Pencil, Trash, Files, Banknote, FileBarChart, Wrench, LifeBuoy, Keyboard, Info, CircleDollarSign, BookCheck, Lightbulb, Palette,
+  DatabaseBackup, CalendarRange, UserPlus, Pencil, Trash, Files, Banknote, FileBarChart, Wrench, LifeBuoy, Keyboard, Info, CircleDollarSign, BookCheck, Lightbulb, Palette, Rocket,
 } from 'lucide-react';
 
 /**
@@ -145,6 +145,9 @@ export const MENUS = [
   {
     key: 'help', label: 'Help', icon: LifeBuoy,
     items: [
+      { label: 'User Manual', hint: 'Every menu step by step, with examples', path: '/help/manual', icon: BookOpen, screen: 'dashboard' },
+      { label: 'Getting Started', hint: 'First-time setup / your first day', path: '/getting-started', icon: Rocket, screen: 'dashboard' },
+      { section: ' ' },
       { label: 'About', action: 'about', icon: Info },
       { label: 'Keyboard Shortcuts', action: 'shortcuts', icon: Keyboard },
       { section: ' ' },

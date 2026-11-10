@@ -59,7 +59,7 @@ router.post('/rate-board', permit('m_rates', 'add'), async (req, res) => {
   await withTransaction(async (tx) => {
     for (const r of rows) {
       await tx.query(`INSERT INTO metal_rates (metal_id, rate_date, purity, market_rate, loan_rate, created_by) VALUES (:m, :d, :p, :mr, :lr, :u)
-        ON DUPLICATE KEY UPDATE market_rate = :mr, loan_rate = :lr`,
+        ON DUPLICATE KEY UPDATE market_rate = :mr, loan_rate = :lr, created_by = :u`,
       { m: r.metal_id, d, p: r.purity, mr: round2(r.today), lr: round2(r.today_loan || (num(r.today) * ltv) / 100), u: req.user.id });
     }
   });
@@ -179,6 +179,43 @@ router.get('/year-end-checks', permit('s_year_end', 'view'), async (req, res) =>
 });
 
 /* ------------------------------------------------ Billing date (desktop: working date moves on at Day End) */
+/* ------------------------------------------------ Getting Started: first-time setup checklist (ticks itself) */
+const SETUP_STEPS = ['company', 'branch', 'rate', 'scheme', 'items', 'users', 'print', 'bank', 'sms', 'backup', 'old_loans', 'first_loan'];
+router.get('/setup-status', async (req, res) => {
+  const s = await getSettings(0);
+  let marked = {};
+  try { marked = JSON.parse(s.SETUP_DONE || '{}') || {}; } catch { marked = {}; }
+  const one = async (sql, p = {}) => Number((await queryOne(sql, p))?.c || 0);
+  const company = await queryOne('SELECT name, address1, licence_no, mobile FROM company LIMIT 1');
+  const today = dayjs().format('YYYY-MM-DD');
+  const auto = {
+    company: !!company && company.name !== 'My Gold Finance', // the sample name from the install
+    branch: (await one('SELECT COUNT(*) c FROM branches WHERE is_active = 1 AND opening_cash > 0')) > 0,
+    rate: (await one('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = :d AND created_by IS NOT NULL', { d: today })) > 0, // entered by a person, not the install sample
+    scheme: false,
+    items: (await one('SELECT COUNT(*) c FROM items WHERE is_active = 1')) > 0,
+    users: (await one('SELECT COUNT(*) c FROM users WHERE is_active = 1')) > 1,
+    print: false,
+    bank: (await one('SELECT COUNT(*) c FROM bank_accounts WHERE is_active = 1')) > 0,
+    sms: s.SMS_ENABLED === '1' && !!s.SMS_PROVIDER_URL,
+    backup: s.AUTO_BACKUP_ENABLED === '1' && marked.backup === true,
+    old_loans: (await one("SELECT COUNT(*) c FROM loans WHERE entry_type = 'OLD'")) > 0,
+    first_loan: (await one("SELECT COUNT(*) c FROM loans WHERE entry_type <> 'OLD'")) > 0,
+  };
+  const steps = SETUP_STEPS.map((k) => ({ key: k, done: !!auto[k] || marked[k] === true, skipped: marked[k] === 'skip' }));
+  res.json({ data: { steps, done: steps.filter((x) => x.done || x.skipped).length, total: steps.length } });
+});
+router.post('/setup-status/mark', permit('s_company', 'edit'), async (req, res) => {
+  const s = await getSettings(0);
+  let marked = {};
+  try { marked = JSON.parse(s.SETUP_DONE || '{}') || {}; } catch { marked = {}; }
+  const { key, value } = req.body || {};
+  if (!SETUP_STEPS.includes(key)) throw ApiError.badRequest('Unknown step');
+  if (value === null || value === undefined) delete marked[key]; else marked[key] = value === 'skip' ? 'skip' : true;
+  await saveSettings({ SETUP_DONE: JSON.stringify(marked) }, 0);
+  res.json({ ok: true });
+});
+
 router.get('/billing-date', async (req, res) => {
   const t = dayjs().format('YYYY-MM-DD');
   if (!req.branchId) return res.json({ data: { billingDate: t, behind: false } });

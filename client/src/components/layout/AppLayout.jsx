@@ -51,7 +51,7 @@ function MenuBar({ onAction, onExit }) {
   };
 
   return (
-    <nav ref={bar} className="navy-gradient relative z-30 flex h-10 items-stretch gap-0.5 overflow-x-auto px-2 text-sm text-white shadow-[inset_0_-1px_0_rgb(255_255_255/0.06)]">
+    <nav ref={bar} className="navy-gradient no-print relative z-30 flex h-10 items-stretch gap-0.5 overflow-x-auto px-2 text-sm text-white shadow-[inset_0_-1px_0_rgb(255_255_255/0.06)]">
       {menus.map((m) => (
         <div key={m.key} className="relative" data-menu={m.key} onMouseEnter={() => open && setOpen(m.key)}>
           <button type="button" onClick={() => setOpen(open === m.key ? null : m.key)}
@@ -204,7 +204,7 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
   const name = company?.name || 'Gold Finance';
 
   return (
-    <header className="relative z-20 flex flex-wrap items-center gap-x-5 gap-y-2 border-b-[3px] border-gold-500 bg-cream-100 px-4 py-2 dark:bg-ink-900">
+    <header className="no-print relative z-20 flex flex-wrap items-center gap-x-5 gap-y-2 border-b-[3px] border-gold-500 bg-cream-100 px-4 py-2 dark:bg-ink-900">
       <Link to="/" className="flex min-w-0 items-center gap-3">
         {company?.logo_path
           ? <img src={company.logo_path} alt="" className="size-11 rounded-md bg-white object-contain p-0.5 ring-1 ring-ink-200" />
