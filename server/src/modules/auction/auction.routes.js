@@ -85,60 +85,83 @@ router.get('/sales', permit('auction_sale', 'view'), async (req, res) => {
 });
 
 /** Settle one loan by auction inside a transaction. sale_amount null -> recovered at full dues. */
-const sellLoan = async (tx, req, b, date, settings) => {
-  {
-    const loan = await tx.queryOne('SELECT * FROM loans WHERE id = :id FOR UPDATE', { id: b.loan_id });
-    if (!loan) throw ApiError.notFound();
-    assertBranch(req, loan.branch_id);
-    if (loan.status !== 'OPEN') throw ApiError.badRequest('Loan is not open');
-    if (loan.bank_pledge_id) throw ApiError.badRequest(`Loan ${loan.bill_no}: jewels are pledged in bank`);
-    const c = await calcFor(loan, date, settings);
-    const postageFirst = num((await tx.queryOne('SELECT COALESCE(SUM(postage),0) p FROM auction_notices WHERE loan_id = :id', { id: loan.id })).p);
-    const saleAmount = b.sale_amount == null || b.sale_amount === '' ? round2(c.totalPayable + postageFirst + num(b.charges)) : round2(b.sale_amount);
-    if (saleAmount <= 0) throw ApiError.badRequest('Enter sale amount');
-    const charges = round2(num(b.charges) + postageFirst);
-    const principal = c.principalOutstanding;
-    const interestDue = round2(c.interestDue + c.penalDue);
-    const recoverable = round2(principal + interestDue + charges);
-    const surplus = round2(saleAmount - recoverable);
-    const interestRecovered = round2(Math.max(0, Math.min(interestDue, saleAmount - principal - charges)));
-    const chargesRecovered = round2(Math.max(0, Math.min(charges, saleAmount - principal)));
-    const payments = normalisePayments(b.payments, saleAmount);
-    const fy = await getCurrentFy(tx);
-    const rno = await nextNumber(tx, { branchId: loan.branch_id, key: 'RECEIPT', fyId: fy.id });
-    const t = await tx.query(`INSERT INTO loan_transactions (branch_id, loan_id, receipt_no, txn_date, txn_type, principal_amount, interest_amount, charges, total_amount, remarks, created_by)
-      VALUES (:b, :l, :r, :d, 'AUCTION', :p, :i, :c, :t, :rem, :u)`,
-    { b: loan.branch_id, l: loan.id, r: `${settings.RECEIPT_PREFIX || ''}${rno}`, d: date, p: -principal, i: interestRecovered, c: chargesRecovered, t: saleAmount, rem: `Auction to ${b.buyer_name || '-'}`, u: req.user.id });
-    await tx.query("UPDATE loans SET status = 'AUCTIONED', current_principal = 0, close_date = :d, closed_by = :u WHERE id = :id", { d: date, u: req.user.id, id: loan.id });
-    await tx.query(`INSERT INTO auction_sales (branch_id, loan_id, auction_date, buyer_name, sale_amount, principal_due, interest_due, charges, surplus, approved_by, remarks, created_by)
-      VALUES (:b, :l, :d, :buyer, :s, :p, :i, :c, :sur, :ap, :rem, :u)`,
-    { b: loan.branch_id, l: loan.id, d: date, buyer: b.buyer_name || null, s: saleAmount, p: principal, i: interestDue, c: charges, sur: surplus, ap: b.approved_by || null, rem: b.remarks || null, u: req.user.id });
-    const narration = `Auction ${loan.bill_no}`;
-    await postVoucher(tx, {
-      branchId: loan.branch_id, fyId: fy.id, date, type: 'RECEIPT', narration, sourceType: 'LOAN_TXN', sourceId: t.insertId, userId: req.user.id,
-      lines: [
-        ...(await paymentLines(tx, payments, 'debit', narration)),
-        { ledger: LEDGER.AUCTION_LOSS, debit: surplus < 0 ? round2(principal - Math.min(principal, saleAmount)) : 0 },
-        { ledger: LEDGER.LOAN_RECEIVABLE, credit: principal },
-        { ledger: LEDGER.INTEREST_INCOME, credit: interestRecovered },
-        { ledger: LEDGER.OTHER_CHARGES, credit: chargesRecovered },
-        { ledger: LEDGER.AUCTION_SURPLUS, credit: Math.max(0, surplus) },
-      ],
-    });
-    await tx.query('UPDATE loans SET auction_marked_at = NOW() WHERE id = :id', { id: loan.id });
-    audit(req, 'AUCTION_SALE', 'loans', loan.id, { saleAmount, surplus });
-    return { loan_id: loan.id, bill_no: loan.bill_no, saleAmount, surplus, recoverable };
-  }
+/*
+ * Desktop auction flow (Auction Release):
+ *  1. Mark as auctioned  -> loan closed as AUCTIONED, no money (day report: Girvi in / Auction out)
+ *  2. Save sale (later)  -> money received; profit / loss = sold for - loan amount
+ *  Change sale = admin, Remove sale, Undo auction = admin and only while no sale is saved.
+ */
+const markLoan = async (tx, req, loanId, date, settings, remarks) => {
+  const loan = await tx.queryOne('SELECT * FROM loans WHERE id = :id FOR UPDATE', { id: loanId });
+  if (!loan) throw ApiError.notFound();
+  assertBranch(req, loan.branch_id);
+  if (loan.status !== 'OPEN') throw ApiError.badRequest(`Loan ${loan.bill_no} is not open`);
+  if (loan.bank_pledge_id) throw ApiError.badRequest(`Loan ${loan.bill_no}: jewels are pledged in bank`);
+  const c = await calcFor(loan, date, settings);
+  const postage = num((await tx.queryOne('SELECT COALESCE(SUM(postage),0) p FROM auction_notices WHERE loan_id = :id', { id: loan.id })).p);
+  const principal = c.principalOutstanding;
+  const fy = await getCurrentFy(tx);
+  const rno = await nextNumber(tx, { branchId: loan.branch_id, key: 'RECEIPT', fyId: fy.id });
+  await tx.query(`INSERT INTO loan_transactions (branch_id, loan_id, receipt_no, txn_date, txn_type, principal_amount, interest_amount, charges, total_amount, remarks, created_by)
+    VALUES (:b, :l, :r, :d, 'AUCTION', :p, 0, 0, 0, :rem, :u)`,
+  { b: loan.branch_id, l: loan.id, r: `${settings.RECEIPT_PREFIX || ''}${rno}`, d: date, p: -principal, rem: remarks || 'Auctioned', u: req.user.id });
+  await tx.query("UPDATE loans SET status = 'AUCTIONED', current_principal = 0, close_date = :d, closed_by = :u, auction_marked_at = NOW() WHERE id = :id", { d: date, u: req.user.id, id: loan.id });
+  await tx.query(`INSERT INTO auction_sales (branch_id, loan_id, auction_date, sale_amount, principal_due, interest_due, charges, surplus, remarks, created_by)
+    VALUES (:b, :l, :d, 0, :p, :i, :c, 0, :rem, :u)`,
+  { b: loan.branch_id, l: loan.id, d: date, p: principal, i: round2(c.interestDue + c.penalDue), c: postage, rem: remarks || null, u: req.user.id });
+  audit(req, 'AUCTION_MARK', 'loans', loan.id, { principal });
+  return { loan_id: loan.id, bill_no: loan.bill_no, principal };
 };
 
+const removeSaleVoucher = async (tx, sale) => {
+  if (!sale.sale_voucher_id) return;
+  await tx.query('DELETE FROM voucher_entries WHERE voucher_id = :v', { v: sale.sale_voucher_id });
+  await tx.query('DELETE FROM vouchers WHERE id = :v', { v: sale.sale_voucher_id });
+};
+
+const saveSale = async (tx, req, loanId, b) => {
+  const sale = await tx.queryOne('SELECT * FROM auction_sales WHERE loan_id = :l FOR UPDATE', { l: loanId });
+  if (!sale) throw ApiError.badRequest('Mark the loan as auctioned first');
+  assertBranch(req, sale.branch_id);
+  if (sale.sale_date && !req.user.is_super_admin) throw ApiError.forbidden('Only an Admin can change a saved sale');
+  const amountSold = round2(b.sale_amount);
+  if (amountSold <= 0) throw ApiError.badRequest('Enter what the items sold for');
+  const date = await ensureDateOpen(req, b.sale_date || dayjs().format('YYYY-MM-DD'));
+  if (dayjs(date).isBefore(dayjs(sale.auction_date))) throw ApiError.badRequest('Sale date cannot be before the auction date');
+  await removeSaleVoucher(tx, sale);
+  const principal = num(sale.principal_due);
+  const profit = round2(amountSold - principal);
+  const loan = await tx.queryOne('SELECT bill_no FROM loans WHERE id = :id', { id: loanId });
+  const fy = await getCurrentFy(tx);
+  const narration = `Auction sale ${loan.bill_no}`;
+  const payments = normalisePayments(b.payments, amountSold);
+  const vId = await postVoucher(tx, {
+    branchId: sale.branch_id, fyId: fy.id, date, type: 'RECEIPT', narration, sourceType: 'AUCTION_SALE', sourceId: sale.id, userId: req.user.id,
+    lines: [
+      ...(await paymentLines(tx, payments, 'debit', narration)),
+      { ledger: LEDGER.AUCTION_LOSS, debit: profit < 0 ? -profit : 0 },
+      { ledger: LEDGER.LOAN_RECEIVABLE, credit: principal },
+      { ledger: LEDGER.AUCTION_SURPLUS, credit: profit > 0 ? profit : 0 },
+    ],
+  });
+  await tx.query('UPDATE auction_sales SET sale_amount = :s, sale_date = :d, surplus = :p, buyer_name = COALESCE(:buyer, buyer_name), approved_by = COALESCE(:ap, approved_by), sale_voucher_id = :v WHERE id = :id',
+    { s: amountSold, d: date, p: profit, buyer: b.buyer_name || null, ap: b.approved_by || null, v: vId, id: sale.id });
+  audit(req, sale.sale_date ? 'AUCTION_SALE_CHANGE' : 'AUCTION_SALE', 'loans', loanId, { amountSold, profit });
+  return { loan_id: Number(loanId), bill_no: loan.bill_no, saleAmount: amountSold, profit, surplus: profit };
+};
+
+/** one step (older API): mark + sale */
 router.post('/sales', permit('auction_sale', 'add'), requireBranch, async (req, res) => {
   const date = await ensureDateOpen(req, req.body.auction_date);
   const settings = await getSettings(req.branchId);
-  const result = await withTransaction((tx) => sellLoan(tx, req, req.body, date, settings));
+  const result = await withTransaction(async (tx) => {
+    await markLoan(tx, req, req.body.loan_id, date, settings, req.body.remarks);
+    return req.body.sale_amount ? saveSale(tx, req, req.body.loan_id, { ...req.body, sale_date: date }) : { loan_id: req.body.loan_id, saleAmount: 0, profit: 0 };
+  });
   res.status(201).json({ data: result });
 });
 
-/** Auction Release (desktop): tick many overdue loans and close them as AUCTIONED in one go. */
+/** Auction Release (desktop): tick overdue loans and close them as AUCTIONED in one go (sale entered later) */
 router.post('/mark-auctioned', permit('auction_sale', 'add'), requireBranch, async (req, res) => {
   const date = await ensureDateOpen(req, req.body.auction_date);
   const settings = await getSettings(req.branchId);
@@ -146,10 +169,49 @@ router.post('/mark-auctioned', permit('auction_sale', 'add'), requireBranch, asy
   if (!list.length) throw ApiError.badRequest('Tick loans to mark as auctioned');
   const out = await withTransaction(async (tx) => {
     const r = [];
-    for (const x of list) r.push(await sellLoan(tx, req, { ...x, buyer_name: req.body.buyer_name, approved_by: req.body.approved_by, remarks: req.body.remarks }, date, settings));
+    for (const x of list) {
+      const m = await markLoan(tx, req, x.loan_id, date, settings, req.body.remarks);
+      r.push(num(x.sale_amount) > 0 ? { ...m, ...(await saveSale(tx, req, x.loan_id, { ...x, sale_date: date, buyer_name: req.body.buyer_name })) } : m);
+    }
     return r;
   });
-  res.status(201).json({ data: { count: out.length, total: round2(out.reduce((s2, x) => s2 + x.saleAmount, 0)), loans: out } });
+  res.status(201).json({ data: { count: out.length, total: round2(out.reduce((t, x) => t + num(x.principal), 0)), loans: out } });
+});
+
+/** Save / change (admin) the sale of an auctioned loan */
+router.put('/sales/:loanId', permit('auction_sale', 'edit'), requireBranch, async (req, res) => {
+  res.json({ data: await withTransaction((tx) => saveSale(tx, req, req.params.loanId, req.body)) });
+});
+
+/** Remove a saved sale (the loan stays auctioned) */
+router.delete('/sales/:loanId/sale', permit('auction_sale', 'edit'), requireBranch, async (req, res) => {
+  await withTransaction(async (tx) => {
+    const sale = await tx.queryOne('SELECT * FROM auction_sales WHERE loan_id = :l FOR UPDATE', { l: req.params.loanId });
+    if (!sale) throw ApiError.notFound();
+    assertBranch(req, sale.branch_id);
+    if (!sale.sale_date) throw ApiError.badRequest('No sale saved for this loan');
+    await ensureDateOpen(req, dayjs(sale.sale_date).format('YYYY-MM-DD'));
+    await removeSaleVoucher(tx, sale);
+    await tx.query('UPDATE auction_sales SET sale_amount = 0, sale_date = NULL, surplus = 0, sale_voucher_id = NULL WHERE id = :id', { id: sale.id });
+  });
+  audit(req, 'AUCTION_SALE_REMOVE', 'loans', req.params.loanId);
+  res.json({ ok: true });
+});
+
+/** Undo auction (admin) - only while no sale is saved; the loan is open again */
+router.post('/sales/:loanId/undo', permit('auction_sale', 'delete'), requireBranch, async (req, res) => {
+  if (!req.user.is_super_admin) throw ApiError.forbidden('Only an Admin can undo an auction');
+  await withTransaction(async (tx) => {
+    const sale = await tx.queryOne('SELECT * FROM auction_sales WHERE loan_id = :l FOR UPDATE', { l: req.params.loanId });
+    if (!sale) throw ApiError.notFound();
+    assertBranch(req, sale.branch_id);
+    if (sale.sale_date) throw ApiError.badRequest('Remove the sale first');
+    await tx.query("UPDATE loan_transactions SET is_void = 1 WHERE loan_id = :l AND txn_type = 'AUCTION' AND is_void = 0", { l: sale.loan_id });
+    await tx.query("UPDATE loans SET status = 'OPEN', current_principal = :p, close_date = NULL, closed_by = NULL, auction_marked_at = NULL WHERE id = :l", { p: sale.principal_due, l: sale.loan_id });
+    await tx.query('DELETE FROM auction_sales WHERE id = :id', { id: sale.id });
+  });
+  audit(req, 'AUCTION_UNDO', 'loans', req.params.loanId);
+  res.json({ ok: true });
 });
 
 /* ---------------- stock check ---------------- */

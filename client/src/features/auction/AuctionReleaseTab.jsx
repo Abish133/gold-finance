@@ -4,7 +4,7 @@ import { Search, CheckSquare, Square, Gavel, FileSpreadsheet, FileDown } from 'l
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, DataTable, Field, Input } from '@/components/ui';
+import { Button, ConfirmDrawer, DataTable, Field, Input } from '@/components/ui';
 import { useFetch, useCompany, useSettings } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
@@ -20,46 +20,56 @@ const cols = [
   { key: 'item_summary', label: 'Items', className: 'max-w-48 truncate' },
   { key: 'loan_on', label: 'Metal' },
   { key: 'net_wt', label: 'Net Wt', type: 'weight' },
-  { key: 'current_principal', label: 'Loan Amount', type: 'money' },
-  { key: 'total_due', label: 'Total Due', type: 'money' },
-  { key: 'notices', label: 'Notice Sent', render: (r) => (r.notices ? `Yes (${r.notices})` : 'No') },
+  { key: 'principal', label: 'Loan Amount', type: 'money' },
+  { key: 'notices', label: 'Notice Sent', render: (r) => (r.notices ? <span className="rounded bg-emerald-50 px-1.5 text-[10px] font-bold text-emerald-700">SENT ({r.notices})</span> : <span className="rounded bg-rose-50 px-1.5 text-[10px] font-bold text-rose-700">NO NOTICE</span>), print: (r) => (r.notices ? 'Sent' : 'No notice') },
 ];
 
 /** Auction Release (desktop: frmAuctionRelease) - close unredeemed loans as AUCTION and record what the items sold for. */
-export function AuctionReleaseTab() {
+export function AuctionReleaseTab({ onCount, onDone }) {
   const qc = useQueryClient();
   const { data: company } = useCompany();
   const [f, setF] = useState({ from: dayjs().subtract(5, 'year').format('YYYY-MM-DD'), to: dayjs().subtract(12, 'month').format('YYYY-MM-DD'), older: 12, metal: '', notice: '' });
   const [query, setQuery] = useState(f);
   const { data: settings } = useSettings();
+  // desktop: from the oldest open loan up to (billing date - N months); auction date = billing date
+  const { data: billing } = useFetch('/desk/billing-date');
+  const bd = billing?.billingDate;
   useEffect(() => {
-    const m = n(settings?.AUCTION_OVERDUE_MONTHS);
-    if (!m) return;
-    const next = { ...f, older: m, to: dayjs().subtract(m, 'month').format('YYYY-MM-DD') };
-    setF(next); setQuery(next);
-  }, [settings?.AUCTION_OVERDUE_MONTHS]); // eslint-disable-line react-hooks/exhaustive-deps
-  const { data = [], isLoading, refetch } = useFetch('/auction/list', { older_than: query.older, from: query.from, to: query.to, loan_on: query.metal, notice: query.notice });
+    if (!bd) return;
+    const m = n(settings?.AUCTION_OVERDUE_MONTHS) || 12;
+    const next = { ...f, older: m, from: billing.oldestOpen || f.from, to: dayjs(bd).subtract(m, 'month').format('YYYY-MM-DD') };
+    setF(next); setQuery(next); setD(bd);
+  }, [bd, settings?.AUCTION_OVERDUE_MONTHS]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data = [], isLoading, refetch } = useFetch('/auction/list', { asOn: bd, older_than: query.older, from: query.from, to: query.to, loan_on: query.metal, notice: query.notice });
+  useEffect(() => { onCount?.(data.length); }, [data.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [ask, setAsk] = useState(null);
   const [sel, setSel] = useState([]);
   const [sale, setSale] = useState({});
   const [tick, setTick] = useState('');
   const [d, setD] = useState(today());
   const [busy, setBusy] = useState(false);
   const chosen = data.filter((r) => sel.includes(r.id));
-  const tot = useMemo(() => chosen.reduce((s, r) => ({ gold: s.gold + (r.loan_on === 'SILVER' ? 0 : n(r.net_wt)), silver: s.silver + (r.loan_on === 'SILVER' ? n(r.net_wt) : 0), amt: s.amt + n(r.current_principal), sale: s.sale + n(sale[r.id] ?? r.total_due) }), { gold: 0, silver: 0, amt: 0, sale: 0 }), [chosen, sale]);
+  const tot = useMemo(() => chosen.reduce((s, r) => ({ gold: s.gold + (r.loan_on === 'SILVER' ? 0 : n(r.net_wt)), silver: s.silver + (r.loan_on === 'SILVER' ? n(r.net_wt) : 0), amt: s.amt + n(r.principal), sale: s.sale + n(sale[r.id] ?? r.total_due) }), { gold: 0, silver: 0, amt: 0, sale: 0 }), [chosen, sale]);
 
   const tickBy = () => {
     const r = data.find((x) => x.bill_no === tick.trim() || x.barcode === tick.trim());
     if (!r) return toast.error('Loan not in the list');
     setSel((s) => (s.includes(r.id) ? s : [...s, r.id])); setTick('');
   };
-  const mark = async () => {
-    if (!chosen.length) return toast.error('Tick loans first');
+  const noNotice = chosen.filter((r) => !r.notices).length;
+  const doMark = async () => {
     setBusy(true);
     try {
-      const r = await api.post('/auction/mark-auctioned', { auction_date: d, loans: chosen.map((x) => ({ loan_id: x.id, sale_amount: sale[x.id] ?? undefined })) });
-      toast.success(`${r.data.count} loans marked as auctioned`);
-      setSel([]); setSale({}); refetch(); qc.invalidateQueries({ queryKey: ['/loans'] });
+      const r = await api.post('/auction/mark-auctioned', { auction_date: d, loans: chosen.map((x) => ({ loan_id: x.id })) });
+      toast.success(`${r.data.count} loan${r.data.count > 1 ? 's' : ''} marked as auctioned - enter the sale in the Auctioned tab`);
+      setSel([]); setSale({}); setAsk(null); refetch(); qc.invalidateQueries({ queryKey: ['/loans'] }); onDone?.();
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  const confirmMark = () => setAsk({ title: `Mark ${chosen.length} loan${chosen.length > 1 ? 's' : ''} (Rs ${amount(tot.amt)}) as AUCTIONED on ${dayjs(d).format('DD/MM/YYYY')}?`, message: 'These loans will be closed. Only an Admin can undo it.', go: doMark });
+  const mark = () => {
+    if (!chosen.length) return toast.error('Tick loans first');
+    if (noNotice) return setAsk({ title: `${noNotice} of the ticked loans never got a notice.`, message: 'Auction them anyway?', go: confirmMark });
+    return confirmMark();
   };
   useKeys({ f5: () => setQuery(f), 'ctrl+a': () => setSel(data.map((r) => r.id)), 'ctrl+n': () => setSel(data.filter((r) => r.notices).map((r) => r.id)), 'ctrl+d': () => setSel([]), f10: mark,
     'ctrl+e': () => exportCsv('auction-due', cols, data), 'ctrl+p': () => printTable({ title: 'Due for Auction', company, columns: cols, rows: data }) }, [f, data, chosen, sale, d]);
@@ -85,22 +95,19 @@ export function AuctionReleaseTab() {
             <Button size="sm" variant="outline" onClick={() => setSel(data.filter((r) => r.notices).map((r) => r.id))}>Tick With Notice (Ctrl+N)</Button>
             <Button size="sm" variant="outline" icon={Square} onClick={() => setSel([])}>Untick All (Ctrl+D)</Button>
           </div>
-          <DataTable dense selectable selected={sel} onSelect={setSel} rows={data} loading={isLoading} columns={[...cols, {
-            key: 'sale', label: 'Sold for', align: 'right',
-            render: (r) => sel.includes(r.id) ? <Input type="number" className="h-8 w-28 text-right" value={sale[r.id] ?? r.total_due} onClick={(e) => e.stopPropagation()} onChange={(e) => setSale({ ...sale, [r.id]: e.target.value })} /> : '',
-          }]} />
+          <DataTable dense selectable selected={sel} onSelect={setSel} rows={data} loading={isLoading} columns={cols} />
         </div>
         <div className="card overflow-hidden">
           <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Mark as auctioned</p>
           <div className="space-y-2 p-4 text-sm">
-            <Field label="Auction date"><Input type="date" max={today()} value={d} onChange={(e) => setD(e.target.value)} /></Field>
+            <Field label="Auction date"><Input type="date" max={bd || today()} value={d} onChange={(e) => setD(e.target.value)} /></Field>
             <div className="flex justify-between"><span>Ticked loans</span><b>{chosen.length}</b></div>
             <div className="flex justify-between"><span>Gold net wt</span><b className="num">{weight(tot.gold)} g</b></div>
             <div className="flex justify-between"><span>Silver net wt</span><b className="num">{weight(tot.silver)} g</b></div>
-            <div className="flex justify-between"><span>Total sale amount</span><b className="num">{amount(tot.sale)}</b></div>
             <p className="label pt-2">Loan amount closed</p>
             <p className="num text-2xl font-extrabold text-navy-900">{money(tot.amt)}</p>
-            <Button variant="danger" size="lg" className="h-12 w-full" icon={Gavel} loading={busy} onClick={mark}>Mark as Auctioned (F10)</Button>
+            {noNotice > 0 && <p className="rounded bg-rose-50 px-2 py-1 text-xs text-rose-700">{noNotice} ticked loan{noNotice > 1 ? 's have' : ' has'} no notice sent.</p>}
+            <Button variant="danger" size="lg" className="h-12 w-full" icon={Gavel} loading={busy} onClick={mark}>{chosen.length ? `Mark ${chosen.length} Loan${chosen.length > 1 ? 's' : ''} as Auctioned (F10)` : 'Mark as Auctioned (F10)'}</Button>
             <div className="grid grid-cols-2 gap-2 pt-2">
               <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auction-due', cols, data)}>Excel (Ctrl+E)</Button>
               <Button variant="outline" icon={FileDown} onClick={() => printTable({ title: 'Due for Auction', company, columns: cols, rows: data })}>PDF (Ctrl+P)</Button>
@@ -108,6 +115,7 @@ export function AuctionReleaseTab() {
           </div>
         </div>
       </div>
+      <ConfirmDrawer open={!!ask} onClose={() => setAsk(null)} title={ask?.title} message={ask?.message} confirmText="Yes" tone="danger" onConfirm={() => ask?.go()} />
     </div>
   );
 }

@@ -30,6 +30,8 @@ const COLUMNS = [
   ['bank_pledges', 'rate_monthly', 'DECIMAL(6,3) NOT NULL DEFAULT 0'],
   ['bank_accounts', 'code', 'VARCHAR(20) NULL'],
   ['customers', 'occupation_place', 'VARCHAR(120) NULL'],
+  ['auction_sales', 'sale_date', 'DATE NULL'],
+  ['auction_sales', 'sale_voucher_id', 'INT NULL'],
 ];
 
 const TABLES = `
@@ -61,6 +63,8 @@ const run = async () => {
   await conn.query("UPDATE customers SET id_proof_type = 'Aadhaar Card' WHERE id_proof_type = 'Aadhaar'");
   await conn.query("UPDATE customers SET id_proof_type = 'PAN Card' WHERE id_proof_type = 'PAN'");
   await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (2, 'Desktop parity: mix loans, compound interest, release no, bank reco')");
+  // auctions: sale is entered after marking (desktop) - existing sales count as sold on the auction date
+  await conn.query("UPDATE auction_sales SET sale_date = auction_date WHERE sale_date IS NULL AND sale_amount > 0");
   // MyBook interest mode + the desktop-style default scheme (rate per month, whole months, interest on the loan amount)
   await conn.query("ALTER TABLE schemes MODIFY calc_mode ENUM('DAYS','MONTHS','MYBOOK') NOT NULL DEFAULT 'MYBOOK'");
   const [[mb]] = await conn.query("SELECT COUNT(*) c FROM schemes WHERE calc_mode = 'MYBOOK'");

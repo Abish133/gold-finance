@@ -24,11 +24,14 @@ const TAKEN = [
 ];
 const RELEASED = [
   { key: 'sno', label: 'S.No' }, { key: 'pledge_no', label: 'Bank Loan No' }, { key: 'bank', label: 'Bank / Branch' }, { key: 'pledge_date', label: 'Loan Date', type: 'date' }, { key: 'release_date', label: 'Released On', type: 'date' },
-  { key: 'days', label: 'Days', type: 'number' }, { key: 'amount', label: 'Amount', type: 'money' }, { key: 'interest_paid', label: 'Interest Paid', type: 'money' }, { key: 'total_paid', label: 'Total Paid', type: 'money' },
+  { key: 'days', label: 'Days', type: 'number' }, { key: 'amount', label: 'Amount', type: 'money' }, { key: 'interest_rate', label: 'Loan % / Yr', type: 'number' }, { key: 'interest_calc', label: 'Interest (calc.)', type: 'money' },
+  { key: 'interest_paid', label: 'Interest Paid', type: 'money' }, { key: 'paid_pct_year', label: 'Paid % / Yr', type: 'number' }, { key: 'total_paid', label: 'Total Paid', type: 'money' },
+  { key: 'our_interest', label: 'Our Interest', type: 'money' }, { key: 'our_margin', label: 'Our Margin', type: 'money' },
 ];
 const MONTHS = [
-  { key: 'month_label', label: 'Month' }, { key: 'taken_count', label: 'Taken', type: 'number' }, { key: 'taken', label: 'Amount Taken', type: 'money' }, { key: 'charges', label: 'Charges', type: 'money' },
-  { key: 'released_count', label: 'Released', type: 'number' }, { key: 'released', label: 'Amount Repaid', type: 'money' }, { key: 'interest', label: 'Interest Paid', type: 'money' }, { key: 'balance', label: 'Balance at Bank', type: 'money' },
+  { key: 'month_label', label: 'Month' }, { key: 'taken_count', label: 'Taken', type: 'number' }, { key: 'taken', label: 'Taken Amount', type: 'money' },
+  { key: 'released_count', label: 'Released', type: 'number' }, { key: 'released', label: 'Released Amount', type: 'money' }, { key: 'interest', label: 'Interest Paid', type: 'money' },
+  { key: 'charges', label: 'Charges', type: 'money' }, { key: 'at_bank_count', label: 'At Bank (loans)', type: 'number' }, { key: 'balance', label: 'At Bank (amount)', type: 'money' },
 ];
 
 function Grid({ cols, rows, onOpen, sel, setSel }) {
@@ -68,7 +71,7 @@ export default function BankBooksPage({ mode = 'book' }) {
   const detail = useFetch(view ? `/bank/pledges/${view}` : null);
   const t = list.data?.tiles;
   const rows = tab === 'month' && mode === 'reports'
-    ? (months.data || []).map((m) => ({ ...m, month_label: dayjs(`${m.month}-01`).format('MMM YYYY') }))
+    ? (months.data || []).map((m) => ({ ...m, month_label: m.opening ? 'Opening' : dayjs(`${m.month}-01`).format('MMM YYYY') }))
     : (list.data?.data || []).map((r, i) => ({ ...r, sno: i + 1, bank: `${r.bank_name}${r.bank_branch ? ` · ${r.bank_branch}` : ''}`, state: r.status === 'OPEN' ? 'At bank' : 'Released' }));
   const cols = mode === 'book' ? BOOK : { taken: TAKEN, released: RELEASED, month: MONTHS }[tab];
   const title = mode === 'book' ? 'Bank Pledge Book' : { taken: 'Bank Loans Taken', released: 'Bank Loans Released', month: 'Bank - Month-wise Summary' }[tab];
@@ -103,13 +106,27 @@ export default function BankBooksPage({ mode = 'book' }) {
           {tile('Released', t?.released ?? 0, `Rs. ${amount(t?.releasedAmt || 0)}`, 'border-t-emerald-700')}
           {tile('Interest paid', `Rs. ${amount(t?.interestPaid || 0)}`, 'on released', 'border-t-amber-600')}
         </div>
-      ) : tab !== 'month' && (
+      ) : tab === 'month' ? (() => {
+        const m = (months.data || []).filter((x) => !x.opening); const op = (months.data || [])[0]; const last = (months.data || []).at(-1);
+        const s2 = (k) => m.reduce((t2, x) => t2 + n(x[k]), 0);
+        return (
+          <div className="grid gap-3 sm:grid-cols-5">
+            {tile('Opening at bank', `Rs. ${amount(op?.balance || 0)}`, `${op?.at_bank_count || 0} bank loans on ${q?.from ? date(dayjs(q.from).subtract(1, 'day')) : '-'}`, 'border-t-navy-800')}
+            {tile('Taken', `Rs. ${amount(s2('taken'))}`, `${s2('taken_count')} bank loans`, 'border-t-blue-600')}
+            {tile('Interest paid', `Rs. ${amount(s2('interest'))}`, '', 'border-t-rose-600')}
+            {tile('Released', `Rs. ${amount(s2('released'))}`, `${s2('released_count')} bank loans`, 'border-t-amber-600')}
+            {tile('Closing at bank', `Rs. ${amount(last?.balance || 0)}`, `${last?.at_bank_count || 0} bank loans on ${q?.to ? date(q.to) : '-'}`, 'border-t-lime-700')}
+          </div>
+        );
+      })() : (
         <div className="grid gap-3 sm:grid-cols-5">
           {tile(tab === 'taken' ? 'Bank loans taken' : 'Bank loans released', rows.length, q?.from ? `${date(q.from)} to ${date(q.to)}` : 'all years', 'border-t-navy-800')}
-          {tile('Amount', `Rs. ${amount(sum('amount'))}`, '', 'border-t-blue-600')}
-          {tab === 'taken' ? tile('Charges', `Rs. ${amount(sum('charges'))}`, 'document / processing', 'border-t-rose-600') : tile('Interest paid', `Rs. ${amount(sum('interest_paid'))}`, '', 'border-t-rose-600')}
-          {tab === 'taken' ? tile('Cash received', `Rs. ${amount(sum('cash_received'))}`, '', 'border-t-amber-600') : tile('Total paid', `Rs. ${amount(sum('total_paid'))}`, '', 'border-t-amber-600')}
-          {tile('Still at bank', rows.filter((r) => r.status === 'OPEN').length, `Rs. ${amount(rows.filter((r) => r.status === 'OPEN').reduce((s, r) => s + n(r.amount), 0))}`, 'border-t-lime-700')}
+          {tile(tab === 'taken' ? 'Amount' : 'Principal repaid', `Rs. ${amount(sum('amount'))}`, '', 'border-t-blue-600')}
+          {tab === 'taken' ? tile('Charges', `Rs. ${amount(sum('charges'))}`, 'document / processing', 'border-t-rose-600') : tile('Interest paid to bank', `Rs. ${amount(sum('interest_paid'))}`, `average ${rows.length ? (rows.reduce((t, r) => t + n(r.paid_pct_year), 0) / rows.length).toFixed(2) : '0.00'}% / year`, 'border-t-rose-600')}
+          {tab === 'taken' ? tile('Cash received', `Rs. ${amount(sum('cash_received'))}`, '', 'border-t-amber-600') : tile('Charges', `Rs. ${amount(sum('charges'))}`, 'on these bank loans', 'border-t-amber-600')}
+          {tab === 'taken'
+            ? tile('Still at bank', rows.filter((r) => r.status === 'OPEN').length, `Rs. ${amount(rows.filter((r) => r.status === 'OPEN').reduce((s, r) => s + n(r.amount), 0))}`, 'border-t-lime-700')
+            : tile('Our interest (estimate)', `Rs. ${amount(sum('our_interest'))}`, `margin Rs. ${amount(sum('our_margin'))}`, 'border-t-lime-700')}
         </div>
       )}
       <Grid cols={cols} rows={rows} sel={sel} setSel={setSel} onOpen={(r) => r.id && setView(r.id)} />

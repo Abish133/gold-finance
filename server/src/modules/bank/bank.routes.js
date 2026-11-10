@@ -13,9 +13,11 @@ import { ensureDateOpen } from '#services/daycontrol.service.js';
 
 const router = Router();
 
+/* desktop: % per year on the days (at least 1 day), per-day shown, total rounded to the rupee */
 const bankInterest = (bp, asOn) => {
-  const days = Math.max(dayjs(asOn).diff(dayjs(bp.pledge_date), 'day'), num(bp.min_days));
-  return { days, interest: round2((num(bp.amount) * num(bp.interest_rate) * days) / 36500) };
+  const days = Math.max(1, dayjs(asOn).diff(dayjs(bp.pledge_date), 'day'), num(bp.min_days));
+  const perDay = (num(bp.amount) * num(bp.interest_rate)) / 36500;
+  return { days, perDay: round2(perDay), interest: Math.round(perDay * days) };
 };
 
 const accountLedger = async (tx, mode, bankAccountId) => {
@@ -42,7 +44,17 @@ router.get('/pledges', permit('bank_pledge', 'view'), async (req, res) => {
     WHERE ${w} ${lq.orderBy} LIMIT ${lq.pageSize} OFFSET ${lq.offset}`, p);
   const [{ total }] = await query(`SELECT COUNT(*) total FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE ${w}`, p);
   const asOn = req.query.as_on || dayjs().format('YYYY-MM-DD');
-  const out = rows.map((r) => (r.status === 'OPEN' ? { ...r, ...bankInterest(r, asOn) } : { ...r, days: dayjs(r.release_date).diff(dayjs(r.pledge_date), 'day'), interest: num(r.interest_paid) }));
+  // released: interest worked out vs paid, and what our own loans earned meanwhile (desktop "Our Interest / Our Margin")
+  const ids = rows.filter((r) => r.status !== 'OPEN').map((r) => r.id);
+  const inside = ids.length ? await query(`SELECT x.bank_pledge_id, l.principal, l.interest_rate, l.rate_type FROM bank_pledge_loans x JOIN loans l ON l.id = x.loan_id WHERE x.bank_pledge_id IN (:ids)`, { ids }) : [];
+  const out = rows.map((r) => {
+    if (r.status === 'OPEN') return { ...r, ...bankInterest(r, asOn) };
+    const calc = bankInterest(r, r.release_date);
+    const ours = Math.round(inside.filter((x) => x.bank_pledge_id === r.id)
+      .reduce((t, x) => t + (num(x.principal) * (x.rate_type === 'MONTHLY' ? num(x.interest_rate) / 100 / 30 : num(x.interest_rate) / 100 / 365)) * calc.days, 0));
+    const paid = num(r.interest_paid);
+    return { ...r, days: calc.days, interest: paid, interest_calc: calc.interest, paid_pct_year: num(r.amount) ? round2((paid / num(r.amount)) * (365 / calc.days) * 100) : 0, our_interest: ours, our_margin: round2(ours - paid) };
+  });
   // tiles over the whole filter (not just this page)
   const wNoStatus = where.filter((x) => !x.startsWith('bp.status')).join(' AND ');
   const all = await query(`SELECT bp.* FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE ${wNoStatus}`, p);
@@ -55,7 +67,7 @@ router.get('/pledges', permit('bank_pledge', 'view'), async (req, res) => {
 });
 
 router.get('/pledges/available-loans', permit('bank_pledge', 'view'), requireBranch, async (req, res) => {
-  const rows = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.loan_date, l.loan_on, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.item_photo, l.avg_purity, l.market_value,
+  const rows = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.loan_date, l.loan_on, l.principal, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.item_photo, l.avg_purity, l.market_value,
       c.name customer_name, c.relation_type, c.relation_name, c.phone customer_phone
     FROM loans l JOIN customers c ON c.id = l.customer_id WHERE l.branch_id = :b AND l.status = 'OPEN' AND l.bank_pledge_id IS NULL ORDER BY l.loan_no`, { b: req.branchId });
   res.json({ data: rows });
@@ -76,13 +88,19 @@ router.get('/month-wise', permit('bank_pledge', 'view'), async (req, res) => {
   if (ba) p.ba = req.query.bank_account_id;
   const taken = await query(`SELECT DATE_FORMAT(pledge_date, '%Y-%m') m, COUNT(*) c, SUM(amount) a, SUM(charges) ch FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND pledge_date BETWEEN :f AND :t GROUP BY m`, p);
   const rel = await query(`SELECT DATE_FORMAT(release_date, '%Y-%m') m, COUNT(*) c, SUM(amount) a, SUM(interest_paid) i FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND release_date BETWEEN :f AND :t GROUP BY m`, p);
-  const months = [...new Set([...taken.map((x) => x.m), ...rel.map((x) => x.m)])].sort();
-  let bal = num((await queryOne(`SELECT COALESCE(SUM(amount),0) a FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND pledge_date < :f AND (release_date IS NULL OR release_date >= :f)`, p))?.a);
-  const data = months.map((m) => {
+  // desktop: every month of the period, opening row first, loans and amount at bank after each month
+  const used = [...new Set([...taken.map((x) => x.m), ...rel.map((x) => x.m)])].sort();
+  const start = req.query.from ? dayjs(req.query.from).startOf('month') : (used[0] ? dayjs(`${used[0]}-01`) : dayjs().startOf('month'));
+  const months = [];
+  for (let d = start; !d.isAfter(dayjs(p.t), 'month'); d = d.add(1, 'month')) months.push(d.format('YYYY-MM'));
+  const open = await queryOne(`SELECT COUNT(*) c, COALESCE(SUM(amount),0) a FROM bank_pledges WHERE branch_id IN (:b) ${ba} AND pledge_date < :f AND (release_date IS NULL OR release_date >= :f)`, p);
+  let bal = num(open?.a); let cnt = num(open?.c);
+  const data = [{ month: 'Opening', opening: true, taken_count: 0, taken: 0, charges: 0, released_count: 0, released: 0, interest: 0, at_bank_count: cnt, balance: bal }];
+  for (const m of months) {
     const t = taken.find((x) => x.m === m) || {}; const r = rel.find((x) => x.m === m) || {};
-    bal = round2(bal + num(t.a) - num(r.a));
-    return { month: m, taken_count: num(t.c), taken: num(t.a), charges: num(t.ch), released_count: num(r.c), released: num(r.a), interest: num(r.i), balance: bal };
-  });
+    bal = round2(bal + num(t.a) - num(r.a)); cnt += num(t.c) - num(r.c);
+    data.push({ month: m, taken_count: num(t.c), taken: num(t.a), charges: num(t.ch), released_count: num(r.c), released: num(r.a), interest: num(r.i), at_bank_count: cnt, balance: bal });
+  }
   res.json({ data });
 });
 

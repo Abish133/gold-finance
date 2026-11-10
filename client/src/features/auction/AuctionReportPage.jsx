@@ -13,7 +13,7 @@ import { ExitButton, Line, useKeys } from '@/features/loans/desk';
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'auction_date', label: 'Auctioned', type: 'date' },
   { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items' }, { key: 'loan_on', label: 'Metal' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'principal_due', label: 'Loan Amt', type: 'money' },
-  { key: 'interest_due', label: 'Interest', type: 'money' }, { key: 'total_due', label: 'Total Due', type: 'money' }, { key: 'sale_amount', label: 'Sale', type: 'money' }, { key: 'surplus', label: 'Profit / Loss', type: 'money' },
+  { key: 'interest_due', label: 'Interest', type: 'money' }, { key: 'total_due', label: 'Total Due', type: 'money' }, { key: 'sale_amount', label: 'Sale', type: 'money' }, { key: 'report_pl', label: 'Profit / Loss', type: 'money' },
 ];
 
 /** Auction Report (desktop: frmAuctionReport) - auctioned loans with dues, sale amount and profit / loss. */
@@ -28,9 +28,11 @@ export default function AuctionReportPage() {
   const [sel, setSel] = useState(null);
   const rows = useMemo(() => all.filter((r) => String(r.auction_date).slice(0, 10) >= q.from && String(r.auction_date).slice(0, 10) <= q.to && (!q.search || `${r.bill_no} ${r.customer_name}`.toLowerCase().includes(q.search.toLowerCase())))
     .filter((r) => (!q.metal || r.loan_on === q.metal) && (!q.sale || (q.sale === 'sold' ? n(r.sale_amount) > 0 : !n(r.sale_amount))))
-    .map((r) => ({ ...r, total_due: n(r.principal_due) + n(r.interest_due) + n(r.charges) })), [all, q]);
+    .map((r) => { const total = n(r.principal_due) + n(r.interest_due) + n(r.charges); const sold = !!r.sale_date || n(r.sale_amount) > 0;
+      // desktop report: profit / loss against the total due (loan + interest), sold loans only
+      return { ...r, total_due: total, sold, report_pl: sold ? n(r.sale_amount) - total : 0 }; }), [all, q]);
   const sum = (k) => rows.reduce((s, r) => s + n(r[k]), 0);
-  const preview = () => printTable({ title: `Auction Report ${date(q.from)} - ${date(q.to)}`, company, columns: cols, rows, totals: { net_wt: sum('net_wt'), principal_due: sum('principal_due'), interest_due: sum('interest_due'), total_due: sum('total_due'), sale_amount: sum('sale_amount'), surplus: sum('surplus') } });
+  const preview = () => printTable({ title: `Auction Report ${date(q.from)} - ${date(q.to)}`, company, columns: cols, rows, totals: { net_wt: sum('net_wt'), principal_due: sum('principal_due'), interest_due: sum('interest_due'), total_due: sum('total_due'), sale_amount: sum('sale_amount'), report_pl: sum('report_pl') } });
   useKeys({ f5: () => setQ(f), f6: () => refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': () => exportCsv('auction-report', cols, rows), escape: () => navigate('/') }, [f, rows]);
   return (
     <div className="animate-rise space-y-3">
@@ -46,9 +48,13 @@ export default function AuctionReportPage() {
         <Button className="ml-auto" onClick={() => setQ(f)}>Show (F5)</Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Loans auctioned</p><p className="num text-2xl font-bold">{rows.length}</p></div>
-        {[['Gold', `${weight(rows.filter((r) => r.loan_on !== 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, 'border-t-gold-500'], ['Silver', `${weight(rows.filter((r) => r.loan_on === 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, 'border-t-ink-400'], ['Total due', amount(sum('total_due')), 'border-t-rose-600'], ['Sale amount', amount(sum('sale_amount')), 'border-t-navy-700'], ['Profit / loss', amount(sum('surplus')), 'border-t-emerald-600']].map(([l, v, c]) => (
-          <div key={l} className={clsx('card border-t-4 px-4 py-3', c)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-xl font-bold text-navy-900">{v}</p></div>
+        <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Loans auctioned</p><p className="num text-2xl font-bold">{rows.length}</p><p className="text-[11px]">{rows.filter((r) => r.sold).length} sold · {rows.filter((r) => !r.sold).length} not sold</p></div>
+        {[['Gold', `${weight(rows.filter((r) => r.loan_on !== 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, `${rows.filter((r) => r.loan_on !== 'SILVER').length} loans`, 'border-t-gold-500'],
+          ['Silver', `${weight(rows.filter((r) => r.loan_on === 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, `${rows.filter((r) => r.loan_on === 'SILVER').length} loans`, 'border-t-ink-400'],
+          ['Total due', amount(sum('total_due')), `loan ${amount(sum('principal_due'))} + int. ${amount(sum('interest_due'))}`, 'border-t-rose-600'],
+          ['Sale amount', amount(sum('sale_amount')), `for ${rows.filter((r) => r.sold).length} loan sold`, 'border-t-navy-700'],
+          ['Profit / loss', `${sum('report_pl') >= 0 ? '+' : '-'}${amount(Math.abs(sum('report_pl')))}`, 'sold loans only', 'border-t-emerald-700']].map(([l, v, h, c]) => (
+          <div key={l} className={clsx('card border-t-4 px-4 py-3', c)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-xl font-bold text-navy-900">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>
         ))}
       </div>
       <div className="grid items-start gap-3 xl:grid-cols-[1fr_300px]">
@@ -64,7 +70,7 @@ export default function AuctionReportPage() {
           <Line bold label="Total due" value={sel ? amount(sel.total_due) : '-'} />
           <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Sale</p>
           <Line label="Sold to" value={sel?.buyer_name || '-'} /><Line label="Sale amount" value={sel ? amount(sel.sale_amount) : '-'} />
-          <Line bold label="Profit / loss" value={sel ? amount(sel.surplus) : '-'} tone={sel && n(sel.surplus) < 0 ? 'text-rose-600' : 'text-emerald-700'} />
+          <Line bold label="Profit / loss" value={sel ? amount(sel.report_pl) : '-'} tone={sel && n(sel.report_pl) < 0 ? 'text-rose-600' : 'text-emerald-700'} />
           <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Entry</p><Line label="Marked by" value={sel?.marked_by || '-'} /><Line label="Sale approved by" value={sel?.approved_by || '-'} />
         </div>
       </div>

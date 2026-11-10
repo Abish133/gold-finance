@@ -93,6 +93,20 @@ await step('auction notice + sale', async () => {
 });
 await step('mark auctioned (bulk)', async () => { const r = (await call('POST', '/auction/mark-auctioned', { auction_date: today, loans: [{ loan_id: L4.id, sale_amount: 9000 }], buyer_name: 'Flow' })).data; return `count ${r.count}`; });
 
+await step('auction: remove sale, undo, mark again, sell', async () => {
+  await call('POST', `/auction/sales/${L4.id}/undo`, {}, true); // sold -> remove the sale first
+  await call('DELETE', `/auction/sales/${L4.id}/sale`);
+  await call('POST', `/auction/sales/${L4.id}/undo`, {});
+  const l = (await call('GET', `/loans/${L4.id}`)).data.loan;
+  if (l.status !== 'OPEN' || Number(l.current_principal) !== 8000) throw new Error(`after undo ${l.status} ${l.current_principal}`);
+  await call('POST', '/auction/mark-auctioned', { auction_date: today, loans: [{ loan_id: L4.id }] });
+  const s1 = (await call('PUT', `/auction/sales/${L4.id}`, { sale_amount: 7000, sale_date: today })).data;
+  if (s1.profit !== -1000) throw new Error('loss should be -1000, got ' + s1.profit);
+  const tb = (await call('GET', '/accounts/trial-balance')).data;
+  if (Math.abs(tb.totalDebit - tb.totalCredit) > 0.01) throw new Error('trial balance not balanced');
+  return 'loss 1,000 · TB balanced';
+});
+
 // employees, attendance, salary
 await step('employee + attendance + salary', async () => {
   const e = (await call('POST', '/employees', { emp_code: 'E' + tag, name: 'Flow Staff', phone: '9000011111', basic_salary: 12000 })).data;

@@ -33,7 +33,7 @@ router.get('/day-report', permitAny(['acc_cashbook', 'day_close']), async (req, 
   // desktop rows: loan counter entries by kind (all payment modes), like MyBook's Day Report
   const R = {
     girvi: [1, 'Girvi (Loan / Release)'], interest: [2, 'Interest'], other: [3, 'Other Charges'], doc: [4, 'Document Charges'],
-    ashal: [5, 'Ashal Jama (Part Amount)'], intjama: [6, 'Interest Jama (Part Payment)'], discount: [7, 'Discount'], auction: [8, 'Auction Sale'],
+    ashal: [5, 'Ashal Jama (Part Amount)'], intjama: [6, 'Interest Jama (Part Payment)'], discount: [7, 'Discount'], auction: [8, 'Auction'],
     potali: [9, 'Potali (Bank Girvi)'], potaliInt: [10, 'Potali Interest'],
   };
   const rows = Object.fromEntries(Object.entries(R).map(([k, [id, name]]) => [k, { id, name, jama: 0, nave: 0 }]));
@@ -50,10 +50,13 @@ router.get('/day-report', permitAny(['acc_cashbook', 'day_close']), async (req, 
       case 'PART_PAYMENT': add('ashal', pr); add('intjama', it); add('other', t.charges); add('discount', 0, t.discount); break;
       case 'INTEREST': add('intjama', it); add('other', t.charges); add('discount', 0, t.discount); break;
       case 'RELEASE': add('girvi', pr); add('interest', it); add('other', t.charges); add('discount', 0, t.discount); break;
-      case 'AUCTION': add('auction', t.total_amount); break;
+      case 'AUCTION': add('girvi', pr); add('auction', t.total_amount, pr); break; // marked: loan back from Girvi into auction stock
       default:
     }
   }
+  // auction sales saved on these days
+  const sold = await query('SELECT COALESCE(SUM(sale_amount),0) a FROM auction_sales WHERE branch_id IN (:b) AND sale_voucher_id IS NOT NULL AND sale_date BETWEEN :f AND :t', p);
+  add('auction', sold[0]?.a);
   // bank potali (only what went through cash)
   const bank = await query(`SELECT l.system_key, l.id, l.name, SUM(e.credit) cr, SUM(e.debit) dr FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id JOIN vouchers v ON v.id = e.voucher_id
      WHERE e.branch_id IN (:b) AND e.entry_date BETWEEN :f AND :t AND v.source_type IN ('BANK_PLEDGE','BANK_PLEDGE_REL') AND e.ledger_id <> :cash
@@ -62,13 +65,14 @@ router.get('/day-report', permitAny(['acc_cashbook', 'day_close']), async (req, 
   for (const x of bank) {
     if (x.system_key === LEDGER.BANK_BORROWING) add('potali', x.cr, x.dr);
     else if (x.system_key === LEDGER.BANK_INTEREST) add('potaliInt', x.cr, x.dr);
+    else if (x.system_key === LEDGER.BANK_CHARGES) extra.push({ id: 11, name: 'Bank Loan Charges (Potali)', jama: num(x.cr), nave: num(x.dr) });
     else extra.push({ id: x.id + 100, name: x.name, jama: num(x.cr), nave: num(x.dr) });
   }
   // every other cash voucher (expenses, income, salary...) by account
   const others = await query(`SELECT l.id, l.code, l.name, COALESCE(SUM(e.credit),0) jama, COALESCE(SUM(e.debit),0) nave
       FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id JOIN vouchers v ON v.id = e.voucher_id
      WHERE e.branch_id IN (:b) AND e.entry_date BETWEEN :f AND :t AND e.ledger_id <> :cash
-       AND (v.source_type IS NULL OR v.source_type NOT IN ('LOAN_TXN','BANK_PLEDGE','BANK_PLEDGE_REL'))
+       AND (v.source_type IS NULL OR v.source_type NOT IN ('LOAN_TXN','BANK_PLEDGE','BANK_PLEDGE_REL','AUCTION_SALE'))
        AND EXISTS (SELECT 1 FROM voucher_entries c WHERE c.voucher_id = e.voucher_id AND c.ledger_id = :cash)
      GROUP BY l.id ORDER BY l.id`, { ...p, cash: cashId });
   const always = new Set([1, 2, 4, 5, 6, 9, 10]); // the desktop always lists these
@@ -251,7 +255,8 @@ router.get('/billing-date', async (req, res) => {
   const firstEntry = (await queryOne("SELECT MIN(txn_date) d FROM loan_transactions WHERE branch_id = :b AND is_void = 0 AND NOT (txn_type = 'DISBURSE' AND COALESCE(remarks, '') = 'Old loan entry')", { b: req.branchId }))?.d;
   let billing = last ? dayjs(last).add(1, 'day').format('YYYY-MM-DD') : (firstEntry || t);
   if (dayjs(billing).isAfter(dayjs(t))) billing = t;
-  res.json({ data: { billingDate: billing, lastClosed: last, behind: dayjs(billing).isBefore(dayjs(t), 'day') } });
+  const oldestOpen = (await queryOne("SELECT MIN(loan_date) d FROM loans WHERE branch_id = :b AND status = 'OPEN'", { b: req.branchId }))?.d || null;
+  res.json({ data: { billingDate: billing, lastClosed: last, behind: dayjs(billing).isBefore(dayjs(t), 'day'), oldestOpen } });
 });
 
 /* ------------------------------------------------ Bill book check: gaps in loan numbers / bill book numbers */

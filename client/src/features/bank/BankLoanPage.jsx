@@ -36,7 +36,9 @@ export default function BankLoanPage() {
   const loans = avail.data || [];
   const added = useMemo(() => sel.map((id) => loans.find((l) => l.id === id)).filter(Boolean), [sel, loans]);
   const goldRate = (lk?.rates || []).filter((r) => r.metal_id === lk.metals.find((m) => m.code === 'GOLD')?.id).sort((x, y) => n(y.purity) - n(x.purity))[0];
-  const valueOf = (l) => n(l.market_value) || round2(n(l.net_wt) * n(goldRate?.market_rate) * (n(l.avg_purity || 91.6) / n(goldRate?.purity || 91.6)));
+  // desktop: value at today's board rate = fine weight x 100% rate (rupees, not rounded to 100)
+  const fine100 = goldRate ? n(goldRate.market_rate) * 100 / (n(goldRate.purity) || 100) : 0;
+  const valueOf = (l) => Math.round(n(l.net_wt) * n(l.avg_purity || 91.6) / 100 * 1000) / 1000 * fine100;
   const sum = (k) => added.reduce((s, l) => s + n(l[k]), 0);
   const metalWt = (rows, silver) => rows.filter((l) => (l.loan_on === 'SILVER') === silver).reduce((s, l) => s + n(l.net_wt), 0);
   const firstDate = loans.reduce((m, l) => (!m || String(l.loan_date).slice(0, 10) < m ? String(l.loan_date).slice(0, 10) : m), '');
@@ -48,7 +50,7 @@ export default function BankLoanPage() {
   });
   const ticked = loans.filter((l) => pickSel.includes(l.id));
   const openPick = () => { setPickSel([]); setPf({ metal: '', from: firstDate, to: today(), search: '' }); setPick(true); };
-  const market = added.reduce((s, l) => s + valueOf(l), 0);
+  const market = Math.floor(added.reduce((s, l) => s + valueOf(l), 0));
   const cash = round2(n(f.amount) - n(f.charges));
   const add = () => {
     const v = code.trim(); if (!v) return;
@@ -96,10 +98,10 @@ export default function BankLoanPage() {
       </div>
       <div className="grid gap-3 sm:grid-cols-5">
         {tile('Loans added', added.length, `${new Set(added.map((l) => l.customer_name)).size} customers`, 'border-t-navy-800')}
-        {tile('Our loan amount', `Rs. ${amount(sum('current_principal'))}`, 'given to customers', 'border-t-blue-600')}
+        {tile('Our loan amount', `Rs. ${amount(sum('principal'))}`, 'given to customers', 'border-t-blue-600')}
         {tile('Weight', `${weight(sum('net_wt'))} g`, `Gold · Silver ${weight(metalWt(added, true))} g`, 'border-t-amber-500')}
         {tile('Market value', `Rs. ${amount(market)}`, goldRate ? `board rate ${dayjs().format('DD/MM/YYYY')}` : 'rate not set', 'border-t-lime-700')}
-        {tile('Bank amount', `Rs. ${amount(f.amount || 0)}`, market ? `${((n(f.amount) / market) * 100).toFixed(1)}% of value` : '', 'border-t-fuchsia-600')}
+        {tile('Bank amount', `Rs. ${amount(f.amount || 0)}`, sum('principal') ? `${Math.round((n(f.amount) / sum('principal')) * 100)}% of our loan · ${market ? Math.round((n(f.amount) / market) * 100) : 0}% of value` : '', 'border-t-fuchsia-600')}
       </div>
       <div className="grid items-stretch gap-3 xl:grid-cols-[1fr_380px]">
         <div className="card overflow-auto">
@@ -110,7 +112,7 @@ export default function BankLoanPage() {
               {added.map((l, i) => (
                 <tr key={l.id} onClick={() => setCur(l)} className={clsx('cursor-pointer', cur?.id === l.id && 'bg-navy-50 dark:bg-ink-800')}>
                   <td className="px-2 py-1.5">{i + 1}</td><td className="px-2 font-semibold">{l.bill_no}</td><td className="px-2">{date(l.loan_date)}</td><td className="px-2">{l.customer_name}</td><td className="px-2">{l.loan_on}</td><td className="px-2">{l.item_summary}</td>
-                  <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right">{amount(l.current_principal)}</td>
+                  <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right">{amount(l.principal)}</td>
                 </tr>
               ))}
             </tbody>

@@ -31,4 +31,11 @@ await call('POST', `/loans/${l2.id}/interest`, { date: D, interest_amount: 185, 
 await call('POST', `/loans/${l4.id}/part-payment`, { date: D, principal_amount: 1000, interest_amount: 0, payments: [{ mode: 'CASH', amount: 1000 }] });
 const c1 = (await call('GET', `/loans/${l1.id}/calc?date=${D}`)).data;
 await call('POST', `/loans/${l1.id}/release`, { date: D, payments: [{ mode: 'CASH', amount: c1.totalPayable }] });
-console.log(JSON.stringify({ branch: Number(branch), loans: { 1: l1.id, 2: l2.id, 3: l3.id, 4: l4.id }, release1: c1.totalPayable }));
+// bank: loans 3 + 4 pledged with TEST BANK for ₹30,000 @12% / year, ₹100 charges, released the same day
+const ba = (await call('POST', '/masters/bank-accounts', { bank_name: 'TEST BANK', bank_branch: 'MAIN', account_name: 'Test', account_no: `12345${tag}`, used_for: 'BOTH', opened_on: D })).data;
+const bp = (await call('POST', '/bank/pledges', { bank_account_id: ba.id, pledge_no: '1', pledge_date: D, amount: 30000, interest_rate: 12, charges: 100, received_mode: 'CASH', loan_ids: [l3.id, l4.id] })).data.id;
+await call('POST', `/bank/pledges/${bp}/release`, { date: D, mode: 'CASH' });
+// auction: loan 2 marked as auctioned, then sold for ₹20,000
+await call('POST', '/auction/mark-auctioned', { auction_date: D, loans: [{ loan_id: l2.id }] });
+await call('PUT', `/auction/sales/${l2.id}`, { sale_amount: 20000, sale_date: D });
+console.log(JSON.stringify({ branch: Number(branch), loans: { 1: l1.id, 2: l2.id, 3: l3.id, 4: l4.id }, release1: c1.totalPayable, bankPledge: bp }));
