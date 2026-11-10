@@ -30,7 +30,31 @@ Example: Payment · Rent · ₹8,000 · Cash · "Shop rent November".
 **Accounts → Bank Reconciliation** - choose the bank account, tick the entries that appear in the bank statement and give the bank date. The bottom shows *as per books*, *not yet in bank*, *should be in bank*.
 
 ## Final Accounts
-**Accounts → Final Accounts** - **Trial Balance**, **Profit & Loss**, **Balance Sheet** for any dates (F5 show, F9 print).
+**Accounts → Final Accounts** - **Trial Balance**, **Profit & Loss**, **Balance Sheet** for any dates (F5 show, F9 print, Left / Right = next report).
+
+**Books** - choose how the accounts are grouped (the app remembers your choice):
+- **MyBook heads** (default) - the same heads as the Day Report and the desktop app: 1 Girvi, 2 Interest, 4 Document Charges, 5 Ashal Jama (part amounts), 6 Interest Jama, 8 Auction, 9 Potali, 10 Potali Interest, 11 Bank Loan Charges, 13 Old Loan Opening, your own accounts (Capital, Rent …) and Cash in hand.
+- **Detailed ledgers** - every account of the books (Gold Loans to Customers, Interest Received, Bank Gold Loan …). The money is the same; part payments are taken off the loan balance and old loans sit in Capital.
+
+Example (one day: loans ₹50,000 + ₹3,000 + re-loan ₹3,500 + top-up ₹1,000, old loans ₹12,345 + ₹25,000, part payment ₹5,000, interest ₹555, bank pledge ₹15,000, auction sale ₹20,000, capital ₹10,000):
+
+| Trial Balance (MyBook heads) | Nave (Dr) | Jama (Cr) |
+|---|---|---|
+| 1 Girvi | 28,500 | |
+| 2 Interest | | 895 |
+| 5 Ashal Jama | | 5,000 |
+| 6 Interest Jama | | 555 |
+| 7 / 14 Capital | | 10,000 |
+| 8 Auction | | 7,655 |
+| 9 Potali | | 15,000 |
+| 11 Bank Loan Charges | 100 | |
+| 13 Old Loan Opening | | 37,345 |
+| Cash in hand | 47,850 | |
+| **Total** | **76,450** | **76,450** |
+
+Profit & Loss: income 895 + 555 = ₹1,450, expenses ₹100, **net profit ₹1,350**. Balance Sheet: ₹76,350 on both sides (Capital 10,000 + profit 1,350 + Ashal Jama + Auction + Potali + Old Loan Opening = Girvi 28,500 + Cash 47,850).
+
+> Cash in hand in the Trial Balance must equal the Day End *Pote Baki* (right tile). If it does not, an entry is missing from the Day Report.
 
 ## Tally Export
 **Accounts → Tally Export** - send the accounts to Tally / TallyPrime.

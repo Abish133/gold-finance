@@ -11,6 +11,7 @@ import { audit } from '#services/audit.service.js';
 import { postVoucher, ledgerId, LEDGER } from '#services/accounting.service.js';
 import { getCurrentFy } from '#services/settings.service.js';
 import { peekNumber } from '#services/sequence.service.js';
+import { mybookTrialBalance, mybookProfitLoss, mybookBalanceSheet } from '#services/mybookBooks.service.js';
 import { ensureDateOpen, lastClosedDate } from '#services/daycontrol.service.js';
 import * as acc from './accounts.service.js';
 
@@ -144,6 +145,8 @@ router.get('/ledger-statement', permit('acc_ledger_report', 'view'), async (req,
 
 router.get('/trial-balance', permit('acc_final', 'view'), async (req, res) => {
   const to = req.query.to || dayjs().format('YYYY-MM-DD');
+  // books=mybook: the desktop layout (Girvi, Ashal Jama, Interest Jama, Old Loan Opening ...); default = detailed ledgers
+  if (req.query.books === 'mybook') return res.json({ data: await mybookTrialBalance(req.branchIds, to) });
   const rows = (await acc.ledgerBalances(req.branchIds, null, to)).filter((r) => r.balance || req.query.all === '1');
   const dr = round2(rows.filter((r) => r.balance > 0).reduce((s, r) => s + r.balance, 0));
   const cr = round2(rows.filter((r) => r.balance < 0).reduce((s, r) => s - r.balance, 0));
@@ -152,10 +155,12 @@ router.get('/trial-balance', permit('acc_final', 'view'), async (req, res) => {
 
 router.get('/profit-loss', permit('acc_final', 'view'), async (req, res) => {
   const fy = await getCurrentFy();
+  if (req.query.books === 'mybook') return res.json({ data: await mybookProfitLoss(req.branchIds, req.query.from || fy.start_date, req.query.to || dayjs().format('YYYY-MM-DD')) });
   res.json({ data: await acc.profitAndLoss(req.branchIds, req.query.from || fy.start_date, req.query.to || dayjs().format('YYYY-MM-DD')) });
 });
 
 router.get('/balance-sheet', permit('acc_final', 'view'), async (req, res) => {
+  if (req.query.books === 'mybook') return res.json({ data: await mybookBalanceSheet(req.branchIds, req.query.to || dayjs().format('YYYY-MM-DD'), req.query.from) });
   res.json({ data: await acc.balanceSheet(req.branchIds, req.query.to || dayjs().format('YYYY-MM-DD')) });
 });
 

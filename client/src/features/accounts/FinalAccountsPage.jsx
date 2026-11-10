@@ -20,7 +20,12 @@ function TSide({ title, rows, total, extra }) {
     <div className="flex min-h-80 flex-col overflow-hidden rounded-md border border-ink-300 dark:border-ink-700">
       <div className="navy-gradient flex justify-between px-3 py-2 text-sm font-bold text-white"><span>{title}</span><span>Amount</span></div>
       <div className="flex-1 divide-y divide-ink-100 text-sm dark:divide-ink-800">
-        {rows.map((r) => <div key={`${r.id}-${r.name}`} className="flex justify-between px-3 py-1.5"><span>{r.name}<span className="ml-2 text-[11px] text-ink-400">{r.group_name}</span></span><span className="num">{amount(r.amount)}</span></div>)}
+        {rows.map((r, i) => (
+          <div key={`${r.id}-${r.name}`}>
+            {r.section && r.section !== rows[i - 1]?.section && <p className="bg-ink-50 px-3 pt-1.5 pb-0.5 text-[10px] font-bold tracking-wide text-ink-500 uppercase dark:bg-ink-800/60">{r.section}</p>}
+            <div className={clsx('flex justify-between px-3 py-1.5', r.profit && 'bg-emerald-50 text-xs font-bold text-emerald-800 dark:bg-emerald-950/30')}><span>{r.name}{r.group_name && <span className="ml-2 text-[11px] text-ink-400">{r.group_name}</span>}</span><span className="num">{amount(r.amount)}</span></div>
+          </div>
+        ))}
         {extra && <div className="flex justify-between bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/30"><span>{extra[0]}</span><span className="num">{amount(extra[1])}</span></div>}
       </div>
       <div className="navy-gradient flex justify-between px-3 py-2 text-sm font-bold text-white"><span>Total</span><span className="num">{amount(total)}</span></div>
@@ -35,12 +40,16 @@ export default function FinalAccountsPage() {
   const { data: company } = useCompany();
   const [tab, setTab] = useState(sp.get('tab') || 'tb');
   const [f, setF] = useState({ from: fyStart(), to: today(), hideZero: false });
+  // books: 'mybook' = the desktop layout (Girvi, Ashal Jama, Interest Jama, Old Loan Opening ...), 'detailed' = every ledger
+  const [books, setBooksState] = useState(() => { try { return localStorage.getItem('gf.books') || 'mybook'; } catch { return 'mybook'; } });
+  const setBooks = (v) => { setBooksState(v); try { localStorage.setItem('gf.books', v); } catch { /* private mode */ } };
+  const mb = books === 'mybook';
   const [q, setQ] = useState(f);
-  const tb = useFetch(tab === 'tb' ? '/accounts/trial-balance' : null, { to: q.to, all: '1' });
-  const pl = useFetch(tab !== 'tb' ? '/accounts/profit-loss' : null, { from: q.from, to: q.to });
-  const bs = useFetch(tab === 'bs' ? '/accounts/balance-sheet' : null, { to: q.to });
+  const tb = useFetch(tab === 'tb' ? '/accounts/trial-balance' : null, { to: q.to, all: '1', books });
+  const pl = useFetch(tab !== 'tb' ? '/accounts/profit-loss' : null, { from: q.from, to: q.to, books });
+  const bs = useFetch(tab === 'bs' ? '/accounts/balance-sheet' : null, { to: q.to, from: q.from, books });
   const day = useFetch('/accounts/day-summary', { from: q.to, to: q.to });
-  const tbRows = (tb.data?.rows || []).filter((r) => !q.hideZero || r.balance).map((r, i) => ({ ...r, sno: i + 1, group: NATURE[r.nature] || r.group_name, dr: r.balance > 0 ? r.balance : 0, cr: r.balance < 0 ? -r.balance : 0 }));
+  const tbRows = (tb.data?.rows || []).filter((r) => !q.hideZero || r.balance).map((r, i) => ({ ...r, sno: mb ? r.code || '' : i + 1, group: NATURE[r.nature] || r.group_name, dr: r.balance > 0 ? r.balance : 0, cr: r.balance < 0 ? -r.balance : 0 }));
   const cashRow = tbRows.find((r) => r.system_key === 'CASH');
   const p = pl.data; const b = bs.data;
   const show = () => setQ(f);
@@ -64,6 +73,7 @@ export default function FinalAccountsPage() {
         {tab !== 'pl' && <Field label="From"><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Field>}
         <Field label="To / as on"><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
         <div className="flex gap-1">{Object.entries(QUICK).map(([k, fn]) => <button key={k} type="button" onClick={() => { const [a, c] = fn(); const nf = { ...f, from: a, to: c }; setF(nf); setQ(nf); }} className="h-9 rounded-md border border-ink-300 bg-white px-3 text-sm font-semibold text-navy-800 hover:bg-navy-50 dark:bg-ink-900 dark:text-white">{k}</button>)}</div>
+        <div><p className="label">Books</p><div className="flex gap-1">{[['mybook', 'MyBook heads'], ['detailed', 'Detailed ledgers']].map(([k, l]) => <button key={k} type="button" onClick={() => setBooks(k)} className={clsx('h-9 rounded-md border px-3 text-sm font-semibold', books === k ? 'border-navy-700 bg-navy-800 text-white' : 'border-ink-300 bg-white text-navy-800 hover:bg-navy-50 dark:bg-ink-900 dark:text-white')}>{l}</button>)}</div></div>
         <Checkbox checked={f.hideZero} onChange={(v) => { setF({ ...f, hideZero: v }); setQ({ ...q, hideZero: v }); }} label="Hide zero accounts" />
         <span className="flex-1" />
         <Button variant="outline" icon={Search} onClick={show}>Show (F5)</Button>
@@ -83,12 +93,12 @@ export default function FinalAccountsPage() {
           <table className="w-full text-sm">
             <thead className="navy-gradient text-white"><tr><th className="w-16 px-2 py-2 text-left">A/c</th><th className="px-2 text-left">Account</th><th className="px-2 text-left">Group</th><th className="px-2 text-right">Nave (Debit)</th><th className="px-2 text-right">Jama (Credit)</th></tr></thead>
             <tbody className="divide-y divide-ink-200 dark:divide-ink-700">{tbRows.map((r) => (
-              <tr key={r.id} onDoubleClick={() => navigate(`/accounts/ledger?ledger=${r.id}`)} className="cursor-pointer hover:bg-navy-50/60"><td className="px-2 py-1.5">{r.sno}</td><td className="px-2">{r.name}</td><td className="px-2 text-ink-600">{r.group}</td><td className="num px-2 text-right">{r.dr ? amount(r.dr) : ''}</td><td className="num px-2 text-right">{r.cr ? amount(r.cr) : ''}</td></tr>
+              <tr key={r.id} onDoubleClick={() => (mb ? r.ledger_id : r.id) && navigate(`/accounts/ledger?ledger=${mb ? r.ledger_id : r.id}`)} className="cursor-pointer hover:bg-navy-50/60"><td className="px-2 py-1.5">{r.sno}</td><td className="px-2">{r.name}</td><td className="px-2 text-ink-600">{r.group}</td><td className="num px-2 text-right">{r.dr ? amount(r.dr) : ''}</td><td className="num px-2 text-right">{r.cr ? amount(r.cr) : ''}</td></tr>
             ))}</tbody>
             <tfoot className="navy-gradient text-white"><tr className="font-bold"><td colSpan={3} className="px-2 py-2">Total ({tbRows.length} accounts)</td><td className="num px-2 text-right">{amount(tb.data?.totalDebit || 0)}</td><td className="num px-2 text-right">{amount(tb.data?.totalCredit || 0)}</td></tr></tfoot>
           </table>
         </div>
-        <p className="text-sm text-ink-500">Debit and credit always match because cash in hand is the balancing line. Compare it with the Day End Pote Baki (right tile).</p>
+        <p className="text-sm text-ink-500">Debit and credit always match because cash in hand is the balancing line. Compare it with the Day End Pote Baki (right tile).{mb ? ' MyBook heads: part payments are Ashal Jama, old paper loans are Old Loan Opening - "Detailed ledgers" shows every account.' : ''}</p>
       </>)}
 
       {tab === 'pl' && (<>
@@ -113,8 +123,8 @@ export default function FinalAccountsPage() {
           {tile('Difference', `${amount(b?.difference || 0)}${Math.abs(n(b?.difference)) < 0.01 ? ' ✓ Tallied' : ''}`, '', '', true)}
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
-          <TSide title="Capital & Liabilities" rows={b?.liabilities || []} total={b?.totalLiabilities || 0} />
-          <TSide title="Assets" rows={b?.assets || []} total={b?.totalAssets || 0} />
+          <TSide title="Capital & Liabilities" rows={(b?.liabilities || []).map((r) => (mb ? { ...r, group_name: '' } : r))} total={b?.totalLiabilities || 0} />
+          <TSide title="Assets" rows={(b?.assets || []).map((r) => (mb ? { ...r, group_name: '' } : r))} total={b?.totalAssets || 0} />
         </div>
         <p className="text-sm text-ink-500">Balance Sheet accounts on {date(q.to)}. A Jama balance is shown under Capital / Liabilities, a Nave balance under Assets.</p>
       </>)}

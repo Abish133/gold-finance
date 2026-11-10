@@ -39,7 +39,7 @@ export const dayReport = async ({ branchIds, branchId, from, to }) => {
   const sold = await query('SELECT COALESCE(SUM(sale_amount),0) a FROM auction_sales WHERE branch_id IN (:b) AND sale_voucher_id IS NOT NULL AND sale_date BETWEEN :f AND :t', p);
   add('auction', sold[0]?.a);
   // bank potali (only what went through cash)
-  const bank = await query(`SELECT l.system_key, l.id, l.name, SUM(e.credit) cr, SUM(e.debit) dr FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id JOIN vouchers v ON v.id = e.voucher_id
+  const bank = await query(`SELECT l.system_key, l.id, l.name, (SELECT g.nature FROM ledger_groups g WHERE g.id = l.group_id) nature, SUM(e.credit) cr, SUM(e.debit) dr FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id JOIN vouchers v ON v.id = e.voucher_id
      WHERE e.branch_id IN (:b) AND e.entry_date BETWEEN :f AND :t AND v.source_type IN ('BANK_PLEDGE','BANK_PLEDGE_REL') AND e.ledger_id <> :cash
        AND EXISTS (SELECT 1 FROM voucher_entries c WHERE c.voucher_id = e.voucher_id AND c.ledger_id = :cash) GROUP BY l.id`, { ...p, cash: cashId });
   const extra = [];
@@ -47,11 +47,11 @@ export const dayReport = async ({ branchIds, branchId, from, to }) => {
     if (x.system_key === LEDGER.BANK_BORROWING) add('potali', x.cr, x.dr);
     else if (x.system_key === LEDGER.BANK_INTEREST) add('potaliInt', x.cr, x.dr);
     else if (x.system_key === LEDGER.BANK_CHARGES) extra.push({ id: 11, name: 'Bank Loan Charges (Potali)', jama: num(x.cr), nave: num(x.dr) });
-    else extra.push({ id: x.id + 100, name: x.name, jama: num(x.cr), nave: num(x.dr) });
+    else extra.push({ id: x.id + 100, ledger_id: x.id, nature: x.nature, name: x.name, jama: num(x.cr), nave: num(x.dr) });
   }
   // every other cash voucher (expenses, income, salary...) by account
-  const others = await query(`SELECT l.id, l.code, l.name, COALESCE(SUM(e.credit),0) jama, COALESCE(SUM(e.debit),0) nave
-      FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id JOIN vouchers v ON v.id = e.voucher_id
+  const others = await query(`SELECT l.id, l.code, l.name, l.system_key, g.nature, COALESCE(SUM(e.credit),0) jama, COALESCE(SUM(e.debit),0) nave
+      FROM voucher_entries e JOIN ledgers l ON l.id = e.ledger_id JOIN ledger_groups g ON g.id = l.group_id JOIN vouchers v ON v.id = e.voucher_id
      WHERE e.branch_id IN (:b) AND e.entry_date BETWEEN :f AND :t AND e.ledger_id <> :cash
        AND (v.source_type IS NULL OR v.source_type NOT IN ('LOAN_TXN','BANK_PLEDGE','BANK_PLEDGE_REL','AUCTION_SALE'))
        AND EXISTS (SELECT 1 FROM voucher_entries c WHERE c.voucher_id = e.voucher_id AND c.ledger_id = :cash)
@@ -60,7 +60,7 @@ export const dayReport = async ({ branchIds, branchId, from, to }) => {
   const accounts = [
     // post: rows the Day End writes to the books (auction sales and other vouchers are already vouchers)
     ...Object.values(rows).filter((r) => always.has(r.id) || r.jama || r.nave).map((r) => ({ ...r, jama: round2(r.jama), nave: round2(r.nave), muted: !r.jama && !r.nave, post: r.id !== 8 })),
-    ...extra.map((x) => ({ ...x, post: x.id === 11 })), ...others.map((o) => ({ id: o.code || o.id, name: o.name, jama: num(o.jama), nave: num(o.nave) })),
+    ...extra.map((x) => ({ ...x, post: x.id === 11 })), ...others.map((o) => ({ id: o.code || o.id, ledger_id: o.id, nature: o.nature, system_key: o.system_key, name: o.name, jama: num(o.jama), nave: num(o.nave) })),
   ];
   const opening = await openingBalance(cashId, b, from);
   const jama = round2(accounts.reduce((s2, a) => s2 + num(a.jama), 0));

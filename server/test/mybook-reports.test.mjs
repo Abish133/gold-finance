@@ -85,6 +85,17 @@ if (JSON.stringify(got) !== JSON.stringify(want)) fails.push(`tally vouchers dif
 eq(tx.totals.receipts, 6, 'tally receipts'); eq(tx.totals.payments, 5, 'tally payments');
 if (tx.vouchers[3].no !== tx.vouchers[2].no + '-2') fails.push(`second side numbering ${tx.vouchers[2].no} / ${tx.vouchers[3].no}`);
 
+// final accounts in the MyBook layout (Girvi / Ashal Jama / Old Loan Opening heads) must balance
+{ const asOn = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const tbm = await get(`/accounts/trial-balance?books=mybook&to=${asOn}`);
+  eq(tbm.totalDebit, tbm.totalCredit, 'MyBook trial balance Dr = Cr');
+  const head = (name) => n(tbm.rows.find((r) => r.name === name)?.balance);
+  eq(head('Old Loan Opening'), -(12345 + 12345 + 25000), 'Old Loan Opening (3 old loans)');
+  eq(head('Ashal Jama'), -6000, 'Ashal Jama (part amounts 5,000 + 1,000)');
+  eq(head('Girvi'), 50000 + 49690 - 50000 - 12345, 'Girvi = loans given + old loans - released - auctioned');
+  const bsm = await get(`/accounts/balance-sheet?books=mybook&to=${asOn}`);
+  eq(bsm.difference, 0, 'MyBook balance sheet tallies'); }
+
 function sum(list, k) { return list.reduce((s, x) => s + Number(x[k] || 0), 0); }
 function n(v) { return Number(v || 0); }
 console.log(fails.length ? `FAILED ${fails.length}:\n${fails.join('\n')}` : 'ALL MYBOOK REPORT FIGURES MATCH');
