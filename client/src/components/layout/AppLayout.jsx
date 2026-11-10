@@ -72,7 +72,8 @@ function MenuBar({ onAction, onExit }) {
           <div className="fixed z-40 mt-10 w-80 animate-drop overflow-hidden rounded-b-md border border-ink-300 bg-white text-ink-800 shadow-xl dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100"
             style={{ left: `${left}px` }}>
             <div className="h-0.5 bg-gold-500" />
-            <ul className="max-h-[75vh] py-1">
+            {/* fits under the menu bar; long menus (Settings) scroll instead of being cut off */}
+            <ul className="overflow-y-auto overscroll-contain py-1" style={{ maxHeight: `calc(100vh - ${Math.round((btn?.bottom || 40) + 16)}px)` }}>
               {m.items.map((i, k) => (i.section ? (
                 i.section.trim() ? <li key={`s${k}`} className="mt-1 border-t border-ink-200 px-4 pt-2 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase dark:border-ink-700">{i.section}</li> : <li key={`s${k}`} className="my-1 border-t border-ink-200 dark:border-ink-700" />
               ) : i.items ? (
@@ -100,7 +101,7 @@ function MenuBar({ onAction, onExit }) {
                 </li>
               ) : (
                 <li key={i.label}>
-                  <button type="button" onClick={() => choose(i)} className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-navy-50 dark:hover:bg-navy-800/40">
+                  <button type="button" onClick={() => choose(i)} className="flex w-full items-center gap-3 px-4 py-1.5 text-left hover:bg-navy-50 dark:hover:bg-navy-800/40">
                     <i.icon className="size-4.5 shrink-0 text-navy-600 dark:text-navy-300" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-navy-900 dark:text-white">{i.label}</span>
