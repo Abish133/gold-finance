@@ -16,7 +16,7 @@ const router = Router();
 /* ---------------- employee master ---------------- */
 const employees = createCrudRouter({
   table: 'employees', screen: 'employees', alias: 'e', branchScoped: true,
-  select: `SELECT e.*, d.name designation, b.name branch_name FROM employees e LEFT JOIN designations d ON d.id = e.designation_id JOIN branches b ON b.id = e.branch_id`,
+  select: `SELECT e.*, d.name designation, b.name branch_name, (SELECT r.name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.employee_id = e.id AND u.is_active = 1 LIMIT 1) login_role FROM employees e LEFT JOIN designations d ON d.id = e.designation_id JOIN branches b ON b.id = e.branch_id`,
   fields: ['emp_code', 'title', 'name', 'relation_type', 'relation_name', 'gender', 'dob', 'marital_status', 'address', 'phone', 'email', 'qualification', 'experience',
     'designation_id', 'department', 'doj', 'salary', 'bank_account', 'ifsc', 'pan', 'aadhaar', 'emergency_name', 'emergency_phone', 'status', 'left_date', 'left_reason', 'remarks'],
   required: ['emp_code', 'name'], searchable: ['e.name', 'e.emp_code', 'e.phone'], sortable: { name: 'e.name', emp_code: 'e.emp_code', doj: 'e.doj' },

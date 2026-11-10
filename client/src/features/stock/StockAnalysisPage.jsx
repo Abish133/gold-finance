@@ -12,7 +12,7 @@ import { useKeys } from '@/features/loans/desk';
 import { LoanDetailsDrawer } from '@/features/loans/LoanDetailsDrawer';
 import { api } from '@/lib/api';
 
-const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const RESULT = { PROFIT: ['Profit', 'bg-emerald-100 text-emerald-800'], RISK: ['At risk', 'bg-amber-100 text-amber-800'], LOSS: ['Loss', 'bg-rose-100 text-rose-700'] };
 const cols = [
   { key: 'sno', label: 'S.No' }, { key: 'result', label: 'Result', print: (r) => RESULT[r.result]?.[0] }, { key: 'bill_no', label: 'Loan No' }, { key: 'manual_bill_no', label: 'Bill Book No' },

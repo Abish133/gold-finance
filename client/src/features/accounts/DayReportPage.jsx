@@ -30,7 +30,9 @@ export default function DayReportPage({ mode = 'report' }) {
   const [sure, setSure] = useState(false);
   const navigate = useNavigate();
   const { data: company } = useCompany();
-  const [r, setR] = useState({ from: today(), to: today() });
+  // ?date= opens a given day (Day Close -> Day Details)
+  const askDate = new URLSearchParams(window.location.search).get('date');
+  const [r, setR] = useState({ from: askDate || today(), to: askDate || today() });
   const [q, setQ] = useState(r);
   // Day End works on the billing date (the day after the last Day End)
   useEffect(() => { const d = billing.data?.billingDate; if (isEnd && d) { setR({ from: d, to: d }); setQ({ from: d, to: d }); } }, [isEnd, billing.data?.billingDate]);

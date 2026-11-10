@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { CompanyInfoList } from './CompanyInfoList';
 
 const FIELDS = [
-  { name: 'name', label: 'Company name (printed)', required: true, span: 2 }, { name: 'local_name', label: 'Name in Tamil (promissory note)' },
+  { name: 'name', label: 'Company name (printed)', required: true, span: 2 }, { name: 'local_name', label: 'Name in Tamil (promissory note)' }, { name: 'proprietor', label: 'Proprietor' },
   { name: 'licence_no', label: 'Pawn broker licence no' }, { name: 'licence_valid_till', label: 'Licence valid till', type: 'date' }, { name: 'gstin', label: 'GSTIN' },
   { name: 'address1', label: 'Address line 1', span: 'full' }, { name: 'address2', label: 'Address line 2', span: 'full' }, { name: 'address3', label: 'Address line 3', span: 'full' },
   { name: 'mobile', label: 'Mobile numbers' }, { name: 'phone', label: 'Phone' }, { name: 'email', label: 'Email', type: 'email' }, { name: 'website', label: 'Website' },

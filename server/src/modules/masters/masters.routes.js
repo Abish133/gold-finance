@@ -46,14 +46,14 @@ router.use('/rates', createCrudRouter({
 /* ---------------- items ---------------- */
 router.use('/item-categories', createCrudRouter({
   table: 'item_categories', screen: 'm_items', alias: 'c',
-  select: 'SELECT c.*, m.name AS metal_name, (SELECT COUNT(*) FROM items i WHERE i.category_id = c.id) AS item_count, (SELECT COUNT(*) FROM loan_items li JOIN items i ON i.id = li.item_id WHERE i.category_id = c.id) AS used FROM item_categories c LEFT JOIN metals m ON m.id = c.metal_id',
+  select: 'SELECT c.*, m.name AS metal_name, (SELECT COUNT(*) FROM items i WHERE i.category_id = c.id) AS item_count, (SELECT COUNT(*) FROM items i WHERE i.category_id = c.id AND EXISTS (SELECT 1 FROM loan_items li WHERE (li.item_id = i.id OR (li.item_id IS NULL AND li.item_name = i.name)))) AS used FROM item_categories c LEFT JOIN metals m ON m.id = c.metal_id',
   fields: ['metal_id', 'name', 'description', 'is_active'], booleans: ['is_active'], required: ['name'],
   searchable: ['c.name'], sortable: { name: 'c.name' }, defaultSort: 'name',
 }));
 
 router.use('/items', createCrudRouter({
   table: 'items', screen: 'm_items', alias: 'i',
-  select: 'SELECT i.*, c.name AS category_name, (SELECT COUNT(*) FROM loan_items li WHERE li.item_id = i.id) AS used_in_loans FROM items i LEFT JOIN item_categories c ON c.id = i.category_id',
+  select: 'SELECT i.*, c.name AS category_name, (SELECT COUNT(*) FROM loan_items li WHERE (li.item_id = i.id OR (li.item_id IS NULL AND li.item_name = i.name))) AS used_in_loans FROM items i LEFT JOIN item_categories c ON c.id = i.category_id',
   fields: ['category_id', 'name', 'local_name', 'description', 'is_active'], booleans: ['is_active'], required: ['name'],
   searchable: ['i.name', 'i.local_name'], sortable: { name: 'i.name' }, filters: { category_id: 'i.category_id', is_active: 'i.is_active' },
   defaultSort: 'name',

@@ -8,7 +8,7 @@ import { Button, Field, Input, Select } from '@/components/ui';
 import { useFetch, useCompany } from '@/hooks/useApi';
 import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
-import { amount, compact, date, n, weight } from '@/lib/format';
+import { amount, compact, date, n, weight, today } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { Seg, Tile, SideLine, SideHead } from './ReportScreen';
 
@@ -32,7 +32,7 @@ export function LoanReleaseSummaryPage() {
   const { data: years = [] } = useFetch('/admin/financial-years');
   const [fy, setFy] = useState('');
   const [view, setView] = useState('month');
-  const [month, setMonth] = useState(dayjs().format('YYYY-MM'));
+  const [month, setMonth] = useState(dayjs(today()).format('YYYY-MM'));
   const year = years.find((y) => String(y.id) === fy) || years.find((y) => y.is_current) || years[0];
   const params = year && (view === 'month'
     ? { from: String(year.start_date).slice(0, 10), to: String(year.end_date).slice(0, 10), view }
@@ -94,11 +94,11 @@ export function LoanReleaseSummaryPage() {
   );
 }
 
-const fy = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1));
+const fy = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1));
 const PRESETS = {
-  'This month vs last month': () => [dayjs().startOf('month'), dayjs(), dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')],
-  'Month vs same month last year': () => [dayjs().startOf('month'), dayjs(), dayjs().subtract(1, 'year').startOf('month'), dayjs().subtract(1, 'year')],
-  'This year vs last year': () => [fy(), dayjs(), fy().subtract(1, 'year'), dayjs().subtract(1, 'year')],
+  'This month vs last month': () => [dayjs(today()).startOf('month'), dayjs(today()), dayjs(today()).subtract(1, 'month').startOf('month'), dayjs(today()).subtract(1, 'month').endOf('month')],
+  'Month vs same month last year': () => [dayjs(today()).startOf('month'), dayjs(today()), dayjs(today()).subtract(1, 'year').startOf('month'), dayjs(today()).subtract(1, 'year')],
+  'This year vs last year': () => [fy(), dayjs(today()), fy().subtract(1, 'year'), dayjs(today()).subtract(1, 'year')],
 };
 const change = (a, b) => (n(b) ? `${(((n(a) - n(b)) / n(b)) * 100).toFixed(1)}%` : n(a) ? 'new' : '-');
 

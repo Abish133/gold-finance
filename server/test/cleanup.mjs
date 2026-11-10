@@ -26,6 +26,8 @@ for (const b of branches) {
   await call('POST', '/tools/start-fresh', { confirm: 'START FRESH', password: 'Admin@123', customers: true }, String(b.id));
   await withTransaction(async (tx) => {
     await tx.query('SET FOREIGN_KEY_CHECKS = 0');
+    // bank ledgers of this branch's bank accounts go with them
+    await tx.query('DELETE FROM ledgers WHERE id IN (SELECT ledger_id FROM bank_accounts WHERE branch_id = :b) AND NOT EXISTS (SELECT 1 FROM voucher_entries e WHERE e.ledger_id = ledgers.id AND e.branch_id <> :b)', { b: b.id });
     for (const t of tables) await tx.query(`DELETE FROM \`${t}\` WHERE branch_id = :b`, { b: b.id });
     await tx.query('UPDATE audit_logs SET branch_id = NULL WHERE branch_id = :b', { b: b.id });
     await tx.query('DELETE FROM branches WHERE id = :b', { b: b.id });

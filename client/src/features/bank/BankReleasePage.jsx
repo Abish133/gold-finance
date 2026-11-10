@@ -5,7 +5,7 @@ import { RefreshCw, Unlock, Printer, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Field, Input, Select } from '@/components/ui';
+import { Button, ConfirmDrawer, Field, Input, Select } from '@/components/ui';
 import { useFetch, useList, useLookups, useCompany } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -42,9 +42,15 @@ export default function BankReleasePage() {
   const diff = bp ? round2(interestPaid - n(c.interest)) : 0;
   const effRate = bp && c.days ? round2((interestPaid * 36500) / (n(bp.amount) * c.days)) : 0;
   useEffect(() => { setPaid(''); }, [selId]);
+  // paid from: the way the bank money came in (cash -> cash, as the desktop)
+  useEffect(() => { if (bp) setMode(Number(bp.received_in_cash) ? 'CASH' : 'BANK'); }, [bp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const sum = (list, k) => list.reduce((s, r) => s + n(r[k]), 0);
-  const release = async () => {
+  const [ask, setAsk] = useState(false);
+  // desktop asks first: "Release bank loan 1 (bank)? Loan amount, interest paid, total paid to bank, loans back in hand"
+  const release = async (sure) => {
     if (!bp) return toast.error('Select the bank loan');
+    if (sure !== true) return setAsk(true);
+    setAsk(false);
     setSaving(true);
     try {
       await api.post(`/bank/pledges/${bp.id}/release`, { date: d, interest: interestPaid, mode, bank_account_id: bp.bank_account_id });
@@ -55,7 +61,18 @@ export default function BankReleasePage() {
   const printReleases = () => printTable({ title: `Bank releases on ${date(d)}`, company, rows: releasedToday.data?.data || [], columns: [
     { key: 'pledge_no', label: 'Bank loan no' }, { key: 'bank_name', label: 'Bank' }, { key: 'pledge_date', label: 'Loan date', type: 'date' }, { key: 'loan_count', label: 'Loans', type: 'number' },
     { key: 'amount', label: 'Amount', type: 'money' }, { key: 'interest_paid', label: 'Interest', type: 'money' }, { key: 'total_paid', label: 'Total paid', type: 'money' }] });
-  useKeys({ f2: release, f5: () => { open.refetch(); releasedToday.refetch(); }, f9: printReleases, escape: () => navigate('/') }, [bp, paid, d, mode]);
+  useKeys({ f2: () => release(), f5: () => { open.refetch(); releasedToday.refetch(); }, f9: printReleases, escape: () => navigate('/') }, [bp, paid, d, mode]);
+  const confirm = (
+    <ConfirmDrawer open={ask} onClose={() => setAsk(false)} onConfirm={() => release(true)} tone="primary" loading={saving} confirmText="Yes, release"
+      title={bp ? `Release bank loan ${bp.pledge_no} (${bp.bank_name || 'bank'})?` : 'Release bank loan?'}>
+      {bp && <div className="space-y-1 text-sm">
+        <p>Loan amount: <b>Rs. {amount(bp.amount)}</b></p>
+        <p>Interest paid: <b>Rs. {amount(interestPaid)}</b> ({effRate.toFixed(2)}% / year)</p>
+        <p>Total paid to bank: <b>Rs. {amount(n(bp.amount) + n(interestPaid))}</b></p>
+        <p className="pt-2">{bp.loans.length} customer loan(s) will come back in hand.</p>
+      </div>}
+    </ConfirmDrawer>
+  );
   if (isAllBranches) return <div className="card p-6 text-sm">Select a branch to release from bank.</div>;
   if (lk && !banks.length) return <div className="card space-y-3 p-6 text-sm"><p>No bank account found. Please add the bank in Bank Accounts first.</p><Button onClick={() => navigate('/bank/accounts')}>Open Bank Accounts</Button></div>;
 
@@ -65,7 +82,7 @@ export default function BankReleasePage() {
     <div className="animate-rise space-y-3">
       <section className="navy-gradient flex items-center gap-3 rounded-md px-5 py-3 text-white">
         <div className="flex-1"><h1 className="text-2xl font-bold">Bank Release</h1><p className="text-sm text-navy-100">Repay a bank loan - the pledged loans come back in hand</p></div>
-        <div className="rounded-md bg-white/10 px-4 py-1.5 text-center"><p className="text-[11px] font-bold uppercase">Billing date</p><p className="font-bold">{dayjs().format('DD/MM/YYYY')}</p></div>
+        <div className="rounded-md bg-white/10 px-4 py-1.5 text-center"><p className="text-[11px] font-bold uppercase">Billing date</p><p className="font-bold">{dayjs(today()).format('DD/MM/YYYY')}</p></div>
       </section>
       <div className="card flex flex-wrap items-end gap-3 px-4 py-3">
         <Field label="Bank / branch" className="w-80"><Select value={bank} onChange={(e) => { setBank(e.target.value); setSelId(null); }} options={banks.map((b) => ({ value: b.id, label: `${b.bank_name}${b.bank_branch ? ` · ${b.bank_branch}` : ''}` }))} /></Field>
@@ -101,9 +118,9 @@ export default function BankReleasePage() {
               <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
                 {!bp && <tr><td colSpan={7} className="py-8 text-center text-ink-400">Select a bank loan</td></tr>}
                 {(bp?.loans || []).map((l) => (
-                  <tr key={l.id}><td className="px-2 py-1.5 font-semibold">{l.bill_no}</td><td className="px-2">{l.customer_name}</td><td className="px-2">{l.loan_on}</td><td className="px-2">{l.item_summary}</td>
-                    <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right">{amount(l.current_principal)}</td>
-                    <td className="px-2">{l.status === 'OPEN' ? 'Pending · at bank' : `${l.status.toLowerCase()} by customer`}</td></tr>
+                  <tr key={l.id}><td className="px-2 py-1.5 font-semibold">{l.bill_no}{l.manual_bill_no ? ` / ${l.manual_bill_no}` : ''}</td><td className="px-2">{l.customer_name}</td><td className="px-2">{l.loan_on}</td><td className="px-2 uppercase">{l.items_text || l.item_summary}</td>
+                    <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right">{amount(l.loan_amount ?? l.principal)}</td>
+                    <td className="px-2">{l.status === 'OPEN' ? <span className="text-violet-700">In bank</span> : `${l.status === 'CLOSED' || l.status === 'RENEWED' ? 'released' : l.status.toLowerCase()} by customer`}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -111,7 +128,7 @@ export default function BankReleasePage() {
         </div>
         <div className="card space-y-2 p-4 text-sm">
           <p className="navy-gradient -mx-4 -mt-4 mb-2 px-4 py-2 text-sm font-bold text-white uppercase">Release calculation</p>
-          {line('Loan date', bp ? date(bp.pledge_date) : '-')}{line('Loan amount', bp ? amount(bp.amount) : '-')}{line('Interest % / year', bp ? n(bp.interest_rate) : '-')}
+          {line('Loan date', bp ? date(bp.pledge_date) : '-')}{line('Loan amount', bp ? amount(bp.amount) : '-')}{line('Interest % / year', bp ? `${n(bp.interest_rate).toFixed(2)} (${(n(bp.interest_rate) / 12).toFixed(2)} / month)` : '-')}
           {line('Days', c ? c.days : '-')}{line('Per day interest', bp ? amount((n(bp.amount) * n(bp.interest_rate)) / 36500) : '-')}{line('Total interest', c ? amount(c.interest) : '-')}
           {line('Advance interest', bp ? amount(bp.advance_interest) : '-')}{line('Interest due', c ? amount(round2(c.interest - n(bp.advance_interest))) : '-', 'font-semibold')}
           <div className="-mx-4 flex justify-between bg-cream-100 px-4 py-2 text-base font-bold dark:bg-ink-800"><span>PAYABLE TO BANK</span><span className="num">{bp ? amount(payable) : ''}</span></div>
@@ -123,11 +140,12 @@ export default function BankReleasePage() {
       <div className="card flex flex-wrap gap-2 px-3 py-2">
         <Button variant="outline" icon={RefreshCw} onClick={() => { open.refetch(); releasedToday.refetch(); }}>Refresh (F5)</Button>
         <span className="flex-1" />
-        {can('bank_pledge', 'edit') && <Button variant="gold" icon={Unlock} loading={saving} disabled={!bp} onClick={release}>Release from Bank (F2)</Button>}
+        {can('bank_pledge', 'edit') && <Button variant="gold" icon={Unlock} loading={saving} disabled={!bp} onClick={() => release()}>Release from Bank (F2)</Button>}
         <Button variant="outline" icon={Printer} onClick={printReleases}>Print Releases (F9)</Button>
         <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
       </div>
       <p className="px-1 text-xs text-ink-500">Type bank loan no = suggestions · Enter = select / amount paid · F2 = release · F5 = refresh · F9 = print releases of the day · Esc = exit</p>
+      {confirm}
     </div>
   );
 }

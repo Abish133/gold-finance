@@ -181,9 +181,14 @@ router.get('/day-summary', permitAny(['day_close', 'acc_cashbook', 'reports_summ
 
 router.get('/day-close', permit('day_close', 'view'), requireBranch, async (req, res) => {
   const last = await lastClosedDate(req.branchId);
-  const history = await query('SELECT d.*, u.full_name closed_by_name FROM day_closes d LEFT JOIN users u ON u.id = d.closed_by WHERE d.branch_id = :b ORDER BY close_date DESC LIMIT 30', { b: req.branchId });
+  // desktop Day Close list: closed days (last 60 days or all) with cash expected, counted cash and pote baki
+  const since = req.query.all === '1' ? '2000-01-01' : dayjs().subtract(60, 'day').format('YYYY-MM-DD');
+  const history = await query(`SELECT d.*, u.full_name closed_by_name, cd.total counted, cd.book_balance expected
+      FROM day_closes d LEFT JOIN users u ON u.id = d.closed_by LEFT JOIN cash_denominations cd ON cd.branch_id = d.branch_id AND cd.count_date = d.close_date
+     WHERE d.branch_id = :b AND d.close_date >= :s ORDER BY close_date DESC`, { b: req.branchId, s: since });
   const next = last ? dayjs(last).add(1, 'day').format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
-  res.json({ data: { lastClosed: last, nextDate: next, summary: await acc.daySummary([req.branchId], next), history } });
+  const [re] = await query("SELECT COUNT(*) c FROM audit_logs WHERE action = 'DAY_REOPEN' AND branch_id = :b AND created_at >= :s", { b: req.branchId, s: since });
+  res.json({ data: { lastClosed: last, nextDate: next, summary: await acc.daySummary([req.branchId], next), history, reopened: Number(re?.c || 0) } });
 });
 
 router.post('/day-close', permit('day_close', 'add'), requireBranch, async (req, res) => {
@@ -201,8 +206,10 @@ router.post('/day-close', permit('day_close', 'add'), requireBranch, async (req,
 router.delete('/day-close/:date', permit('day_close', 'delete'), requireBranch, async (req, res) => {
   const last = await lastClosedDate(req.branchId);
   if (!last || dayjs(last).format('YYYY-MM-DD') !== req.params.date) throw ApiError.badRequest('Only the latest closed day can be re-opened');
+  const reason = String(req.body?.reason || req.query.reason || '').trim();
+  if (!reason) throw ApiError.badRequest('Enter the reason for re-opening the day');
   await query('DELETE FROM day_closes WHERE branch_id = :b AND close_date = :d', { b: req.branchId, d: req.params.date });
-  audit(req, 'DAY_REOPEN', 'day_closes', req.params.date);
+  audit(req, 'DAY_REOPEN', 'day_closes', req.params.date, { reason });
   res.json({ ok: true });
 });
 

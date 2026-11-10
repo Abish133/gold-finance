@@ -7,22 +7,22 @@ import { Button, DataTable, Field, Input, Select } from '@/components/ui';
 import { useFetch, useCompany } from '@/hooks/useApi';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
-import { amount, date, n, weight } from '@/lib/format';
+import { amount, date, n, weight, today } from '@/lib/format';
 import { ExitButton, Line, useKeys } from '@/features/loans/desk';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'auction_date', label: 'Auctioned', type: 'date' },
-  { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items' }, { key: 'loan_on', label: 'Metal' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'principal_due', label: 'Loan Amt', type: 'money' },
-  { key: 'interest_due', label: 'Interest', type: 'money' }, { key: 'total_due', label: 'Total Due', type: 'money' }, { key: 'sale_amount', label: 'Sale', type: 'money' }, { key: 'report_pl', label: 'Profit / Loss', type: 'money' },
+  { key: 'customer_name', label: 'Customer' }, { key: 'items_text', label: 'Items', render: (r) => <span className="uppercase">{r.items_text || r.item_summary}</span>, print: (r) => (r.items_text || r.item_summary || '').toUpperCase() }, { key: 'loan_on', label: 'Metal' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'principal_due', label: 'Loan Amt', type: 'money' },
+  { key: 'interest_due', label: 'Interest', type: 'money' }, { key: 'total_due', label: 'Total Due', type: 'money' }, { key: 'sale_amount', label: 'Sale', render: (r) => (r.sold ? <div className="text-right"><p className="num">{amount(r.sale_amount)}</p>{r.sale_date && <p className="text-[10px] text-ink-500">{date(r.sale_date)}</p>}</div> : <span className="text-ink-400">not sold</span>), print: (r) => (r.sold ? r.sale_amount : '') }, { key: 'report_pl', label: 'Profit / Loss', render: (r) => (r.sold ? <span className={clsx('num font-bold', n(r.report_pl) < 0 ? 'text-rose-600' : 'text-emerald-700')}>{n(r.report_pl) > 0 ? '+' : ''}{amount(r.report_pl)}</span> : ''), print: (r) => (r.sold ? r.report_pl : '') },
 ];
 
 /** Auction Report (desktop: frmAuctionReport) - auctioned loans with dues, sale amount and profit / loss. */
 export default function AuctionReportPage() {
   const navigate = useNavigate();
   const { data: company } = useCompany();
-  const fyStart = (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+  const fyStart = (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
   const { data: years = [] } = useFetch('/admin/financial-years');
-  const [f, setF] = useState({ from: fyStart, to: dayjs().format('YYYY-MM-DD'), search: '', metal: '', sale: '' });
+  const [f, setF] = useState({ from: fyStart, to: dayjs(today()).format('YYYY-MM-DD'), search: '', metal: '', sale: '' });
   const [q, setQ] = useState(f);
   const { data: all = [], refetch, isFetching } = useFetch('/auction/sales');
   const [sel, setSel] = useState(null);
@@ -60,7 +60,7 @@ export default function AuctionReportPage() {
       <div className="grid items-start gap-3 xl:grid-cols-[1fr_300px]">
         <DataTable dense rows={rows} columns={cols} loading={isFetching && !all.length} onRowClick={setSel} rowClassName={(r) => (sel?.id === r.id ? 'bg-cream-200' : '')} />
         <div className="card space-y-1 p-4 text-sm">
-          <p className="text-xs font-bold text-gold-700 uppercase">Select a loan</p>
+          <p className="text-xs font-bold text-gold-700 uppercase">{sel ? `Loan ${sel.bill_no} - ${sel.customer_name}` : 'Select a loan'}</p>
           <Line label="Pledged" value={sel ? date(sel.loan_date) : '-'} /><Line label="Auctioned" value={sel ? date(sel.auction_date) : '-'} />
           <Line label="ROI / Months" value={sel ? `${n(sel.interest_rate)}% · ${sel.months} m` : '-'} />
           <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Notices</p>

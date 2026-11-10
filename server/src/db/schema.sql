@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS company (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(150) NOT NULL,
   local_name VARCHAR(150),
+  proprietor VARCHAR(120),
   licence_no VARCHAR(60),
   licence_valid_till DATE,
   address1 VARCHAR(200), address2 VARCHAR(200), address3 VARCHAR(200),

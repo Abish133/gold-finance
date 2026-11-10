@@ -132,7 +132,7 @@ await step('denomination + day close + undo', async () => {
   const saved = (await call('GET', `/accounts/vouchers/${v.id}`)).data;
   if (saved.voucher_date !== tomorrow) throw new Error(`entry after Day End dated ${saved.voucher_date}, expected ${tomorrow}`);
   await call('DELETE', `/accounts/vouchers/${v.id}`);
-  await call('DELETE', `/accounts/day-close/${today}`);
+  await call('DELETE', `/accounts/day-close/${today}?reason=flow%20test`);
   return `closing ${c.cash?.closing} · entry on closed day blocked · after Day End entries go on ${tomorrow} · reopened${day ? '' : ''}`;
 });
 

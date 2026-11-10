@@ -16,8 +16,8 @@ import { PhotoReport, FormD } from '@/features/print/LoanEstimate';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from './desk';
 
-const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
-const QUICK = { today: () => [today(), today()], month: () => [dayjs().startOf('month').format('YYYY-MM-DD'), today()], year: () => [fyStart(), today()], all: () => ['', ''] };
+const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+const QUICK = { today: () => [today(), today()], month: () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], year: () => [fyStart(), today()], all: () => ['', ''] };
 const TILES = [['', 'Total loans', 'border-t-navy-700 bg-cream-100'], ['PENDING', 'Pending', 'border-t-navy-500'], ['RELEASED', 'Released', 'border-t-rose-600'],
   ['IN_BANK', 'In bank', 'border-t-violet-600'], ['AUCTIONED', 'Auctioned', 'border-t-emerald-700'], ['CANCELLED', 'Cancelled', 'border-t-fuchsia-600']];
 const STATUS_PARAM = { PENDING: { status: 'OPEN', bank: '0' }, RELEASED: { status: 'CLOSED,RENEWED' }, IN_BANK: { status: 'OPEN', bank: '1' }, AUCTIONED: { status: 'AUCTIONED' }, CANCELLED: { status: 'CANCELLED' } };

@@ -15,7 +15,8 @@ const router = Router();
 
 /* desktop: % per year on the days (at least 1 day), per-day shown, total rounded to the rupee */
 const bankInterest = (bp, asOn) => {
-  const days = Math.max(1, dayjs(asOn).diff(dayjs(bp.pledge_date), 'day'), num(bp.min_days));
+  // desktop: both days count (pledged and released on the same day = 1 day, next day = 2 days)
+  const days = Math.max(1, dayjs(asOn).diff(dayjs(bp.pledge_date), 'day') + 1, num(bp.min_days));
   const perDay = (num(bp.amount) * num(bp.interest_rate)) / 36500;
   return { days, perDay: round2(perDay), interest: Math.round(perDay * days) };
 };
@@ -105,10 +106,16 @@ router.get('/month-wise', permit('bank_pledge', 'view'), async (req, res) => {
 });
 
 router.get('/pledges/:id', permit('bank_pledge', 'view'), async (req, res) => {
-  const bp = await queryOne('SELECT bp.*, ba.bank_name, ba.bank_branch FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE bp.id = :id', { id: req.params.id });
+  // received_in_cash: the bank loan money came into the drawer (the desktop then repays it from cash too)
+  const bp = await queryOne(`SELECT bp.*, ba.bank_name, ba.bank_branch,
+      EXISTS (SELECT 1 FROM vouchers v JOIN voucher_entries e ON e.voucher_id = v.id JOIN ledgers lg ON lg.id = e.ledger_id
+               WHERE v.source_type = 'BANK_PLEDGE' AND v.source_id = bp.id AND lg.system_key = 'CASH') received_in_cash
+    FROM bank_pledges bp JOIN bank_accounts ba ON ba.id = bp.bank_account_id WHERE bp.id = :id`, { id: req.params.id });
   if (!bp) throw ApiError.notFound();
   assertBranch(req, bp.branch_id);
-  const loans = await query(`SELECT l.id, l.bill_no, l.loan_date, l.loan_on, l.principal, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.status, l.bank_pledge_id, c.name customer_name
+  const loans = await query(`SELECT l.id, l.bill_no, l.manual_bill_no, l.loan_date, l.loan_on, l.principal, l.current_principal, l.net_wt, l.gross_wt, l.total_pcs, l.item_summary, l.status, l.bank_pledge_id, c.name customer_name,
+      l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0) loan_amount,
+      (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text
     FROM bank_pledge_loans x JOIN loans l ON l.id = x.loan_id JOIN customers c ON c.id = l.customer_id WHERE x.bank_pledge_id = :id`, { id: bp.id });
   res.json({ data: { ...bp, loans, calc: bankInterest(bp, req.query.date || dayjs()) } });
 });

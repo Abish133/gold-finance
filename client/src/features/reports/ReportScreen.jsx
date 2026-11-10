@@ -10,11 +10,11 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 
-export const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+export const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 export const QUICK = {
   Today: () => [today(), today()],
-  'This month': () => [dayjs().startOf('month').format('YYYY-MM-DD'), today()],
-  'Last month': () => [dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')],
+  'This month': () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()],
+  'Last month': () => [dayjs(today()).subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), dayjs(today()).subtract(1, 'month').endOf('month').format('YYYY-MM-DD')],
   'A/c year': () => [fyStart(), today()],
 };
 const NUM = ['money', 'weight', 'number'];

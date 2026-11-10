@@ -21,7 +21,7 @@ const cols = [
   { key: 'item_summary', label: 'Items' }, { key: 'loan_on', label: 'Metal' }, { key: 'gross_wt', label: 'Gross', type: 'weight' }, { key: 'stone_wt', label: 'Less', type: 'weight' },
   { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'principal', label: 'Amount', type: 'money' },
 ];
-const yearAgo = (m) => dayjs().subtract(m, 'month').format('YYYY-MM-DD');
+const yearAgo = (m) => dayjs(today()).subtract(m, 'month').format('YYYY-MM-DD');
 
 /** Auction List & Notices (desktop): unreleased loans pledged between dates - print notices, auction list and post lists. */
 export default function AuctionPage() {
@@ -35,7 +35,7 @@ export default function AuctionPage() {
   const [sel, setSel] = useState([]);
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [auction, setAuction] = useState({ date: dayjs().add(15, 'day').format('YYYY-MM-DD'), time: '11:00' });
+  const [auction, setAuction] = useState({ date: dayjs(today()).add(15, 'day').format('YYYY-MM-DD'), time: '11:00' });
   const [split, setSplit] = useState('');
   // desktop: dates work from the billing date - oldest open loan up to (billing date - N months); auction 15 days after
   const { data: billing } = useFetch('/desk/billing-date');

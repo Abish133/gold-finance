@@ -26,7 +26,7 @@ router.get('/company', async (_req, res) => {
 });
 
 router.put('/company', permit('s_company', 'edit'), async (req, res) => {
-  const f = ['name', 'local_name', 'licence_no', 'licence_valid_till', 'address1', 'address2', 'address3', 'phone', 'mobile', 'email', 'gstin', 'website'];
+  const f = ['name', 'local_name', 'proprietor', 'licence_no', 'licence_valid_till', 'address1', 'address2', 'address3', 'phone', 'mobile', 'email', 'gstin', 'website'];
   const data = Object.fromEntries(f.filter((k) => k in req.body).map((k) => [k, req.body[k] === '' ? null : req.body[k]]));
   const existing = await queryOne('SELECT id FROM company LIMIT 1');
   if (existing) {
@@ -65,7 +65,7 @@ router.get('/screens', (_req, res) => res.json({ data: SCREENS }));
 
 router.use('/roles', createCrudRouter({
   table: 'roles', screen: 's_roles', alias: 'r',
-  select: 'SELECT r.*, (SELECT COUNT(*) FROM users u WHERE u.role_id = r.id) AS user_count FROM roles r',
+  select: 'SELECT r.*, (SELECT COUNT(*) FROM users u WHERE u.role_id = r.id) AS user_count, (SELECT COUNT(*) FROM role_permissions p WHERE p.role_id = r.id AND p.can_view = 1) AS screen_count FROM roles r',
   fields: ['name', 'description', 'all_branches', 'is_active'], booleans: ['all_branches', 'is_active'], required: ['name'],
   searchable: ['r.name'], sortable: { name: 'r.name' }, defaultSort: 'name',
   beforeSave: async (d, _req, existing) => {

@@ -5,7 +5,7 @@ import { Plus, Trash2, Save, LogOut, ListChecks, Eraser, CheckSquare, X } from '
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, DataTable, Drawer, Field, Input, Select } from '@/components/ui';
+import { Button, ConfirmDrawer, DataTable, Drawer, Field, Input, Select } from '@/components/ui';
 import { useFetch, useLookups } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -61,13 +61,17 @@ export default function BankLoanPage() {
     setCode(''); scan.current?.focus();
   };
   const remove = () => { if (cur) { setSel(sel.filter((x) => x !== cur.id)); setCur(null); } };
-  const save = async () => {
+  const [ask, setAsk] = useState(false);
+  // desktop asks first: "Save bank loan 1 with TEST BANK? Customer loans, bank loan amount, cash received"
+  const save = async (sure) => {
     if (!f.bank_account_id || !f.pledge_no || !n(f.amount)) return toast.error('Enter bank, bank loan no and amount');
     if (!sel.length) return toast.error('Add the loans pledged with the bank');
+    if (sure !== true) return setAsk(true);
+    setAsk(false);
     setSaving(true);
     try { await api.post('/bank/pledges', { ...f, loan_ids: sel }); toast.success(`Bank loan ${f.pledge_no} saved · ${sel.length} loans`); qc.invalidateQueries({ queryKey: ['/bank/pledges'] }); avail.refetch(); setF(blank()); setSel([]); setCur(null); } catch (e) { toast.error(e.message); } finally { setSaving(false); }
   };
-  useKeys({ f2: save, f4: openPick, 'ctrl+n': () => { setF(blank()); setSel([]); setCur(null); }, delete: remove, escape: () => navigate('/') }, [f, sel, cur, firstDate]);
+  useKeys({ f2: () => save(), f4: openPick, 'ctrl+n': () => { setF(blank()); setSel([]); setCur(null); }, delete: remove, escape: () => navigate('/') }, [f, sel, cur, firstDate]);
   if (isAllBranches) return <div className="card p-6 text-sm">Select a branch to make a bank loan.</div>;
   if (lk && !banks.length) return <div className="card space-y-3 p-6 text-sm"><p>No bank for bank loans (potali) found. Add the bank in Bank Accounts, or set its Used For to Pledge or Both.</p><Button onClick={() => navigate('/bank/accounts')}>Open Bank Accounts</Button></div>;
 
@@ -138,7 +142,7 @@ export default function BankLoanPage() {
         <Button variant="outline" icon={Plus} onClick={() => { setF(blank()); setSel([]); setCur(null); }}>New (Ctrl+N)</Button>
         <Button variant="outline" icon={Trash2} disabled={!cur} onClick={remove}>Remove Loan (Del)</Button>
         <span className="flex-1" />
-        <Button variant="gold" icon={Save} loading={saving} onClick={save}>Save Bank Loan (F2)</Button>
+        <Button variant="gold" icon={Save} loading={saving} onClick={() => save()}>Save Bank Loan (F2)</Button>
         <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
       </div>
       <Drawer open={pick} onClose={() => setPick(false)} size="xl" icon={ListChecks} title="Pick Loans for Bank" subtitle={`${loans.length - sel.length} loans in hand (not released, not in a bank)`}
@@ -163,6 +167,14 @@ export default function BankLoanPage() {
           { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'current_principal', label: 'Amount', type: 'money' },
         ]} />
       </Drawer>
+      <ConfirmDrawer open={ask} onClose={() => setAsk(false)} onConfirm={() => save(true)} tone="primary" loading={saving} confirmText="Yes, save"
+        title={`Save bank loan ${f.pledge_no} with ${banks.find((b) => String(b.id) === String(f.bank_account_id))?.bank_name || 'the bank'}?`}>
+        <div className="space-y-1 text-sm">
+          <p>Customer loans: <b>{sel.length}</b> (Rs. {amount(sum('principal'))}, {weight(sum('net_wt'))} g)</p>
+          <p>Bank loan amount: <b>Rs. {amount(f.amount || 0)}</b></p>
+          <p>Cash received: <b>Rs. {amount(n(f.amount) - n(f.charges))}</b></p>
+        </div>
+      </ConfirmDrawer>
     </div>
   );
 }

@@ -10,8 +10,8 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 
-const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
-const QUICK = { Today: () => [today(), today()], 'This Month': () => [dayjs().startOf('month').format('YYYY-MM-DD'), today()], 'A/c Year': () => [fyStart(), today()], 'All Years': () => ['', ''] };
+const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+const QUICK = { Today: () => [today(), today()], 'This Month': () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], 'A/c Year': () => [fyStart(), today()], 'All Years': () => ['', ''] };
 const BOOK = [
   { key: 'sno', label: 'S.No' }, { key: 'pledge_no', label: 'Bank Loan No' }, { key: 'pledge_date', label: 'Loan Date', type: 'date' }, { key: 'bank', label: 'Bank / Branch' },
   { key: 'loan_count', label: 'Loans', type: 'number' }, { key: 'total_wt', label: 'Weight', type: 'weight' }, { key: 'amount', label: 'Amount', type: 'money' }, { key: 'interest_rate', label: '% / Year', type: 'number' },
@@ -49,6 +49,17 @@ function Grid({ cols, rows, onOpen, sel, setSel }) {
             </tr>
           ))}
         </tbody>
+        {rows.length > 0 && (
+          <tfoot className="navy-gradient text-white"><tr className="font-bold">
+            {cols.map((c, k) => {
+              // desktop total row: amounts / weights / counts added; at-bank balance = the last month; rates and days left blank
+              const skip = ['sno', 'pledge_no', 'interest_rate', 'days', 'paid_pct_year', 'rate_monthly'].includes(c.key) || !['money', 'weight', 'number'].includes(c.type);
+              const v = ['balance', 'at_bank_count'].includes(c.key) ? n(rows.at(-1)?.[c.key]) : rows.filter((r) => !r.opening).reduce((t, r) => t + n(r[c.key]), 0);
+              return <td key={c.key} className={clsx('px-2 py-2', ['money', 'weight', 'number'].includes(c.type) && 'num text-right')}>
+                {k === 0 ? `Total - ${rows.filter((r) => !r.opening).length}` : skip ? '' : c.type === 'money' ? amount(v) : c.type === 'weight' ? weight(v) : v}</td>;
+            })}
+          </tr></tfoot>
+        )}
       </table>
     </div>
   );

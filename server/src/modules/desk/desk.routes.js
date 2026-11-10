@@ -104,8 +104,10 @@ router.get('/stock', permitAny(['stock', 'reports_loan']), async (req, res) => {
   if (req.query.amount_to) { where.push('l.principal <= :at'); p.at = num(req.query.amount_to); }
   if (req.query.search) { where.push('(l.bill_no LIKE :s OR c.name LIKE :s)'); p.s = `%${req.query.search}%`; }
   const rows = await query(`SELECT l.id, l.bill_no, l.loan_date, TIMESTAMPDIFF(MONTH, l.loan_date, :d) age_months, c.name customer_name, l.item_summary, l.total_items, l.loan_on,
-      l.gross_wt, l.stone_wt, l.net_wt, l.avg_purity, l.principal, l.current_principal, l.bank_pledge_id
-    FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${where.join(' AND ')} ORDER BY l.loan_date LIMIT 5000`, p);
+      l.gross_wt, l.stone_wt, l.net_wt, l.avg_purity, l.current_principal, l.bank_pledge_id, c.relation_type, c.relation_name, c.phone customer_phone,
+      l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0) principal,
+      (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text
+    FROM loans l JOIN customers c ON c.id = l.customer_id WHERE ${where.join(' AND ')} ORDER BY l.loan_date, l.loan_no LIMIT 5000`, p);
   const settings = await getSettings(req.branchId || 0);
   const margin = num(settings.STOCK_RISK_MARGIN, 10);
   const rates = await query(`SELECT m.code, r.market_rate, r.purity FROM metal_rates r JOIN metals m ON m.id = r.metal_id

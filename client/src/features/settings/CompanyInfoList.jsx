@@ -19,9 +19,9 @@ export function CompanyInfoList() {
   const [edit, setEdit] = useState(false);
   const fy = years.find((y) => y.is_current);
   const addr = c && [c.address1, c.address2, c.address3].filter(Boolean).join(', ');
-  const rows = c ? [{ code: 'C-001', name: c.name, address: addr, phone: c.mobile || c.phone, licence_no: c.licence_no, licence_valid_till: c.licence_valid_till, gstin: c.gstin, fy: fy?.name }] : [];
+  const rows = c ? [{ code: 'C-001', name: c.name, address: addr, phone: c.mobile || c.phone, licence_no: c.licence_no, licence_valid_till: c.licence_valid_till, gstin: c.gstin, proprietor: c.proprietor, fy: fy?.name }] : [];
   const print = () => printTable({ title: 'Company Information', company: c, rows: [...rows, ...branches.map((b) => ({ code: b.code, name: `Branch · ${b.name}`, address: b.address, phone: b.phone }))],
-    columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Company Name' }, { key: 'address', label: 'Address' }, { key: 'phone', label: 'Phone / Mobile' }, { key: 'licence_no', label: 'Licence No' }, { key: 'gstin', label: 'GSTIN' }, { key: 'fy', label: 'FY' }] });
+    columns: [{ key: 'code', label: 'Code' }, { key: 'name', label: 'Company Name' }, { key: 'address', label: 'Address' }, { key: 'phone', label: 'Phone / Mobile' }, { key: 'licence_no', label: 'Licence No' }, { key: 'gstin', label: 'GSTIN' }, { key: 'proprietor', label: 'Proprietor' }, { key: 'fy', label: 'FY' }] });
   useKeys({ f2: () => setEdit(true), f4: () => navigate('/settings/printer'), f9: print, escape: () => navigate('/') }, [c, branches]);
   const tile = (l, v, h, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>;
   return (
@@ -36,17 +36,17 @@ export function CompanyInfoList() {
       <div className="card min-h-[calc(100vh-24rem)] overflow-auto">
         <p className="navy-gradient px-3 py-2 text-xs font-bold text-white uppercase">Companies</p>
         <table className="w-full text-sm">
-          <thead className="bg-navy-800 text-white"><tr>{['Code', 'Company Name', 'Address', 'Phone / Mobile', 'Licence No', 'Licence Valid Till', 'GSTIN', 'FY', ''].map((h) => <th key={h} className="px-2 py-2 text-left">{h}</th>)}</tr></thead>
+          <thead className="bg-navy-800 text-white"><tr>{['Code', 'Company Name', 'Address', 'Phone / Mobile', 'Licence No', 'Licence Valid Till', 'GSTIN', 'Proprietor', 'FY', ''].map((h) => <th key={h} className="px-2 py-2 text-left">{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
             {rows.map((r) => (
               <tr key={r.code} onDoubleClick={() => setEdit(true)} className="cursor-pointer bg-navy-50/60 dark:bg-ink-800">
                 <td className="px-2 py-2">{r.code}</td><td className="px-2 font-bold">{r.name}</td><td className="px-2">{r.address}</td><td className="px-2">{r.phone}</td><td className="px-2">{r.licence_no}</td>
-                <td className="px-2">{r.licence_valid_till ? dayjs(r.licence_valid_till).format('DD/MM/YYYY') : ''}</td><td className="px-2">{r.gstin}</td><td className="px-2">{r.fy}</td>
+                <td className="px-2">{r.licence_valid_till ? dayjs(r.licence_valid_till).format('DD/MM/YYYY') : ''}</td><td className="px-2">{r.gstin}</td><td className="px-2">{r.proprietor}</td><td className="px-2">{r.fy}</td>
                 <td className="px-2"><span className="rounded bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800">CURRENT</span></td>
               </tr>
             ))}
             {branches.map((b) => (
-              <tr key={b.id} className="text-ink-600"><td className="px-2 py-1.5 pl-6">{b.code}</td><td className="px-2">Branch · {b.name}</td><td className="px-2">{b.address}</td><td className="px-2">{b.phone}</td><td colSpan={5} /></tr>
+              <tr key={b.id} className="text-ink-600"><td className="px-2 py-1.5 pl-6">{b.code}</td><td className="px-2">Branch · {b.name}</td><td className="px-2">{b.address}</td><td className="px-2">{b.phone}</td><td colSpan={6} /></tr>
             ))}
           </tbody>
         </table>

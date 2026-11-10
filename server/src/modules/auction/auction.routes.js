@@ -75,7 +75,7 @@ router.post('/notices', permit('auction', 'add'), requireBranch, async (req, res
 });
 
 router.get('/sales', permit('auction_sale', 'view'), async (req, res) => {
-  const rows = await query(`SELECT a.*, l.bill_no, l.loan_date, l.net_wt, l.loan_on, l.item_summary, l.interest_rate, l.rate_type, c.name customer_name, c.relation_type, c.relation_name,
+  const rows = await query(`SELECT a.*, l.bill_no, l.loan_date, l.net_wt, l.loan_on, l.item_summary, (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text, l.interest_rate, l.rate_type, c.name customer_name, c.relation_type, c.relation_name,
       u.full_name marked_by, TIMESTAMPDIFF(MONTH, l.loan_date, a.auction_date) months,
       (SELECT MIN(n.notice_date) FROM auction_notices n WHERE n.loan_id = l.id AND n.notice_type IN ('FIRST','REMINDER')) first_notice,
       (SELECT MIN(n.notice_date) FROM auction_notices n WHERE n.loan_id = l.id AND n.sent_via = 'REGISTERED') registered_notice

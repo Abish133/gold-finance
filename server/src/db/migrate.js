@@ -20,6 +20,7 @@ const COLUMNS = [
   ['loans', 'gold_rate', 'DECIMAL(12,2) NULL AFTER rate_per_gram'],
   ['loans', 'silver_rate', 'DECIMAL(12,2) NULL AFTER gold_rate'],
   ['loans', 'auction_marked_at', 'DATETIME NULL'],
+  ['company', 'proprietor', 'VARCHAR(120) NULL AFTER local_name'],
   ['loan_items', 'metal_id', 'INT NULL AFTER item_id'],
   ['loan_items', 'fine_wt', 'DECIMAL(10,3) NOT NULL DEFAULT 0 AFTER purity'],
   ['loan_transactions', 'approved_by', 'INT NULL'],

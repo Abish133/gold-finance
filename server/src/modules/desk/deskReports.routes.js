@@ -20,6 +20,8 @@ const onlinePart = `(SELECT COALESCE(SUM(p.amount),0) FROM transaction_payments 
 // desktop shows the loan amount with top-ups, and items as "CHAIN 1"
 const LOAN_AMT = "(l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0))";
 const ITEMS = "(SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id)";
+// desktop comparison: gold weight = net weight of the gold items only
+const GOLD_WT = "(SELECT COALESCE(SUM(li.net_wt),0) FROM loan_items li JOIN metals mm ON mm.id = li.metal_id WHERE li.loan_id = l.id AND mm.code = 'GOLD')";
 const rep = permitAny(['reports_loan', 'reports_release', 'reports_collection', 'reports_summary']);
 
 /* Loan Report: loans given between dates with their status today */
@@ -142,11 +144,11 @@ router.get('/compare', rep, async (req, res) => {
   const load = async (k, f, t) => {
     const p = { b: req.branchIds, f, t, m: metal };
     if (k === 'loan') {
-      return query(`SELECT l.loan_date d, l.loan_on, ${LOAN_AMT} a, l.net_wt w, l.customer_id,
+      return query(`SELECT l.loan_date d, l.loan_on, ${LOAN_AMT} a, ${GOLD_WT} w, l.customer_id,
           (SELECT MIN(x.loan_date) FROM loans x WHERE x.customer_id = l.customer_id) first_loan
         FROM loans l WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.loan_date BETWEEN :f AND :t ${metal ? 'AND l.loan_on = :m' : ''}`, p);
     }
-    return query(`SELECT t.txn_date d, l.loan_on, -t.principal_amount a, l.net_wt w, l.customer_id, NULL first_loan FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+    return query(`SELECT t.txn_date d, l.loan_on, -t.principal_amount a, ${GOLD_WT} w, l.customer_id, NULL first_loan FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
       WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_type = 'RELEASE' AND t.txn_date BETWEEN :f AND :t ${metal ? 'AND l.loan_on = :m' : ''}`, p);
   };
   const side = async (name, f, t) => {

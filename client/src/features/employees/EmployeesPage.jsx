@@ -92,11 +92,11 @@ export default function EmployeesPage() {
           { key: 'emp_code', label: 'ID', sortable: true },
           { key: 'name', label: 'Name', sortable: true, render: (r) => <div className="flex items-center gap-3"><Avatar src={r.photo} name={r.name} size="sm" /><div><p className="font-semibold">{r.name}</p><p className="text-xs text-ink-500">{r.relation_type} {r.relation_name}</p></div></div> },
           { key: 'designation', label: 'Designation' }, { key: 'phone', label: 'Mobile' }, { key: 'address', label: 'Address', className: 'max-w-48 truncate text-xs' },
-          { key: 'doj', label: 'Joined', type: 'date', sortable: true }, { key: 'salary', label: 'Salary / Month', type: 'money' }, { key: 'status', label: 'Status', type: 'status' },
+          { key: 'doj', label: 'Joined', type: 'date', sortable: true }, { key: 'salary', label: 'Salary / Month', type: 'money' }, { key: 'login_role', label: 'Login', render: (r) => (r.login_role ? <span className="rounded bg-navy-50 px-1.5 py-0.5 text-[10px] font-bold text-navy-800 uppercase">{r.login_role}</span> : '') }, { key: 'status', label: 'Status', type: 'status' },
         ]}
         fields={[
           { type: 'section', name: 's1', label: 'Personal' },
-          { name: 'emp_code', label: 'Employee ID', required: true }, { name: 'title', label: 'Title', type: 'select', options: ['Mr', 'Mrs', 'Ms'] },
+          { name: 'emp_code', label: 'Employee ID', required: true }, { name: 'title', label: 'Title', type: 'select', options: ['Mr', 'Mrs', 'Miss'] },
           { name: 'name', label: 'Name', required: true }, { name: 'relation_type', label: 'Relation', type: 'select', options: ['S/o', 'D/o', 'W/o'] },
           { name: 'relation_name', label: 'Relation name' }, { name: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
           { name: 'dob', label: 'Date of birth', type: 'date' }, { name: 'marital_status', label: 'Marital status', type: 'select', options: ['Single', 'Married'] },

@@ -10,8 +10,8 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 
-const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
-const QUICK = { 'This A/c year': () => [fyStart(), today()], 'This month': () => [dayjs().startOf('month').format('YYYY-MM-DD'), today()], 'Last month': () => [dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')] };
+const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
+const QUICK = { 'This A/c year': () => [fyStart(), today()], 'This month': () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], 'Last month': () => [dayjs(today()).subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), dayjs(today()).subtract(1, 'month').endOf('month').format('YYYY-MM-DD')] };
 const NATURE = { ASSET: 'Balance Sheet - Asset', LIABILITY: 'Balance Sheet - Liability', EQUITY: 'Balance Sheet - Capital', INCOME: 'P&L - Income', EXPENSE: 'P&L - Expense' };
 const TABS = [['tb', 'Trial Balance', Scale], ['pl', 'Profit & Loss', TrendingUp], ['bs', 'Balance Sheet', Table2]];
 

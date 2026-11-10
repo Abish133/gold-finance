@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
-import { amount, date, n, weight } from '@/lib/format';
+import { amount, date, n, weight, today } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { AuctionReleaseTab } from './AuctionReleaseTab';
 
@@ -29,7 +29,7 @@ export default function AuctionReleasePage() {
   const admin = !!user?.is_super_admin;
   const { data: company } = useCompany();
   const { data: billing } = useFetch('/desk/billing-date');
-  const bd = billing?.billingDate || dayjs().format('YYYY-MM-DD');
+  const bd = billing?.billingDate || dayjs(today()).format('YYYY-MM-DD');
   const [tab, setTab] = useState('due');
   const [dueCount, setDueCount] = useState(null);
   const sales = useFetch('/auction/sales');

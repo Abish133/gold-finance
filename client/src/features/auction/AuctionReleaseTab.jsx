@@ -28,7 +28,7 @@ const cols = [
 export function AuctionReleaseTab({ onCount, onDone }) {
   const qc = useQueryClient();
   const { data: company } = useCompany();
-  const [f, setF] = useState({ from: dayjs().subtract(5, 'year').format('YYYY-MM-DD'), to: dayjs().subtract(12, 'month').format('YYYY-MM-DD'), older: 12, metal: '', notice: '' });
+  const [f, setF] = useState({ from: dayjs(today()).subtract(5, 'year').format('YYYY-MM-DD'), to: dayjs(today()).subtract(12, 'month').format('YYYY-MM-DD'), older: 12, metal: '', notice: '' });
   const [query, setQuery] = useState(f);
   const { data: settings } = useSettings();
   // desktop: from the oldest open loan up to (billing date - N months); auction date = billing date

@@ -47,7 +47,7 @@ export default function StockCheckPage() {
   const checked = inHand.filter(isChecked);
   const missing = inHand.filter((r) => n(r.missing));
   const notChecked = inHand.filter((r) => !isChecked(r) && !n(r.missing));
-  const scannedToday = inHand.filter((r) => isChecked(r) && dayjs(r.checked_at).isSame(dayjs(), 'day'));
+  const scannedToday = inHand.filter((r) => isChecked(r) && dayjs(r.checked_at).isSame(dayjs(today()), 'day'));
   const pct = inHand.length ? (checked.length / inHand.length) * 100 : 0;
   const rows = useMemo(() => inHand
     .filter((r) => show === 'all' || (show === 'checked' ? isChecked(r) : !isChecked(r)))

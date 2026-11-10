@@ -25,7 +25,7 @@ export default function InterestDuePage() {
   const [tab, setTab] = useState('due');
   const { data: settings } = useSettings();
   const overdueMonths = n(settings?.AUCTION_OVERDUE_MONTHS) || 12;
-  const [f, setF] = useState({ from: dayjs().subtract(1, 'year').format('YYYY-MM-DD'), to: today(), upto: today(), loan_on: '', where: '', older: 0, search: '' });
+  const [f, setF] = useState({ from: dayjs(today()).subtract(1, 'year').format('YYYY-MM-DD'), to: today(), upto: today(), loan_on: '', where: '', older: 0, search: '' });
   const [q, setQ] = useState(f);
   const { data, isFetching, refetch } = useFetch(tab === 'due' ? '/desk/interest-due' : null, q);
   const [sel, setSel] = useState(null);

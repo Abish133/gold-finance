@@ -61,7 +61,7 @@ export default function ItemMasterPage() {
           <table className="w-full text-sm">
             <thead className="bg-navy-50 text-xs text-navy-800 uppercase"><tr><th className="px-3 py-1.5 text-left">Category</th><th className="px-3 text-left">Description</th><th className="px-3 text-right">Items</th><th className="px-3 text-right">Used</th></tr></thead>
             <tbody className="divide-y divide-ink-200">{catList.map((c) => (
-              <tr key={c.id} onClick={() => setCat(c)} className={clsx('cursor-pointer hover:bg-navy-50/50', cat?.id === c.id && 'bg-cream-200 font-semibold')}><td className="px-3 py-1.5">{c.name}</td><td className="px-3">{c.description}</td><td className="num px-3 text-right">{c.item_count}</td><td className="num px-3 text-right">{c.used || '-'}</td></tr>
+              <tr key={c.id} onClick={() => setCat(c)} className={clsx('cursor-pointer hover:bg-navy-50/50', cat?.id === c.id && 'bg-cream-200 font-semibold')}><td className="px-3 py-1.5 uppercase">{c.name}</td><td className="px-3">{c.description}</td><td className="num px-3 text-right">{c.item_count}</td><td className="num px-3 text-right">{c.used || '-'}</td></tr>
             ))}</tbody>
           </table>
           <div className="space-y-2 border-t border-ink-200 p-3">
@@ -84,7 +84,7 @@ export default function ItemMasterPage() {
               <thead className="sticky top-0 bg-navy-50 text-xs text-navy-800 uppercase"><tr><th className="w-16 px-3 py-1.5 text-left">Code</th><th className="px-3 text-left">Item Name</th><th className="px-3 text-left">Description</th><th className="px-3 text-right">Used in Loans</th><th className="px-3 text-center">Status</th></tr></thead>
               <tbody className="divide-y divide-ink-200">{rows.map((i) => (
                 <tr key={i.id} onClick={() => setIt(i)} className={clsx('cursor-pointer hover:bg-navy-50/50', it.id === i.id && 'bg-cream-200')}>
-                  <td className="px-3 py-1.5">{i.id}</td><td className="px-3 font-bold">{i.name} {i.local_name && <span className="font-normal text-ink-500">· {i.local_name}</span>}</td><td className="px-3">{i.description}</td>
+                  <td className="px-3 py-1.5">{i.id}</td><td className="px-3 font-bold"><span className="uppercase">{i.name}</span> {i.local_name && <span className="font-normal text-ink-500">· {i.local_name}</span>}</td><td className="px-3">{i.description}</td>
                   <td className="num px-3 text-right">{i.used_in_loans || '-'}</td><td className="px-3 text-center"><Badge tone={i.used_in_loans ? 'blue' : 'green'} className="text-[10px]">{i.used_in_loans ? 'IN USE' : 'UNUSED'}</Badge></td>
                 </tr>
               ))}</tbody>

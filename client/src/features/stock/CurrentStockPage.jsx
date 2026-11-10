@@ -11,9 +11,9 @@ import { ExitButton, Line, useKeys } from '@/features/loans/desk';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'age_months', label: 'Age', render: (r) => `${r.age_months} m`, print: (r) => `${r.age_months} m` },
-  { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items', className: 'max-w-48 truncate' }, { key: 'loan_on', label: 'Metal' },
+  { key: 'customer_name', label: 'Customer' }, { key: 'items_text', label: 'Items', className: 'max-w-48 truncate uppercase', render: (r) => r.items_text || r.item_summary, print: (r) => (r.items_text || r.item_summary || '').toUpperCase() }, { key: 'loan_on', label: 'Metal' },
   { key: 'gross_wt', label: 'Gross', type: 'weight' }, { key: 'stone_wt', label: 'Less', type: 'weight' }, { key: 'net_wt', label: 'Net Wt', type: 'weight' },
-  { key: 'principal', label: 'Amount', type: 'money' }, { key: 'part_paid', label: 'Part Paid', type: 'money' }, { key: 'where', label: 'Where' },
+  { key: 'principal', label: 'Amount', type: 'money' }, { key: 'part_paid', label: 'Part Paid', render: (r) => (n(r.part_paid) ? amount(r.part_paid) : ''), print: (r) => (n(r.part_paid) ? r.part_paid : '') }, { key: 'where', label: 'Where', render: (r) => (r.where === 'Bank' ? 'In bank' : 'In hand'), print: (r) => (r.where === 'Bank' ? 'In bank' : 'In hand') },
   { key: 'value_now', label: 'Value Now', type: 'money' },
   { key: 'margin_pct', label: 'Margin', render: (r) => (r.margin_pct == null ? '-' : <span className={clsx('rounded px-1.5 py-0.5 text-xs font-bold', r.at_risk ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{n(r.margin_pct).toFixed(1)}%{r.at_risk ? ' · at risk' : ''}</span>), print: (r) => (r.margin_pct == null ? '' : `${n(r.margin_pct).toFixed(1)}%${r.at_risk ? ' RISK' : ''}`) },
 ];
@@ -31,7 +31,7 @@ export default function CurrentStockPage() {
   const rows = riskOnly ? atRisk : all;
   const s = useMemo(() => {
     const by = (m) => rows.filter((r) => r.loan_on === m);
-    const age = [[0, 3], [3, 6], [6, 12], [12, 9999]].map(([a, b]) => { const x = rows.filter((r) => r.age_months >= a && r.age_months < b); return { cnt: x.length, amt: x.reduce((t, r) => t + n(r.current_principal), 0) }; });
+    const age = [[0, 3], [3, 6], [6, 12], [12, 9999]].map(([a, b]) => { const x = rows.filter((r) => r.age_months >= a && r.age_months < b); return { cnt: x.length, amt: x.reduce((t, r) => t + n(r.principal), 0) }; });
     const sum = (list, k) => list.reduce((t, r) => t + n(r[k]), 0);
     return { gold: by('GOLD'), silver: by('SILVER'), mix: by('MIX'), age, hand: rows.filter((r) => r.where === 'Hand'), bank: rows.filter((r) => r.where === 'Bank'),
       total: sum(rows, 'principal'), part: sum(rows, 'part_paid'), out: sum(rows, 'current_principal'), sum };
@@ -39,7 +39,7 @@ export default function CurrentStockPage() {
   const preview = () => printTable({ title: `Current Stock as on ${date(q.asOn)}`, company, columns: cols, rows, totals: { gross_wt: s.sum(rows, 'gross_wt'), net_wt: s.sum(rows, 'net_wt'), principal: s.total, part_paid: s.part } });
   useKeys({ f5: () => setQ(f), f6: () => refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': () => exportCsv('current-stock', cols, rows), escape: () => navigate('/') }, [f, rows]);
   const seg = (k, opts) => <div className="flex gap-1">{opts.map(([v, l]) => <button key={String(v)} type="button" onClick={() => setF({ ...f, [k]: v })} className={clsx('h-9 rounded-md border px-2.5 text-sm font-semibold', f[k] === v ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800')}>{l}</button>)}</div>;
-  const tile = (label, list, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{label}</p><p className="num text-2xl font-bold text-navy-900">{list.length}</p><p className="text-[11px] text-ink-500">{list.length} loans · {weight(s.sum(list, 'net_wt'))} g</p></div>;
+  const tile = (label, list, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{label}</p><p className="num text-2xl font-bold text-navy-900">{amount(s.sum(list, 'principal'))}</p><p className="text-[11px] text-ink-500">{list.length} loan{list.length === 1 ? '' : 's'} · {weight(s.sum(list, 'net_wt'))} g</p></div>;
 
   return (
     <div className="animate-rise space-y-3">
@@ -59,7 +59,7 @@ export default function CurrentStockPage() {
       <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Loans in stock</p><p className="num text-2xl font-bold">{rows.length}</p><p className="text-[11px]">{s.hand.length} in hand · {s.bank.length} at bank</p></div>
         {tile('Gold', s.gold, 'border-t-gold-500')}{tile('Silver', s.silver, 'border-t-ink-400')}{tile('Mix', s.mix, 'border-t-violet-600')}
-        <div className="card border-t-4 border-t-navy-500 px-4 py-3"><p className="text-xs font-bold text-ink-600 uppercase">Total loan amount</p><p className="num text-xl font-bold text-navy-900">{amount(s.total)}</p><p className="text-[11px] text-ink-500">at bank {amount(s.sum(s.bank, 'current_principal'))}</p></div>
+        <div className="card border-t-4 border-t-navy-500 px-4 py-3"><p className="text-xs font-bold text-ink-600 uppercase">Total loan amount</p><p className="num text-xl font-bold text-navy-900">{amount(s.total)}</p><p className="text-[11px] text-ink-500">at bank {amount(s.sum(s.bank, 'principal'))}</p></div>
         <div className="card border-t-4 border-t-navy-800 px-4 py-3"><p className="text-xs font-bold text-ink-600 uppercase">Outstanding</p><p className="num text-xl font-bold text-navy-900">{amount(s.out)}</p><p className="text-[11px] text-ink-500">part paid {amount(s.part)}</p></div>
       </div>
       <div className="grid items-start gap-3 xl:grid-cols-[1fr_300px]">
@@ -77,7 +77,7 @@ export default function CurrentStockPage() {
           <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Weight (net)</p>
           <Line label="Gold" value={`${weight(s.sum(s.gold, 'net_wt'))} g`} /><Line label="Silver" value={`${weight(s.sum(s.silver, 'net_wt'))} g`} /><Line label="Mix" value={`${weight(s.sum(s.mix, 'net_wt'))} g`} />
           <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Where</p>
-          <Line label="In hand" value={`${s.hand.length} · ${amount(s.sum(s.hand, 'current_principal'))}`} /><Line label="At bank" value={`${s.bank.length} · ${amount(s.sum(s.bank, 'current_principal'))}`} />
+          <Line label="In hand" value={`${s.hand.length} · ${amount(s.sum(s.hand, 'principal'))}`} /><Line label="At bank" value={`${s.bank.length} · ${amount(s.sum(s.bank, 'principal'))}`} />
           <Line bold label="Total" value={amount(s.total)} /><Line minus label="Part paid" value={amount(s.part)} /><Line bold label="Outstanding" value={amount(s.out)} />
         </div>
       </div>
