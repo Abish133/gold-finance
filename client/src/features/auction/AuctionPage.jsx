@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, Printer, List, FileDown, CheckSquare, Eraser, MessageCircle, FileSpreadsheet, LogOut } from 'lucide-react';
@@ -46,15 +46,22 @@ export default function AuctionPage() {
     setAuction((a) => ({ ...a, date: dayjs(bd).add(15, 'day').format('YYYY-MM-DD') }));
   }, [bd]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const show = async () => {
+  const show = async (quiet) => {
     setBusy(true);
     try {
       const r = await api.get('/auction/list', { asOn: bd, older_than: f.older, from: f.from, to: f.to, loan_on: f.metal, include: f.include });
       const list = r.data.map((x) => ({ ...x, age: `${x.age_months} m` }));
       setRows(list); setSel(list.map((x) => x.id)); setShown(true);
-      if (!list.length) toast.info(`No unreleased loans were pledged between ${date(f.from)} and ${date(f.to)}. Change the dates and press Show (F5).`);
+      if (!list.length && quiet !== true) toast.info(`No unreleased loans were pledged between ${date(f.from)} and ${date(f.to)}. Change the dates and press Show (F5).`);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
+  // desktop: the list is shown as soon as the screen opens (dates from the billing date)
+  const autoShown = useRef(false);
+  useEffect(() => {
+    if (!bd || !f.from || autoShown.current) return;
+    autoShown.current = true;
+    show(true);
+  }, [bd, f.from]); // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = rows.filter((r) => sel.includes(r.id));
   const by = (m) => rows.filter((r) => r.loan_on === m);
   const sum = (list, k) => list.reduce((s, r) => s + n(r[k]), 0);
@@ -69,7 +76,7 @@ export default function AuctionPage() {
     try {
       if (!isAllBranches && can('auction', 'add')) await api.post('/auction/notices', { loan_ids: sel, notice_type: type, sent_via: via, notice_date: today(), postage: via === 'REGISTERED' ? settings?.NOTICE_POSTAGE : 0 });
       qc.invalidateQueries({ queryKey: ['/auction/list'] });
-      printElement(<NoticeLetters loans={chosen} company={company || {}} type={type} auctionDate={auction.date} auctionTime={dayjs(`2000-01-01 ${auction.time}`).format('hh:mm A')} format={via === 'REGISTERED' ? 'REGISTERED' : 'LETTER'} />, { title: 'Notices' });
+      printElement(<NoticeLetters loans={chosen} company={company || {}} type={type} auctionDate={auction.date} auctionTime={dayjs(`2000-01-01 ${auction.time}`).format('hh:mm A')} format={via === 'REGISTERED' ? 'MYBOOK_REGISTERED' : 'MYBOOK'} />, { title: 'Notices' });
     } catch (e) { toast.error(e.message); }
   };
   const auctionList = () => need() && printTable({ title: `Auction List · auction on ${date(auction.date)} ${dayjs(`2000-01-01 ${auction.time}`).format('hh:mm A')}`, company, rows: chosen, columns: cols,
@@ -118,7 +125,7 @@ export default function AuctionPage() {
         <div><p className="label">Older than</p>{seg('older', [[6, '6 months'], [9, '9 months'], [12, '12 months']])}</div>
         <div><p className="label">Metal</p>{seg('metal', [['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']])}</div>
         <div><p className="label">Include</p>{seg('include', [['bank', 'In shop + Bank'], ['', 'In shop only']])}</div>
-        <Button className="ml-auto" size="lg" variant="outline" icon={Search} loading={busy} onClick={show}>Show (F5)</Button>
+        <Button className="ml-auto" size="lg" variant="outline" icon={Search} loading={busy} onClick={() => show()}>Show (F5)</Button>
       </div>
       <div className="grid items-start gap-3 xl:grid-cols-[1fr_380px]">
         <div className="space-y-3">

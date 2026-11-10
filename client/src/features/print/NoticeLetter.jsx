@@ -1,8 +1,9 @@
 import clsx from 'clsx';
-import { money, date, weight } from '@/lib/format';
+import { money, date, weight, amount, today } from '@/lib/format';
 
 const TYPE = { REMINDER: 'Reminder', FIRST: 'First Notice', SECOND: 'Second Notice', FINAL: 'Final Notice before Auction', AUCTION: 'Auction Intimation' };
 export const NOTICE_FORMATS = [
+  { value: 'MYBOOK', label: 'Desktop notice (one per customer)' },
   { value: 'LETTER', label: 'A4 letter' },
   { value: 'REGISTERED', label: 'Registered post (letter + ack card)' },
   { value: 'INLAND', label: 'Inland letter (fold & post)' },
@@ -40,8 +41,60 @@ function Head({ company, small }) {
   );
 }
 
-/** Overdue / auction notice letters, one per page: A4 letter, registered post with ack card, or inland letter. */
+/* Desktop notice (MyBook): one letter per customer with all the customer's loans in a table.
+   FIRST = PRE-AUCTION NOTICE (ref FN/..), REGISTERED = AUCTION NOTICE (REGISTERED POST) with the auction date (ref RN/..). */
+const oneLine = (l) => {
+  const who = [`${l.customer_title || ''} ${l.customer_name}`.trim(), l.relation_name && `${l.relation_type || ''} ${l.relation_name}`.trim()].filter(Boolean).join(' ');
+  const street = [l.door_no && `Door No ${l.door_no}`, l.street, l.customer_area, l.city].filter(Boolean).join(', ');
+  return [[who, street || l.address].filter(Boolean).join(', '), l.pincode].filter(Boolean).join(' - ');
+};
+function DeskNotice({ group, company, registered, auctionDate, auctionTime }) {
+  const l = group[0];
+  const total = group.reduce((t, x) => t + Number(x.loan_amount ?? x.principal ?? 0), 0);
+  const wt = group.reduce((t, x) => t + Number(x.net_wt || 0), 0);
+  const dear = `${l.customer_title || ''} ${l.customer_name}`.trim();
+  const when = auctionDate ? `${date(auctionDate)}${auctionTime ? ` at ${auctionTime}` : ''}` : '';
+  const place = [company.name, company.address1].filter(Boolean).join(', ');
+  return (
+    <div className="page-break pb-6 text-[13px] leading-relaxed text-black">
+      <div className="border-b-4 border-double border-[#1f3a5f] pb-2 text-center">
+        <p className="text-2xl font-bold text-[#1f3a5f]">{company.name}</p>
+        <p>{companyLine(company)}</p>
+        {(company.phone || company.mobile) && <p>Ph: {company.mobile || company.phone}</p>}
+      </div>
+      <div className="mt-3 flex justify-between"><span>Ref No: {registered ? 'RN' : 'FN'}/{l.bill_no}</span><span>Date: {date(today())}</span></div>
+      <div className="mt-2 flex gap-6"><span className="font-bold">To:</span><span>{oneLine(l)}</span></div>
+      <p className="mt-3 text-center text-lg font-bold text-[#1f3a5f]">{registered ? 'AUCTION NOTICE (REGISTERED POST)' : 'PRE-AUCTION NOTICE'}</p>
+      <p className="mt-2 font-bold">Dear {dear},</p>
+      {registered ? (<>
+        <p>In spite of our earlier notice, you have not redeemed the articles pledged by you, listed below. Notice is hereby given that these articles will be sold by public auction{when ? ` on ${when}` : ''} at {place}.</p>
+        <p className="mt-1">You may redeem the articles before the auction by paying the principal, interest and charges. Any surplus after the sale will be paid to you; any shortfall will be recovered from you.</p>
+      </>) : (<>
+        <p>The loan period of the articles pledged by you with us, listed below, has expired and interest is pending. You are requested to pay the interest and either renew or redeem your articles within 15 days of receiving this notice.</p>
+        <p className="mt-1">If you fail to do so, we shall be compelled to sell the pledged articles by auction, as per the terms of the pledge and the law in force, without any further notice. Any shortfall after the sale will be recovered from you.</p>
+      </>)}
+      <div className="mt-2 flex gap-10 border-y border-black py-2"><span className="font-bold">Note :</span><span>If you find it difficult to redeem the articles mentioned in this notice, please come and meet us in person.</span></div>
+      <table className="mt-3 w-full">
+        <thead className="bg-[#d5dccf]"><tr><th className="px-2 py-1 text-left">Loan No</th><th className="px-2 text-left">Pledge Date</th><th className="px-2 text-right">Loan Amount</th><th className="px-2 text-left">Items</th><th className="px-2 text-right">Net Wt (g)</th></tr></thead>
+        <tbody>{group.map((x) => <tr key={x.id} className="border-b border-ink-200"><td className="px-2 py-1">{x.bill_no}</td><td className="px-2">{date(x.loan_date)}</td><td className="px-2 text-right">{amount(x.loan_amount ?? x.principal)}</td><td className="px-2 uppercase">{x.items_text || x.item_summary}</td><td className="px-2 text-right">{weight(x.net_wt)}</td></tr>)}</tbody>
+        <tfoot className="bg-ink-50 font-bold"><tr><td className="px-2 py-1" colSpan={2}>Total</td><td className="px-2 text-right">{amount(total)}</td><td /><td className="px-2 text-right">{weight(wt)}</td></tr></tfoot>
+      </table>
+      <p className="mt-3 font-bold">Please bring the Pawn Ticket with you</p>
+      {registered
+        ? (when && <p className="mt-3 border-2 border-[#c9a227] bg-[#faf3e3] py-2 text-center text-base font-bold">Auction on {when}</p>)
+        : <p className="mt-2 text-right font-bold">Note: Last Final Notice</p>}
+      <p className="mt-6 text-right font-bold">For {company.name}</p>
+      <p className="mt-10 ml-auto w-[80mm] border-t border-black pt-1 text-right">Authorised Signatory</p>
+    </div>
+  );
+}
+
+/** Overdue / auction notice letters: desktop notice (one per customer), A4 letter, registered post with ack card, or inland letter. */
 export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, auctionTime, format = 'LETTER' }) {
+  if (format === 'MYBOOK' || format === 'MYBOOK_REGISTERED') {
+    const groups = Object.values(loans.reduce((a, l) => { (a[l.customer_id || l.customer_name] ||= []).push(l); return a; }, {}));
+    return <div className="mx-auto w-[190mm]">{groups.map((g) => <DeskNotice key={g[0].id} group={g} company={company} registered={format === 'MYBOOK_REGISTERED'} auctionDate={auctionDate} auctionTime={auctionTime} />)}</div>;
+  }
   return (
     <div className="mx-auto w-[190mm] text-[13px] text-black">
       {loans.map((l) => (

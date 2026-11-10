@@ -30,6 +30,9 @@ router.get('/list', permit('auction', 'view'), async (req, res) => {
   const minOverdue = req.query.days != null ? num(req.query.days) : num(settings.AUCTION_AFTER_DAYS_OVERDUE, 30);
   const loans = await query(`SELECT l.*, TIMESTAMPDIFF(MONTH, l.loan_date, :d) age_months, c.name customer_name, c.phone customer_phone, c.title customer_title, c.relation_type, c.relation_name,
       CONCAT_WS(', ', c.door_no, c.street, c.area, c.city, c.pincode) address, DATEDIFF(:d, l.due_date) overdue_days,
+      c.door_no, c.street, c.area customer_area, c.city, c.pincode, l.customer_id,
+      l.principal + COALESCE((SELECT SUM(tt.principal_amount) FROM loan_transactions tt WHERE tt.loan_id = l.id AND tt.txn_type = 'TOPUP' AND tt.is_void = 0), 0) loan_amount,
+      (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text,
       (SELECT COUNT(*) FROM auction_notices n WHERE n.loan_id = l.id) notices,
       (SELECT MAX(notice_date) FROM auction_notices n WHERE n.loan_id = l.id) last_notice,
       (SELECT COALESCE(SUM(postage),0) FROM auction_notices n WHERE n.loan_id = l.id) postage

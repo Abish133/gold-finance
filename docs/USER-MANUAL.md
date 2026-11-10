@@ -316,9 +316,12 @@ Due date is 12 months from the loan date.
 | Discount | Above ₹500 (System Control) needs a manager's password |
 | **Total to receive** | What the customer pays now |
 
-3. **Customer unable to release** - tick it if the customer only signs (amount collected later). **Released to another person** - name and ID of the person who takes the jewels.
-4. **Release Loan (F2)** → **Receive Payment**: Cash / UPI / Card / Cheque - press **Add (Enter)** for each part until Balance is 0 → **Confirm Release (F2)**.
-5. The release receipt prints. The loan becomes **Released** and its items leave the stock.
+3. **Customer unable to release** - tick it if the customer only signs (amount collected later).
+4. **Release Loan (F2)** → **Receive Payment · Loan 6 / Book 103**: Cash / UPI / Card / Cheque - press **Add (Enter)** for each part until Balance is 0.
+5. **Released by (F6)**: *Customer (self)* or *Other person* - type the name, mobile and relation / ID of the person who takes the jewels.
+6. **Confirm Release (F2)**. The **Release Receipt** prints (No, Loan No · Bill Book, customer, items in capitals with weight, loan amount, interest, less advance, total received in words, paid by). The loan becomes **Released** and its items leave the stock.
+
+*Running* shows months and days (e.g. 22 m 10 d); *Days interest* counts the actual days from the loan date.
 
 ## Example
 Loan of ₹50,000 at 1.5% p.m. compound, advance ₹750, released after 3 months 10 days:
@@ -515,11 +518,11 @@ Open a customer → **Ledger** - all loans, interest paid, due today. **WhatsApp
 **Auction → Auction List & Notices** - loans not released for a long time; print notices and the auction list.
 
 1. Dates start from the billing date: **Pledged from** the oldest open loan **to** 12 months before the billing date. **Older than** 6 / 9 / 12 months moves the "to" date.
-2. Metal, Include (in shop + bank / in shop only) → **Show (F5)**.
+2. The list shows as soon as the screen opens. Change Metal, Include (in shop + bank / in shop only) or the dates → **Show (F5)**.
 3. All loans are ticked - untick what you do not want (Space / click, Ctrl+A, Ctrl+D). "3 LOANS" means the customer has several loans in the list.
 4. Notices to customers:
-   - **First Notice (F6)** - letters for the ticked loans.
-   - **Registered Notice (F7)** - set **Auction date and time** (default 15 days after the billing date), letters + postage.
+   - **First Notice (F6)** - a **Pre-Auction Notice** for each customer (Ref No FN/loan no): all the customer's ticked loans in one table (loan no, pledge date, loan amount, items, net weight, total), pay within 15 days, *Note: Last Final Notice*.
+   - **Registered Notice (F7)** - set **Auction date and time** (default 15 days after the billing date). An **Auction Notice (Registered Post)** for each customer (Ref No RN/loan no) with the auction date, time and place in a box; postage is added to the loan.
 5. Lists: **Auction List (F9)**, **Cert. of Post List (F10)**, **Regd. Post List (F11)**. *Post split amount* breaks the post list into parts.
 6. **WhatsApp / SMS (Ctrl+W)** - queues a reminder SMS for the ticked loans (and opens WhatsApp for one loan).
 

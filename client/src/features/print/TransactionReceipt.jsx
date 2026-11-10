@@ -82,7 +82,7 @@ function ReleaseReceipt({ data }) {
       <p>Customer: {loan.customer_title ? `${loan.customer_title} ` : ''}{loan.customer_name}   (A/c {loan.customer_no})</p>
       <p className="text-[13px] text-ink-600">Loan date {d(loan.loan_date)}  ·  Interest {n(loan.interest_rate).toFixed(2)}% {loan.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}</p>
       <div className="my-2 border-t border-ink-400" />
-      {items.map((i) => <Row key={i.id} k={`${i.item_name}  x${i.pcs}`} v={`${weight(i.net_wt)} g`} />)}
+      {items.map((i) => <Row key={i.id} k={`${String(i.item_name || '').toUpperCase()}  x${i.pcs}`} v={`${weight(i.net_wt)} g`} />)}
       <div className="my-2 border-t border-ink-400" />
       <Row k="Loan amount" v={amount(Math.abs(n(txn.principal_amount)))} />
       <Row k={`Interest${months ? ` (${months} months)` : ''}`} v={amount(interestTotal)} />

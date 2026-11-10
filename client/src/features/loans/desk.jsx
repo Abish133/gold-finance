@@ -185,11 +185,12 @@ export { CustomerLedgerDrawer } from '@/features/customers/CustomerLedger';
 export { PhotoBox };
 
 /** Customer fields from a loan record. */
-export const loanCustomer = (l) => (l ? { ...l, id: l.customer_id, name: l.customer_name, phone: l.customer_phone, photo: l.customer_photo || l.customer_photo_master, status: l.customer_status || 'ACTIVE' } : null);
+export const loanCustomer = (l) => (l ? { ...l, id: l.customer_id, title: l.customer_title, name: l.customer_name, phone: l.customer_phone, photo: l.customer_photo || l.customer_photo_master, status: l.customer_status || 'ACTIVE' } : null);
 
 export function CustomerCard({ customer, rows = [], extra, onLedger }) {
   const c = customer;
-  const addr = c && [c.door_no, c.street, c.area, c.city, c.pincode].filter(Boolean).join(', ');
+  // desktop: 5-43, Main Road, Kappiyarai, Nagercoil - 629157
+  const addr = c && [[c.door_no, c.street, c.area, c.city].filter(Boolean).join(', '), c.pincode].filter(Boolean).join(' - ');
   return (
     <div>
       <div className="flex gap-3">
@@ -199,7 +200,7 @@ export function CustomerCard({ customer, rows = [], extra, onLedger }) {
             <p className="text-base leading-snug font-bold text-navy-900 dark:text-white">{c.title ? `${c.title} ` : ''}{c.name || c.customer_name}{c.relation_name ? ` ${c.relation_type || ''} ${c.relation_name}` : ''}</p>
             {addr && <p className="mt-1 text-ink-600">{addr}</p>}
             <p className="mt-2 font-bold">{c.phone || c.customer_phone}</p>
-            {c.id_proof_type && <p className="text-xs text-ink-500">{c.id_proof_type}</p>}
+            {c.id_proof_type && <p className="text-xs text-ink-500">{c.id_proof_type}{c.id_proof_no ? `  ${c.id_proof_no}` : ''}</p>}
           </div>
         )}
       </div>
@@ -223,7 +224,7 @@ const PAY_MODES = [['CASH', '1 · Cash', 'notes'], ['UPI', '2 · Online', 'UPI /
  * Payment step shown after the main action (desktop: Pay Customer / Receive dialog).
  * Lines are added per mode until the balance is 0, then Confirm (F2).
  */
-export function PayDrawer({ open, onClose, title, subtitle, total, direction = 'pay', onConfirm, loading }) {
+export function PayDrawer({ open, onClose, title, subtitle, total, direction = 'pay', onConfirm, loading, confirmLabel = 'Confirm (F2)', saveWord = 'save', onF6, children }) {
   const { data: lk } = useLookups();
   const banks = (lk?.banks || []).map((b) => ({ value: b.id, label: `${b.bank_name}${b.account_no ? ` · ${String(b.account_no).slice(-4)}` : ''}` }));
   const [mode, setMode] = useState('CASH');
@@ -246,16 +247,17 @@ export function PayDrawer({ open, onClose, title, subtitle, total, direction = '
     amtRef.current?.focus();
   };
   const confirm = () => {
-    if (Math.abs(balance) > 0.009) return toast.error('Balance must be 0 to save');
+    if (Math.abs(balance) > 0.009) return toast.error(`Balance must be 0 to ${saveWord}`);
     onConfirm(lines);
   };
   const onKey = (e) => {
     if (e.key === 'F2') { e.preventDefault(); confirm(); }
+    if (e.key === 'F6' && onF6) { e.preventDefault(); onF6(); }
     if (e.ctrlKey && ['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); setMode(PAY_MODES[Number(e.key) - 1][0]); }
   };
   return (
     <Drawer open={open} onClose={onClose} size="lg" icon={Wallet} title={title} subtitle={subtitle}
-      footer={<><Button variant="outline" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" loading={loading} disabled={Math.abs(balance) > 0.009} onClick={confirm}>Confirm (F2)</Button></>}>
+      footer={<><Button variant="outline" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" loading={loading} disabled={Math.abs(balance) > 0.009} onClick={confirm}>{confirmLabel}</Button></>}>
       <div className="space-y-4" onKeyDown={onKey}>
         <div className="flex items-end justify-between rounded-md bg-ink-50 px-4 py-3 dark:bg-ink-800">
           <span className="text-xs font-bold text-ink-600 uppercase">{direction === 'pay' ? 'Amount to pay' : 'Amount to receive'}</span>
@@ -289,11 +291,12 @@ export function PayDrawer({ open, onClose, title, subtitle, total, direction = '
           ))}
         </div>
         <div className="grid grid-cols-3 divide-x divide-ink-200 rounded-md border border-ink-200 dark:divide-ink-700 dark:border-ink-700">
-          {[['Total due', money(total), ''], ['Paid', money(paid), 'text-emerald-700'], ['Balance', money(balance), Math.abs(balance) < 0.01 ? 'text-emerald-700' : 'text-rose-600']].map(([k, v, cls]) => (
+          {[['Total due', money(total), ''], [direction === 'pay' ? 'Paid' : 'Received', money(paid), 'text-emerald-700'], ['Balance', money(balance), Math.abs(balance) < 0.01 ? 'text-emerald-700' : 'text-rose-600']].map(([k, v, cls]) => (
             <div key={k} className="px-3 py-2"><p className="label">{k}</p><p className={clsx('num flex items-center gap-1 text-lg font-bold', cls)}>{v}{k === 'Balance' && Math.abs(balance) < 0.01 && <Check className="size-5" />}</p></div>
           ))}
         </div>
-        <p className="text-xs text-ink-500">Balance must be 0 to save.</p>
+        {children}
+        <p className="text-xs text-ink-500">Balance must be 0 to {saveWord}.</p>
       </div>
     </Drawer>
   );
