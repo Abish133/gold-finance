@@ -1,4 +1,7 @@
 import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
+import dayjs from 'dayjs';
+import { PawnTicket } from './PawnTicket';
 import { LABELS } from './labels';
 import { money, date, weight, n } from '@/lib/format';
 
@@ -133,6 +136,7 @@ function Declarations({ L, d }) {
 }
 
 export function LoanReceipt({ data }) {
+  if (data.settings?.LOAN_RECEIPT_LAYOUT === 'MYBOOK') return <PawnTicket data={data} />;
   const L = LABELS[data.settings.RECEIPT_LANG === 'en' ? 'en' : 'ta'];
   const { loan, company, settings, copy } = data;
   const terms = String(settings.RECEIPT_TERMS || '').split('\n').filter(Boolean);
@@ -206,5 +210,13 @@ export const buildLoanPrintData = async ({ full, company, settings, schemes, cop
   const qr = await QRCode.toDataURL(`LOAN:${full.loan.barcode || full.loan.bill_no}`, { margin: 0, width: 160 });
   const metalSchemes = (schemes || []).filter((s) => s.metal_id === full.loan.metal_id && s.is_active);
   const ordered = metalSchemes.sort((a, b) => n(a.ltv_percent) - n(b.ltv_percent));
-  return { loan: full.loan, items: full.items, company: company || {}, settings: settings || {}, schemes: ordered, qr, copy };
+  // pawn ticket barcode: loan no (8 digits) + month and year of the loan, like the desktop
+  let barcode = null;
+  try {
+    const text = full.loan.barcode || `${String(full.loan.loan_no || full.loan.bill_no).replace(/\D/g, '').padStart(8, '0')}${dayjs(full.loan.loan_date).format('MMYYYY')}`;
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, text, { format: 'CODE128', height: 40, width: 1.6, displayValue: false, margin: 0 });
+    barcode = { src: canvas.toDataURL('image/png'), text };
+  } catch { /* no barcode */ }
+  return { loan: full.loan, items: full.items, company: company || {}, settings: settings || {}, schemes: ordered, qr, copy, barcode };
 };

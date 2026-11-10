@@ -8,8 +8,10 @@ const router = Router();
 
 router.get('/', permit('dashboard', 'view'), async (req, res) => {
   const b = req.branchIds;
-  const today = dayjs().format('YYYY-MM-DD');
-  const monthStart = dayjs().startOf('month').format('YYYY-MM-DD');
+  // desktop home works on the billing date (moves on at Day End); never ahead of today
+  const asked = req.query.date && dayjs(req.query.date).isValid() && !dayjs(req.query.date).isAfter(dayjs(), 'day') ? dayjs(req.query.date) : dayjs();
+  const today = asked.format('YYYY-MM-DD');
+  const monthStart = asked.startOf('month').format('YYYY-MM-DD');
   const sixMonths = dayjs().subtract(5, 'month').startOf('month').format('YYYY-MM-DD');
 
   const [portfolio, todaySum, monthSum, overdue, trend, metalMix, recent, dueSoon, branchWise, rates] = await Promise.all([

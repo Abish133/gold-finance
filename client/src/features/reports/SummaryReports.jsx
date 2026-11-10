@@ -42,7 +42,7 @@ export function LoanReleaseSummaryPage() {
   const sum = (k) => rows.reduce((s, r) => s + n(r[k]), 0);
   const metal = (m, k) => rows.reduce((s, r) => s + n(r.by_metal?.[m]?.[k]), 0);
   const cols = [{ key: 'label', label: view === 'month' ? 'Month' : 'Day' }, { key: 'given', label: 'Loans Given', type: 'money' }, { key: 'given_count', label: 'No.', type: 'number' }, { key: 'released', label: 'Released', type: 'money' }, { key: 'released_count', label: 'No.', type: 'number' },
-    { key: 'auctioned', label: 'Auctioned', type: 'money' }, { key: 'auctioned_count', label: 'No.', type: 'number' }, { key: 'part_paid', label: 'Part Paid', type: 'money' }, { key: 'balance', label: 'Balance', type: 'money' }];
+    { key: 'auctioned', label: 'Auctioned', type: 'money' }, { key: 'auctioned_count', label: 'No.', type: 'number' }, { key: 'part_paid', label: 'Part Paid', type: 'money' }, { key: 'balance', label: 'Balance', type: 'money' }, { key: 'outstanding', label: 'Outstanding', type: 'money' }];
   const preview = () => printTable({ title: `Loan & Release Summary · ${view === 'month' ? year?.name : dayjs(`${month}-01`).format('MMMM YYYY')}`, company, columns: cols, rows, totals: { given: sum('given'), released: sum('released'), auctioned: sum('auctioned'), part_paid: sum('part_paid') } });
   useKeys({ f5: () => refetch(), f6: () => refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': () => exportCsv('loan-release-summary', cols, rows), backspace: () => setView('month'), escape: () => navigate('/') }, [rows, view]);
   const months = year ? Array.from({ length: 12 }, (_, i) => dayjs(year.start_date).add(i, 'month')).map((d) => ({ value: d.format('YYYY-MM'), label: d.format('MMMM YYYY') })) : [];
@@ -60,23 +60,23 @@ export function LoanReleaseSummaryPage() {
         <Tile label="Loans given" value={amount(sum('given'))} hint={`${sum('given_count')} loans`} cls="border-t-amber-600" />
         <Tile label="Released" value={amount(sum('released'))} hint={`${sum('released_count')} loans`} cls="border-t-emerald-700" />
         <Tile label="Auctioned" value={amount(sum('auctioned'))} hint={`${sum('auctioned_count')} loans`} cls="border-t-rose-600" />
-        <Tile label="Closing balance" value={amount(data?.closing || 0)} hint={`outstanding now ${amount(data?.outstanding || 0)}`} dark />
+        <Tile label="Closing balance" value={amount(data?.closing || 0)} hint={params && `on ${date(params.to)} · outstanding ${amount(data?.outstanding || 0)}`} dark />
       </div>
       <div className="grid items-stretch gap-3 xl:grid-cols-[1fr_320px]">
         <div className="card min-h-[calc(100vh-27rem)] overflow-auto">
           <table className="w-full text-sm">
-            <thead className="navy-gradient sticky top-0 text-white"><tr><th className="px-2 py-2 text-left">{view === 'month' ? 'Month' : 'Day'}</th><th className="px-2 text-right">Loans Given · No.</th><th className="px-2 text-right">Released · No.</th><th className="px-2 text-right">Auctioned · No.</th><th className="px-2 text-right">Part Paid</th><th className="px-2 text-right">Balance</th></tr></thead>
+            <thead className="navy-gradient sticky top-0 text-white"><tr><th className="px-2 py-2 text-left">{view === 'month' ? 'Month' : 'Day'}</th><th className="px-2 text-right">Loans Given · No.</th><th className="px-2 text-right">Released · No.</th><th className="px-2 text-right">Auctioned · No.</th><th className="px-2 text-right">Part Paid</th><th className="px-2 text-right">Balance</th><th className="px-2 text-right">Outstanding</th></tr></thead>
             <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-              <tr className="bg-cream-100 text-xs font-bold dark:bg-ink-800"><td className="px-2 py-1">Opening · {params && date(params.from)}</td><td colSpan={4} /><td className="num px-2 text-right">{amount(data?.opening || 0)}</td></tr>
+              <tr className="bg-cream-100 text-xs font-bold dark:bg-ink-800"><td className="px-2 py-1">Opening · {params && date(params.from)}</td><td colSpan={4} /><td className="num px-2 text-right">{amount(data?.opening || 0)}</td><td className="num px-2 text-right">{amount(data?.openingOutstanding || 0)}</td></tr>
               {rows.map((r) => (
                 <tr key={r.key} onDoubleClick={() => { if (view === 'month') { setMonth(r.key); setView('day'); } }} className={clsx('cursor-pointer hover:bg-navy-50/60', r.given_count + r.released_count ? 'font-semibold' : 'text-ink-500')}>
                   <td className="px-2 py-1.5">{r.label}</td><td className="num px-2 text-right">{amount(r.given)} · {r.given_count}</td><td className="num px-2 text-right">{amount(r.released)} · {r.released_count}</td>
-                  <td className="num px-2 text-right">{amount(r.auctioned)} · {r.auctioned_count}</td><td className="num px-2 text-right">{amount(r.part_paid)}</td><td className="num px-2 text-right">{amount(r.balance)}</td>
+                  <td className="num px-2 text-right">{amount(r.auctioned)} · {r.auctioned_count}</td><td className="num px-2 text-right">{amount(r.part_paid)}</td><td className="num px-2 text-right font-semibold">{amount(r.balance)}</td><td className="num px-2 text-right">{amount(r.outstanding)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot className="navy-gradient text-white"><tr className="font-bold"><td className="px-2 py-2">Total · {date(params?.to)}</td><td className="num px-2 text-right">{amount(sum('given'))} · {sum('given_count')}</td><td className="num px-2 text-right">{amount(sum('released'))} · {sum('released_count')}</td>
-              <td className="num px-2 text-right">{amount(sum('auctioned'))} · {sum('auctioned_count')}</td><td className="num px-2 text-right">{amount(sum('part_paid'))}</td><td className="num px-2 text-right">{amount(data?.closing || 0)}</td></tr></tfoot>
+              <td className="num px-2 text-right">{amount(sum('auctioned'))} · {sum('auctioned_count')}</td><td className="num px-2 text-right">{amount(sum('part_paid'))}</td><td className="num px-2 text-right">{amount(data?.closing || 0)}</td><td className="num px-2 text-right">{amount(data?.outstanding || 0)}</td></tr></tfoot>
           </table>
         </div>
         <div className="card p-4 text-sm">

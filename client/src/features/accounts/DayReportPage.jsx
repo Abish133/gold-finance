@@ -77,7 +77,7 @@ export default function DayReportPage({ mode = 'report' }) {
               <tbody className="divide-y divide-ink-200">
                 <tr className="bg-cream-100 font-semibold"><td /><td className="px-3 py-1.5">Opening Balance {data?.lastClosed ? `(after Day End ${dayjs(data.lastClosed).format('DD/MM/YYYY')})` : '(no earlier Day End found)'}</td><td className="num px-3 text-right">{amount(data?.opening)}</td><td /></tr>
                 {(data?.accounts || []).map((a) => (
-                  <tr key={a.id}><td className="px-3 py-1.5">{a.id}</td><td className="px-3">{a.name}</td><td className="num px-3 text-right">{amount(a.jama)}</td><td className="num px-3 text-right">{amount(a.nave)}</td></tr>
+                  <tr key={`${a.id}-${a.name}`} className={a.muted ? 'text-ink-400' : ''}><td className="px-3 py-1.5">{a.id}</td><td className="px-3">{a.name}</td><td className="num px-3 text-right">{amount(a.jama)}</td><td className="num px-3 text-right">{amount(a.nave)}</td></tr>
                 ))}
                 {!data?.accounts?.length && <tr><td colSpan={4} className="py-10 text-center text-ink-400">No cash entries in this period</td></tr>}
               </tbody>
@@ -97,7 +97,7 @@ export default function DayReportPage({ mode = 'report' }) {
         </div>
         <div className="card space-y-3 p-4">
           <p className="text-xs font-bold text-ink-600 uppercase">Cash tally</p>
-          <Line label="Pote Baki (cash)" value={amount(t?.cashInDrawer)} />
+          <Line label="Pote Baki (cash)" value={amount(t?.poteBaki ?? t?.cashInDrawer)} />
           <Line label="− Online / Card / Cheque received" value={amount(t?.onlineReceived)} tone="text-ink-500" />
           <Line label="+ Online / Card / Cheque paid" value={amount(t?.onlinePaid)} tone="text-ink-500" />
           <Line bold label="Cash should be in drawer" value={amount(t?.cashInDrawer)} />

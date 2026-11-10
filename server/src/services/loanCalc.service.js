@@ -28,7 +28,7 @@ export const withCalc = async (loans, asOn, branchId) => {
       id: l.id, bill_no: l.bill_no, manual_bill_no: l.manual_bill_no, loan_date: l.loan_date, close_date: l.close_date, status: l.status, customer_name: l.customer_name, customer_phone: l.customer_phone,
       loan_on: l.loan_on, item_summary: l.item_summary, item_photo: l.item_photo,
       total_items: l.total_items, net_wt: l.net_wt, gross_wt: l.gross_wt, stone_wt: l.stone_wt, principal: l.principal, interest_rate: l.interest_rate, rate_type: l.rate_type,
-      interest_type: l.interest_type, bank: !!l.bank_pledge_id, months: round2(c.elapsedDays / 30), days: c.elapsedDays, part_paid: partPaid, loan_due: c.principalOutstanding,
+      interest_type: l.interest_type, bank: !!l.bank_pledge_id, months: c.mode === 'MYBOOK' ? c.months : round2(c.elapsedDays / 30), days: c.elapsedDays, part_paid: partPaid, loan_due: c.principalOutstanding,
       total_interest: c.totalInterest, advance: num(l.advance_interest), paid_earlier: round2(c.interestPaid - num(l.advance_interest)),
       interest_due: open ? round2(c.interestDue + c.penalDue) : 0, total_due: open ? c.totalPayable : 0,
       interest_paid: c.interestPaid, months_paid: c.monthsPaid, months_due: c.monthsDue,

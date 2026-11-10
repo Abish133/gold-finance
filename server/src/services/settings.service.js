@@ -54,6 +54,7 @@ export const DEFAULTS = {
   NOTICE_POSTAGE: '50',
   // print
   RECEIPT_LANG: 'ta',
+  LOAN_RECEIPT_LAYOUT: 'PDF',              // PDF = branch bill (default) | MYBOOK = desktop pawn ticket
   RECEIPT_COPIES: 'customer,office',
   PRINT_TERMS_PAGE: '1',
   PRINT_ACK_CARD: '1',

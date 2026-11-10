@@ -33,11 +33,12 @@ const ACTIONS = [
 ];
 
 export default function DashboardPage() {
-  const { data, isLoading } = useFetch('/dashboard', undefined, { refetchInterval: 120_000 });
+
   const { data: status } = useFetch('/dashboard/status');
   const { data: alerts = [] } = useFetch('/dashboard/alerts');
   const { data: settings } = useSettings();
   const { data: billing } = useFetch('/desk/billing-date');
+  const { data, isLoading } = useFetch('/dashboard', billing?.billingDate ? { date: billing.billingDate } : undefined, { refetchInterval: 120_000 });
   const showCharts = settings?.HOME_SHOW_CHARTS !== '0';
   const showDue = settings?.HOME_SHOW_DUE_SOON !== '0';
   const { user, can, isAllBranches, currentBranch } = useAuth();

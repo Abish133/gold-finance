@@ -258,7 +258,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   };
   const trySave = () => {
     if (!canSave) return;
-    if (!isOld && principal > eligible && settings?.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1') return toast.error(`Loan amount is above the eligible amount ${money(eligible)}`);
+    if (!isOld && principal > eligible && settings?.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && scheme?.calc_mode !== 'MYBOOK') return toast.error(`Loan amount is above the eligible amount ${money(eligible)}`);
     if (ltvWarn && ltv > ltvWarn) setLtvAsk(true); else proceed();
   };
   const printEstimate = () => printElement(<LoanEstimate company={company} customer={customer} scheme={scheme} items={rows} rates={rates}
@@ -275,7 +275,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
     <Panel title="Loan">
       <div className="space-y-3">
         <Field label="Scheme"><Select value={schemeId} onChange={(e) => setSchemeId(e.target.value)} options={schemes.map((s) => ({ value: s.id, label: `${s.code} · ${s.name} (${n(s.ltv_percent)}%)` }))} /></Field>
-        <Field label="Loan amount (₹)" error={principal > eligible && settings?.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' ? `Above eligible ${money(eligible)}` : null}>
+        <Field label="Loan amount (₹)" error={principal > eligible && settings?.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && scheme?.calc_mode !== 'MYBOOK' ? `Above eligible ${money(eligible)}` : null}>
           <div className="flex gap-1"><Input type="number" className="h-12 text-xl font-bold" value={f.principal} onChange={(e) => set({ principal: e.target.value })} />
             <Button variant="soft" className="h-12" onClick={() => set({ principal: String(eligible) })} title="Use eligible amount">Max</Button></div>
         </Field>
@@ -374,7 +374,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
       <CustomerFormDrawer open={newCust} onClose={() => setNewCust(false)} onSaved={(c) => setCustomer(c)} />
       <MarkOldDrawer open={markOld} onClose={() => setMarkOld(false)} />
       <ConfirmDrawer open={ltvAsk} onClose={() => setLtvAsk(false)} tone="primary" confirmText="Yes, save loan" loading={save.isPending}
-        title={`Loan to value is ${ltv.toFixed(1)}%`} message={`This is above the warning limit of ${ltvWarn}% set in Settings. The gold value leaves a small margin. Save this loan anyway?`}
+        title={`Loan is ${ltv.toFixed(1)}% of item value (limit ${ltvWarn}%)`} message="Continue?"
         onConfirm={() => { setLtvAsk(false); proceed(); }} />
       {printerUi}
       <BillBookDrawer open={step === 'book'} first={!next.data?.bill_book_next} initial={next.data?.bill_book_next} onClose={() => setStep(null)}

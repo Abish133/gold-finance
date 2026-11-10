@@ -89,7 +89,7 @@ export function PartPaymentReportPage() {
         { label: 'Cash / online', value: amount(sum(rows, 'total_amount') - sum(rows, 'online_amount')), hint: `cash · online ${amount(sum(rows, 'online_amount'))}`, cls: 'border-t-ink-400' }]}
       columns={[{ key: 'txn_date', label: 'Paid On', type: 'date' }, { key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Pledged', type: 'date' }, cust, metal,
         { key: 'principal', label: 'Loan Amt', type: 'money' }, { key: 'type', label: 'Type' }, { key: 'months_paid', label: 'Months', type: 'number' },
-        { key: 'total_amount', label: 'Paid', type: 'money', total: true }, { key: 'paid_by', label: 'Paid By' }, { key: 'current_principal', label: 'Loan Now', type: 'money' }]}
+        { key: 'total_amount', label: 'Paid', type: 'money', total: true }, { key: 'paid_by', label: 'Paid By' }, { key: 'status', label: 'Loan Now', render: (x) => <span className={clsx('rounded px-2 py-0.5 text-[11px] font-bold', STATUS[x.status === 'CLOSED' ? 'RELEASED' : x.status === 'AUCTIONED' ? 'AUCTION' : x.status]?.[1])}>{x.status === 'CLOSED' ? 'Released' : x.status === 'OPEN' ? 'Open' : x.status}</span>, print: (x) => (x.status === 'CLOSED' ? 'Released' : x.status) }]}
       side={(<>
         <p className="text-xs font-bold text-amber-700 uppercase">{sel ? `Loan ${sel.bill_no} · ${sel.customer_name}` : 'Select a payment'}</p>
         <SideLine k="Pledged" v={sel && date(sel.loan_date)} /><SideLine k="Items" v={sel?.item_summary} /><SideLine k="Loan amount" v={sel && amount(sel.principal)} />

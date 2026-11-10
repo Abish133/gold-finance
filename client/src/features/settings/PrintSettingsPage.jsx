@@ -9,6 +9,7 @@ export default function PrintSettingsPage() {
       <SettingsForm sections={[
         { title: 'Loan bill', fields: [
           { key: 'RECEIPT_LANG', label: 'Bill language', type: 'select', options: [{ value: 'ta', label: 'Tamil' }, { value: 'en', label: 'English' }] },
+          { key: 'LOAN_RECEIPT_LAYOUT', label: 'Loan bill layout', type: 'select', options: [{ value: 'PDF', label: 'Branch bill (A4, slab table + promissory note)' }, { value: 'MYBOOK', label: 'MyBook pawn ticket (customer + office copy)' }] },
           { key: 'PRINT_PROMISSORY_NOTE', label: 'Print demand promissory note', type: 'bool' },
           { key: 'PRINT_TERMS_PAGE', label: 'Print terms & conditions page', type: 'bool' },
           { key: 'PRINT_ACK_CARD', label: 'Print acknowledge card (customer copy)', type: 'bool' },

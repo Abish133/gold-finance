@@ -203,7 +203,7 @@ export const createLoan = async (req, body, entryType = 'NEW') => {
 
   const principal = round2(body.principal);
   if (principal <= 0) throw ApiError.badRequest('Enter loan amount');
-  if (principal > totals.eligible_amount && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && !body.skipEligibility) {
+  if (principal > totals.eligible_amount && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && !body.skipEligibility && scheme.calc_mode !== 'MYBOOK') {
     throw ApiError.badRequest(`Loan amount exceeds eligible amount ₹${totals.eligible_amount}`);
   }
   if (num(scheme.min_amount) && principal < num(scheme.min_amount)) throw ApiError.badRequest(`Minimum loan for this scheme is ₹${scheme.min_amount}`);
@@ -381,7 +381,8 @@ export const topUp = async (req, id, body) => {
     const charges = round2(body.charges);
     if (amount <= 0) throw ApiError.badRequest('Enter top-up amount');
     const newPrincipal = round2(num(loan.current_principal) + amount);
-    if (newPrincipal > num(loan.eligible_amount) && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1') {
+    const mybook = (await tx.queryOne('SELECT calc_mode FROM schemes WHERE id = :id', { id: loan.scheme_id }))?.calc_mode === 'MYBOOK';
+    if (newPrincipal > num(loan.eligible_amount) && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && !mybook) {
       throw ApiError.badRequest(`Total loan ₹${newPrincipal} exceeds eligible amount ₹${loan.eligible_amount}`);
     }
     const net = round2(amount - interest - charges);
@@ -498,7 +499,7 @@ export const renewLoan = async (req, id, body) => {
     const marketValue = round2(old.items.reduce((s, i) => s + itemValue(i.net_wt, i.purity, loanRate, basis), 0));
     const step = num(settings.ROUND_LOAN_TO, 100) || 1;
     const eligible = Math.floor((marketValue * num(scheme.ltv_percent)) / 100 / step) * step;
-    if (newPrincipal > eligible && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1') throw ApiError.badRequest(`New loan exceeds eligible amount ₹${eligible}`);
+    if (newPrincipal > eligible && settings.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && scheme.calc_mode !== 'MYBOOK') throw ApiError.badRequest(`New loan exceeds eligible amount ₹${eligible}`);
     const r = await tx.query(
       `INSERT INTO loans (branch_id, fy_id, loan_no, bill_no, barcode, loan_date, due_date, customer_id, scheme_id, metal_id, principal, current_principal,
          interest_rate, rate_type, slabs_snapshot, doc_charges, advance_interest, net_disbursed, total_items, total_pcs, gross_wt, stone_wt, net_wt, avg_purity, rate_per_gram,
