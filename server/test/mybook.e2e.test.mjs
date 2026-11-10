@@ -46,5 +46,17 @@ for (const [d, l2, l4i, l4t] of MYBOOK_AFTER_PAYMENTS.filter(([d]) => d >= today
   const c4 = (await call('GET', `/loans/${ids.L4}/calc?date=${d}`)).data;
   eq(c4.interestDue, l4i, `L4 interest after part payment ${d}`); eq(c4.totalPayable, l4t, `L4 total after part payment ${d}`);
 }
+// MyBook: Top-up is not allowed on an Old Loan Entry
+{ const res = await fetch(`${B}/loans/${ids.L3}/topup`, { method: 'POST', headers: { 'content-type': 'application/json', cookie, 'x-branch-id': branch }, body: JSON.stringify({ date: today, amount: 1000 }) });
+  const j = await res.json(); if (res.ok || !/Old Loan Entry/.test(j.message)) fails.push(`top-up on old loan should be refused (got ${res.status} ${j.message})`); }
+// MyBook Re-loan: receive = old total - new amount + new advance (same amount, rate and type)
+{ const c = (await call('GET', `/loans/${ids.L3}/calc?date=${today}`)).data;
+  const months = c.months; const due = 185 * months - 185;
+  eq(c.interestDue, due, `L3 due on re-loan day (${months} m)`);
+  const nl = (await call('POST', `/loans/${ids.L3}/renew`, { date: today, new_principal: 12345, advance_interest: 185, interest_type: 'SIMPLE', payments: [{ mode: 'CASH', amount: due + 185 }] })).data;
+  eq(nl.loan.principal, 12345, 're-loan new amount'); if (nl.loan.interest_type !== 'SIMPLE') fails.push('re-loan keeps flat type');
+  const rel = (await call('GET', `/loans/${ids.L3}`)).data.transactions.find((t) => t.txn_type === 'RELEASE');
+  eq(rel.interest_amount, due, 're-loan interest collected'); eq(rel.total_amount, 12345 + due, 're-loan old loan total');
+  eq(nl.calc.monthlyInterest, 185, 're-loan new interest / month'); }
 console.log(fails.length ? `FAILED ${fails.length}:\n${fails.join('\n')}` : 'ALL MYBOOK LOAN FIGURES MATCH THROUGH THE API');
 if (fails.length) process.exitCode = 1;

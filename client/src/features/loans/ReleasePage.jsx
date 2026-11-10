@@ -108,9 +108,10 @@ export default function ReleasePage() {
           <Panel title={`Settlement${c ? ` · as on ${dayjs(d).format('DD/MM/YYYY')}` : ''}`}>
             <div className="space-y-1">
               {settings?.ALLOW_BACKDATE_BILLING === '1' && <Field label="Release date"><Input type="date" max={today()} value={d} onChange={(e) => setD(e.target.value)} /></Field>}
-              <Line label="Loan amount" value={c ? amount(c.principalOutstanding) : '-'} />
+              <Line label="Loan amount" value={c ? amount(round2(c.principalOutstanding + partPaid)) : '-'} />
               <Line label={`Interest${c ? ` · ${c.monthsDue} month${c.monthsDue > 1 ? 's' : ''}` : ''}`} value={c ? amount(c.totalInterest) : '-'} />
-              <Line label={`Days interest (${c ? c.chargeDays : 0} days) · info`} value={c ? amount(round2(c.principalOutstanding * (c.rateType === 'MONTHLY' ? c.rate / 3000 : c.rate / 36500) * c.chargeDays)) : '-'} tone="text-ink-500" />
+              {/* desktop: info only - day-wise interest at the System Control default rate (% p.m.) for the actual days */}
+              <Line label={`Days interest (${c ? c.elapsedDays : 0} days) · info`} value={c ? amount(Math.round((c.principalOutstanding + partPaid) * (n(settings?.DEFAULT_INTEREST_RATE) || 1) / 100 / 30 * c.elapsedDays)) : '-'} tone="text-ink-500" />
               {c?.penalDue > 0 && <Line label="Penal interest" value={amount(c.penalDue)} />}
               <Line minus label="Advance interest" value={l ? amount(l.advance_interest) : '-'} />
               <Line minus label="Interest already paid" value={amount(paidInterest)} />

@@ -44,7 +44,9 @@ export function usePrinter() {
 
   const printTxn = useCallback((full, txn) => {
     const after = full.transactions.filter((t) => !t.is_void && t.id <= txn.id).reduce((s, t) => s + n(t.principal_amount), 0);
-    setPreview({ title: `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={{ company: company || {}, loan: full.loan, txn, balance: after }} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
+    const paidBefore = full.transactions.filter((t) => !t.is_void && t.id < txn.id && t.txn_type !== 'DISBURSE').reduce((s, t) => s + n(t.interest_amount), 0);
+    const data = { company: company || {}, loan: full.loan, txn, balance: after, items: full.items, monthly: full.calc?.monthlyInterest, months: full.calc?.months, paidBefore };
+    setPreview({ title: `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={data} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
   }, [company]);
 
   const doPrint = async () => {

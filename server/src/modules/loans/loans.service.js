@@ -371,6 +371,7 @@ export const topUp = async (req, id, body) => {
   const res = await withTransaction(async (tx) => {
     const loan = await lockLoan(tx, req, id);
     requireOpen(loan);
+    if (loan.entry_type === 'OLD') throw ApiError.badRequest('This is an Old Loan Entry (opening loan). Top-up is not allowed on it. Use Re-loan instead.');
     const amount = round2(body.amount);
     const within = num(settings.TOPUP_WITHIN_DAYS, 0);
     if (within > 0 && dayjs(date).diff(dayjs(loan.loan_date), 'day') > within) {
