@@ -6,11 +6,12 @@ import { useForm } from 'react-hook-form';
 import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { useFetch, useAction, useCompany, useSettings } from '@/hooks/useApi';
+import { useFetch, useAction, useCompany } from '@/hooks/useApi';
 import { useHotkey } from '@/hooks/useUtils';
 import { Button, Drawer, Spinner, Field, Input, Badge } from '@/components/ui';
 import { GlobalSearch } from './GlobalSearch';
 import { amount, setWorkDate, today } from '@/lib/format';
+import { appZoom } from '@/lib/appearance';
 
 const useTheme = () => {
   const [dark, setDark] = useState(() => localStorage.getItem('gf.theme') === 'dark');
@@ -81,12 +82,12 @@ function MenuBar({ onAction, onExit }) {
       {open && (() => {
         const m = menus.find((x) => x.key === open);
         const btn = bar.current?.querySelector(`[data-menu="${open}"]`)?.getBoundingClientRect();
-        const left = Math.max(4, Math.min(btn ? btn.left : 8, window.innerWidth - 330));
+        const left = Math.max(4, Math.min(btn ? btn.left : 8, window.innerWidth / appZoom() - 330));
         return (
           <div className="fixed z-40 mt-10 w-80 animate-drop overflow-hidden rounded-md border border-ink-200 bg-white text-ink-800 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100"
             style={{ left: `${left}px`, marginTop: '42px' }}>
             {/* fits under the menu bar; long menus (Settings) scroll instead of being cut off */}
-            <ul className="overflow-y-auto overscroll-contain py-1" style={{ maxHeight: `calc(100vh - ${Math.round((btn?.bottom || 40) + 16)}px)` }}>
+            <ul className="overflow-y-auto overscroll-contain py-1" style={{ maxHeight: `calc(100vh / var(--app-zoom, 1) - ${Math.round((btn?.bottom || 40) + 16)}px)` }}>
               {m.items.map((i, k) => (i.section ? (
                 i.section.trim() ? <li key={`s${k}`} className="mt-1 border-t border-ink-200 px-4 pt-2 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase dark:border-ink-700">{i.section}</li> : <li key={`s${k}`} className="my-1 border-t border-ink-200 dark:border-ink-700" />
               ) : i.items ? (
@@ -206,7 +207,7 @@ function BranchSwitcher() {
         /* fixed: the header clips anything that overflows it */
         const r = box.current?.getBoundingClientRect();
         const width = 260;
-        const left = Math.max(8, Math.min((r?.right ?? width) - width, window.innerWidth - width - 8));
+        const left = Math.max(8, Math.min((r?.right ?? width) - width, window.innerWidth / appZoom() - width - 8));
         return (
           <div className="fixed z-50 w-[260px] animate-drop overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-700 dark:bg-ink-900"
             style={{ top: (r?.bottom ?? 40) + 4, left }}>
@@ -464,8 +465,6 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { can, logout } = useAuth();
   const { data: alerts = [] } = useFetch('/dashboard/alerts', undefined, { refetchInterval: 5 * 60_000 });
-  const { data: settings } = useSettings();
-  const bg = settings?.BACKGROUND_IMAGE;
 
   useHotkey('ctrl+k', () => setPanel('search'));
   for (const h of HOTKEYS) {
@@ -475,12 +474,11 @@ export function AppLayout() {
 
   return (
     /* a page marked .fit-screen (the dashboard) fills the window exactly on desktop: no page scroll, its sections scroll inside */
-    <div className="flex min-h-screen flex-col xl:has-[.fit-screen]:h-screen">
+    <div className="flex min-h-[calc(100vh/var(--app-zoom,1))] flex-col xl:has-[.fit-screen]:h-[calc(100vh/var(--app-zoom,1))]">
       <div className="sticky top-0 z-30">
         <MenuBar onAction={setPanel} onExit={() => setPanel('exit')} />
         <HeaderStrip dark={dark} setDark={setDark} onSearch={() => setPanel('search')} onProfile={() => setPanel('profile')} onAlerts={() => setPanel('alerts')} alertCount={alerts.length} />
       </div>
-      {bg && <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-cover bg-center opacity-[0.07]" style={{ backgroundImage: `url(${bg})` }} />}
       <main className="w-full flex-1 p-2 sm:p-3 xl:has-[.fit-screen]:flex xl:has-[.fit-screen]:min-h-0 xl:has-[.fit-screen]:flex-col xl:has-[.fit-screen]:overflow-hidden">
         <Suspense fallback={<Spinner label="Loading screen…" />}><Outlet /></Suspense>
       </main>

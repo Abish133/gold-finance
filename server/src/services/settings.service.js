@@ -45,6 +45,7 @@ export const DEFAULTS = {
   HOME_SHOW_DUE_SOON: '1',
   EMP_LEAVE_PER_YEAR: '12',
   BACKGROUND_IMAGE: '',
+  APPEARANCE_DEFAULT: '',   // JSON - the shop's look for new computers / users (Appearance screen)
   STICKER_FIELDS: 'company,bill_no,barcode,name,date,weight,pcs,amount',
   STICKER_LAYOUT: 'MYBOOK',               // MYBOOK = desktop sticker (QR, loan no, Rs, name, gross / net, items) | CUSTOM = label designer fields
   STICKER_COLUMNS: '3',

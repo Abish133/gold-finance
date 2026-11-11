@@ -4,11 +4,11 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { queryOne, query } from '#config/db.js';
 import { env } from '#config/env.js';
-import { authenticate, signToken, COOKIE, loadAuthUser, invalidateUserCache } from '#middleware/auth.js';
+import { authenticate, signToken, COOKIE, loadAuthUser, invalidateUserCache, permit } from '#middleware/auth.js';
 import { validate } from '#middleware/validate.js';
 import { ApiError } from '#utils/ApiError.js';
 import { audit } from '#services/audit.service.js';
-import { getSettings } from '#services/settings.service.js';
+import { getSettings, saveSettings } from '#services/settings.service.js';
 import { SCREENS } from '#config/screens.js';
 
 const router = Router();
@@ -76,5 +76,27 @@ router.post('/change-password', authenticate,
     audit(req, 'CHANGE_PASSWORD', 'users', req.user.id);
     res.json({ ok: true });
   });
+
+/* ---------------- appearance: the user's own look + the shop default ---------------- */
+const parseJson = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
+const cleanLook = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v).slice(0, 2000) : null);
+
+router.get('/appearance', authenticate, async (req, res) => {
+  const row = await queryOne('SELECT appearance FROM users WHERE id = :id', { id: req.user.id });
+  const st = await getSettings(0);
+  res.json({ data: { user: parseJson(row?.appearance), company: parseJson(st.APPEARANCE_DEFAULT) } });
+});
+// save (or clear with null) my own look - follows me to any counter
+router.put('/appearance', authenticate, async (req, res) => {
+  await query('UPDATE users SET appearance = :a WHERE id = :id', { a: cleanLook(req.body?.appearance), id: req.user.id });
+  res.json({ ok: true });
+});
+// the shop default: used by users who have not chosen their own look
+router.put('/appearance/default', authenticate, permit('s_system', 'edit'), async (req, res) => {
+  const v = cleanLook(req.body?.appearance) || '';
+  await saveSettings({ APPEARANCE_DEFAULT: v }, 0);
+  audit(req, 'UPDATE', 'settings', 0, { APPEARANCE_DEFAULT: v });
+  res.json({ ok: true });
+});
 
 export default router;

@@ -138,7 +138,7 @@ export const MENUS = [
       { label: 'Year End Process', path: '/settings/year-end', icon: CalendarRange, screen: 's_year_end' },
       { section: 'More' },
       { label: 'Branches', path: '/settings/branches', icon: Building2, screen: 's_branches' },
-      { label: 'Appearance', hint: 'Background image', path: '/settings/appearance', icon: Palette, screen: 's_company' },
+      { label: 'Appearance', hint: 'Colour, font, text size', path: '/settings/appearance', icon: Palette, screen: 's_company' },
       { label: 'Audit Trail', path: '/settings/audit', icon: ScrollText, screen: 's_audit' },
     ],
   },

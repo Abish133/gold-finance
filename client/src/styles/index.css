@@ -104,8 +104,8 @@
       dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100 dark:disabled:bg-ink-800;
   }
   .label { @apply mb-1 block text-[11px] font-semibold tracking-wide text-ink-500 uppercase dark:text-ink-400; }
-  .gold-gradient { background-color: #111111; color: #ffffff; }
-  .navy-gradient { background-color: #111111; }
+  .gold-gradient { background-color: var(--color-navy-900); color: #ffffff; }
+  .navy-gradient { background-color: var(--color-navy-900); }
   .brand { font-family: var(--font-brand); font-style: italic; font-weight: 700; }
   .num { font-variant-numeric: tabular-nums; }
   .tamil { font-family: var(--font-tamil); }

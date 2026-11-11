@@ -134,18 +134,28 @@ export default function BankReleasePage() {
             </table>
           </div>
         </div>
-        <div className="flex flex-col gap-2 overflow-y-auto rounded-md border border-ink-200 bg-white p-3 text-[13px] xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
-          <p className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Release calculation</p>
-          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800">
-          {line('Loan date', bp ? date(bp.pledge_date) : '-')}{line('Loan amount', bp ? amount(bp.amount) : '-')}{line('Interest % / year', bp ? `${n(bp.interest_rate).toFixed(2)} (${(n(bp.interest_rate) / 12).toFixed(2)} / month)` : '-')}
-          {line('Days', c ? c.days : '-')}{line('Per day interest', bp ? amount((n(bp.amount) * n(bp.interest_rate)) / 36500) : '-')}{line('Total interest', c ? amount(c.interest) : '-')}
-          {line('Advance interest', bp ? amount(bp.advance_interest) : '-')}{line('Interest due', c ? amount(round2(c.interest - n(bp.advance_interest))) : '-', 'font-semibold')}
+        {/* release calculation: compact grid - fits without scrolling */}
+        <div className="flex flex-col gap-2 rounded-md border border-ink-200 bg-white p-2.5 text-[12px] xl:min-h-0 xl:overflow-y-auto dark:border-ink-800 dark:bg-ink-900">
+          <p className="flex shrink-0 items-center gap-2 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Release calculation{bp && <span className="ml-auto truncate text-[11px] font-semibold tracking-normal text-ink-500 normal-case">{bp.pledge_no}</span>}</p>
+          <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 dark:border-ink-800 [&>div:nth-last-child(-n+2)]:border-b-0">
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Loan date</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white ">{bp ? date(bp.pledge_date) : '-'}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Loan amount</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white ">{bp ? amount(bp.amount) : '-'}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Interest % / year</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white">{bp ? n(bp.interest_rate).toFixed(2) : '-'}{bp && <span className="ml-1 text-[10px] font-normal text-ink-500">({(n(bp.interest_rate) / 12).toFixed(2)}/m)</span>}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Days</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white ">{c ? c.days : '-'}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Per day interest</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white ">{bp ? amount((n(bp.amount) * n(bp.interest_rate)) / 36500) : '-'}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Total interest</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white ">{c ? amount(c.interest) : '-'}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Advance interest</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white ">{bp ? amount(bp.advance_interest) : '-'}</p></div>
+            <div className="min-w-0 border-b border-ink-100 px-2.5 py-1 odd:border-r dark:border-ink-800"><p className="truncate text-[10px] font-semibold tracking-wide text-ink-500 uppercase">Interest due</p><p className="num truncate text-[13px] font-bold text-navy-900 dark:text-white text-rose-600">{c ? amount(round2(c.interest - n(bp.advance_interest))) : '-'}</p></div>
           </div>
-          <div className="navy-gradient flex items-baseline justify-between rounded-md px-3 py-2 text-white"><span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Payable to bank</span><span className="num text-xl font-extrabold">{bp ? amount(payable) : '-'}</span></div>
-          <Field label="Actually paid to bank"><Input type="number" className="!h-10 text-right text-base font-bold" placeholder={bp ? String(payable) : ''} value={paid} onChange={(e) => setPaid(e.target.value)} /></Field>
-          <Field label="Paid from"><Select value={mode} onChange={(e) => setMode(e.target.value)} options={[{ value: 'BANK', label: 'Same bank account' }, { value: 'CASH', label: 'Cash' }]} /></Field>
-          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800">
-          {line('Interest paid', bp ? amount(interestPaid) : '-')}{line('Difference', bp ? amount(diff) : '-', diff ? (diff > 0 ? 'text-rose-600' : 'text-emerald-700') : '')}{line('Effective rate', bp ? `${effRate}% / year` : '-')}
+          <div className="navy-gradient flex shrink-0 items-center justify-between rounded-md px-3 py-1.5 text-white"><span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Payable to bank</span><span className="num text-lg font-extrabold">{bp ? amount(payable) : '-'}</span></div>
+          <div className="grid shrink-0 grid-cols-2 gap-2">
+            <div><p className="label">Actually paid</p><Input type="number" className="!h-8 text-right text-[14px] font-bold" placeholder={bp ? String(payable) : ''} value={paid} onChange={(e) => setPaid(e.target.value)} /></div>
+            <div><p className="label">Paid from</p><Select className="!h-8 text-[13px]" value={mode} onChange={(e) => setMode(e.target.value)} options={[{ value: 'BANK', label: 'Same bank' }, { value: 'CASH', label: 'Cash' }]} /></div>
+          </div>
+          <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-md border border-ink-200 text-center dark:border-ink-800 [&>div]:min-w-0 [&>div]:px-1.5 [&>div]:py-1 [&>div:not(:last-child)]:border-r [&>div]:border-ink-200 dark:[&>div]:border-ink-800">
+            <div><p className="truncate text-[10px] font-semibold text-ink-500 uppercase">Interest paid</p><p className="num truncate text-[12px] font-bold">{bp ? amount(interestPaid) : '-'}</p></div>
+            <div><p className="truncate text-[10px] font-semibold text-ink-500 uppercase">Difference</p><p className={clsx('num truncate text-[12px] font-bold', diff ? (diff > 0 ? 'text-rose-600' : 'text-emerald-700') : '')}>{bp ? amount(diff) : '-'}</p></div>
+            <div><p className="truncate text-[10px] font-semibold text-ink-500 uppercase">Eff. rate</p><p className="num truncate text-[12px] font-bold">{bp ? `${effRate}%` : '-'}</p></div>
           </div>
         </div>
       </div>

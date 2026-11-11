@@ -6,6 +6,7 @@ import { useFetch } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
+import { Save, Check, Loader2 } from 'lucide-react';
 
 /* compact on/off row: small switch + label, green when on */
 function ToggleRow({ on, label, onChange }) {
@@ -54,7 +55,13 @@ export function SettingsForm({ sections, allowBranchScope = true, compact = fals
                   <p className="text-[11px] font-bold tracking-wider whitespace-nowrap text-navy-900 uppercase dark:text-white">{s.title}</p>
                   {s.subtitle && <p className="truncate text-[11px] text-ink-500" title={s.subtitle}>{s.subtitle}</p>}
                   {si === sections.length - 1 && (
-                    <Button variant="gold" className="ml-auto h-7 shrink-0 text-[12px]" loading={save.isPending} onClick={() => save.mutate()}>{dirty ? 'Save changes' : 'Save settings'}</Button>
+                    <div className="ml-auto flex shrink-0 items-center gap-2">
+                      {dirty && <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300"><span className="size-1.5 animate-pulse rounded-full bg-amber-500" />Unsaved</span>}
+                      <button type="button" disabled={save.isPending} onClick={() => save.mutate()}
+                        className={clsx('flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-semibold transition disabled:opacity-60', dirty ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'border border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300 dark:hover:bg-ink-800')}>
+                        {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : dirty ? <Save className="size-3.5" /> : <Check className="size-3.5 text-emerald-600" />}{dirty ? 'Save changes' : 'Saved'}
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-2.5">
