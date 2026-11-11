@@ -178,7 +178,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   // customer already has old open loans (Settings > OLD_LOAN_WARN_MONTHS)
   const custLoans = useFetch(customer && !isOld ? '/loans' : null, { customer_id: customer?.id, status: 'OPEN', pageSize: 50 });
   const warnMonths = n(settings?.OLD_LOAN_WARN_MONTHS) || 12;
-  const oldOpen = (custLoans.data?.data || []).filter((l) => dayjs().diff(dayjs(l.loan_date), 'month') >= warnMonths);
+  const oldOpen = (custLoans.data || []).filter((l) => dayjs().diff(dayjs(l.loan_date), 'month') >= warnMonths);
 
   // old loans: rates come from the Rate Master, can be changed
   useEffect(() => { if (isOld && lk && !f.gold_rate && !f.silver_rate) set({ gold_rate: fineRate(todayGold) ? String(fineRate(todayGold)) : '', silver_rate: fineRate(todaySilver) ? String(fineRate(todaySilver)) : '' }); }, [isOld, lk]); // eslint-disable-line react-hooks/exhaustive-deps

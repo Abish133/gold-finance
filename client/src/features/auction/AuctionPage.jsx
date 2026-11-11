@@ -10,7 +10,6 @@ import { useCompany, useFetch, useSettings } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printElement } from '@/lib/print';
-import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { NoticeLetters } from '@/features/print/NoticeLetter';
 import { amount, date, n, today, weight } from '@/lib/format';
@@ -18,8 +17,8 @@ import { useKeys } from '@/features/loans/desk';
 
 const cols = [
   { key: 'bill_no', label: 'Loan No' }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'age', label: 'Age' }, { key: 'customer_name', label: 'Customer' },
-  { key: 'item_summary', label: 'Items' }, { key: 'loan_on', label: 'Metal' }, { key: 'gross_wt', label: 'Gross', type: 'weight' }, { key: 'stone_wt', label: 'Less', type: 'weight' },
-  { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'principal', label: 'Amount', type: 'money' },
+  { key: 'items_upper', label: 'Items' }, { key: 'loan_on', label: 'Metal' }, { key: 'gross_wt', label: 'Gross', type: 'weight' }, { key: 'stone_wt', label: 'Less', type: 'weight' },
+  { key: 'net_wt', label: 'Net Wt', type: 'weight' }, { key: 'loan_amount', label: 'Amount', type: 'money' },
 ];
 const yearAgo = (m) => dayjs(today()).subtract(m, 'month').format('YYYY-MM-DD');
 
@@ -46,13 +45,13 @@ export default function AuctionPage() {
     setAuction((a) => ({ ...a, date: dayjs(bd).add(15, 'day').format('YYYY-MM-DD') }));
   }, [bd]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const show = async (quiet) => {
+  const show = async () => {
     setBusy(true);
     try {
-      const r = await api.get('/auction/list', { asOn: bd, older_than: f.older, from: f.from, to: f.to, loan_on: f.metal, include: f.include });
-      const list = r.data.map((x) => ({ ...x, age: `${x.age_months} m` }));
+      const r = await api.get('/auction/list', { asOn: bd, older_than: 0, from: f.from, to: f.to, loan_on: f.metal, include: f.include });
+      const list = r.data.map((x) => ({ ...x, age: `${x.age_months} m`, items_upper: String(x.items_text || x.item_summary || '').toUpperCase() }));
       setRows(list); setSel(list.map((x) => x.id)); setShown(true);
-      if (!list.length && quiet !== true) toast.info(`No unreleased loans were pledged between ${date(f.from)} and ${date(f.to)}. Change the dates and press Show (F5).`);
+      if (!list.length) toast.info(`No unreleased loans were pledged between ${date(f.from)} and ${date(f.to)}. Change the dates and press Show (F5).`);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   };
   // desktop: the list is shown as soon as the screen opens (dates from the billing date)
@@ -60,7 +59,7 @@ export default function AuctionPage() {
   useEffect(() => {
     if (!bd || !f.from || autoShown.current) return;
     autoShown.current = true;
-    show(true);
+    show();
   }, [bd, f.from]); // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = rows.filter((r) => sel.includes(r.id));
   const by = (m) => rows.filter((r) => r.loan_on === m);
@@ -79,23 +78,41 @@ export default function AuctionPage() {
       printElement(<NoticeLetters loans={chosen} company={company || {}} type={type} auctionDate={auction.date} auctionTime={dayjs(`2000-01-01 ${auction.time}`).format('hh:mm A')} format={via === 'REGISTERED' ? 'MYBOOK_REGISTERED' : 'MYBOOK'} />, { title: 'Notices' });
     } catch (e) { toast.error(e.message); }
   };
-  const auctionList = () => need() && printTable({ title: `Auction List · auction on ${date(auction.date)} ${dayjs(`2000-01-01 ${auction.time}`).format('hh:mm A')}`, company, rows: chosen, columns: cols,
-    totals: { gross_wt: sum(chosen, 'gross_wt'), net_wt: sum(chosen, 'net_wt'), current_principal: sum(chosen, 'principal') } });
-  // post lists: name + address per letter; split into sheets of "post split amount" worth of postage when given
+  // desktop prints: company name + address lines, title, table, ***** End of Report
+  const Head = ({ title }) => (
+    <div className="mb-1 font-serif text-black"><p className="text-xl">{company?.name}</p>{[company?.address1, company?.address2, company?.address3].filter(Boolean).map((x) => <p key={x} className="text-[12px] leading-tight">{x}</p>)}<p className="mt-1 text-base">{title}</p></div>
+  );
+  const End = () => <div className="mt-1 text-center font-bold text-black"><p className="tracking-tighter">********************************************</p><p>End of Report</p></div>;
+  const who = (r) => [`${r.customer_title || ''} ${r.customer_name}${r.relation_name ? ` ${r.relation_type || ''} ${r.relation_name}` : ''}`.trim(), r.address].filter(Boolean).join(', ');
+  const auctionList = () => need() && printElement(
+    <div className="text-[12px] text-black">
+      <Head title="Auction List" />
+      <table className="w-full border-collapse">
+        <thead><tr className="border border-ink-400 bg-ink-100 shadow-[3px_3px_0_#2f7d6d]">{['S No', 'Loan No', 'Pledge Date', 'Amount', 'Loan On', 'Customer Name & Address'].map((h) => <th key={h} className={clsx('px-1 py-1', h === 'Amount' ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
+        <tbody>{chosen.map((r, i) => (
+          <tr key={r.id} className="border-b border-ink-200 align-top font-semibold"><td className="px-1 pt-3 pb-1">{i + 1}</td><td className="px-1 pt-3">{r.bill_no}</td><td className="px-1 pt-3">{date(r.loan_date)}</td><td className="px-1 pt-3 text-right">{amount(r.loan_amount)}</td><td className="px-1 pt-3">{r.loan_on}</td>
+            <td className="px-1 pt-3 pb-1"><p>{who(r)}</p><p>{r.items_upper}</p><p>Gross Wt.{weight(r.gross_wt)} &nbsp;&nbsp; Net Wt. {weight(r.net_wt)} &nbsp;&nbsp; Ph. No : {r.customer_phone}</p></td></tr>
+        ))}</tbody>
+        <tfoot><tr className="border-b border-ink-300 text-[13px] font-bold"><td className="px-1 py-1 text-rose-700">Total</td><td className="px-1 text-blue-800">{chosen.length}</td><td className="px-1 text-right">₹</td><td colSpan={2} /><td className="px-1">{amount(sum(chosen, 'loan_amount'))}</td></tr></tfoot>
+      </table>
+      <End />
+    </div>, { title: 'Auction List' });
+  // desktop: post split amount = loan amount limit - loans below it go in the Certificate of Post list, the rest in the Registered Post list
   const postList = (title, regd) => {
     if (!need()) return;
-    const per = n(settings?.NOTICE_POSTAGE) || 0;
-    const lines = chosen.map((r, i) => ({ sno: i + 1, name: `${r.customer_title || ''} ${r.customer_name}${r.relation_name ? ` ${r.relation_type || ''} ${r.relation_name}` : ''}`, address: r.address, loan: r.bill_no, postage: regd ? per : '' }));
-    const size = n(split) && per ? Math.max(1, Math.floor(n(split) / per)) : lines.length;
-    const parts = []; for (let i = 0; i < lines.length; i += size) parts.push(lines.slice(i, i + size));
-    printElement(<div>{parts.map((p, k) => (
-      <div key={k} className={k < parts.length - 1 ? 'page-break' : ''}>
-        <div className="mb-2 text-center text-black"><p className="text-base font-bold">{company?.name}</p><p className="font-semibold">{title}{parts.length > 1 ? ` · sheet ${k + 1} of ${parts.length}` : ''}</p><p className="text-xs">Date: {date(new Date())}</p></div>
-        <table className="w-full border-collapse text-[11px] text-black"><thead><tr>{['S.No', 'Name', 'Address', 'Loan', regd && 'Postage'].filter(Boolean).map((h) => <th key={h} className="border border-black bg-gray-100 px-1 text-left">{h}</th>)}</tr></thead>
-          <tbody>{p.map((l) => <tr key={l.sno}><td className="border border-black px-1">{l.sno}</td><td className="border border-black px-1">{l.name}</td><td className="border border-black px-1">{l.address}</td><td className="border border-black px-1">{l.loan}</td>{regd && <td className="border border-black px-1 text-right">{l.postage}</td>}</tr>)}</tbody></table>
-        <div className="mt-8 flex justify-between text-xs text-black"><span>Total letters: {p.length}</span><span>Signature / Post office seal</span></div>
-      </div>
-    ))}</div>, { title });
+    if (!n(split)) { toast.info('Enter the post split amount first. Loans below it go in the Certificate of Post list, the rest in the Registered Post list.'); return; }
+    const list = chosen.filter((r) => (regd ? n(r.loan_amount) >= n(split) : n(r.loan_amount) < n(split)));
+    if (!list.length) { toast.info(`No ticked loans ${regd ? 'from' : 'below'} Rs ${amount(split)}`); return; }
+    printElement(
+      <div className="text-[12px] text-black">
+        <Head title={`${title}  -  ${list.length} record${list.length > 1 ? 's' : ''}`} />
+        <table className="w-full border-collapse">
+          <thead><tr className="bg-ink-100">{['#', 'Loan', 'Date', 'Customer and Address', 'Loan Amount'].map((h) => <th key={h} className={clsx('px-1 py-1', h === 'Loan Amount' || h === '#' ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
+          <tbody>{list.map((r, i) => <tr key={r.id} className="font-semibold"><td className="px-1 pt-2 text-right">{i + 1}</td><td className="px-1 pt-2">{r.bill_no}</td><td className="px-1 pt-2">{date(r.loan_date)}</td><td className="px-1 pt-2">{who(r)}</td><td className="px-1 pt-2 text-right">{amount(r.loan_amount)}</td></tr>)}</tbody>
+          <tfoot><tr className="border-t-2 border-black bg-ink-100 font-bold"><td colSpan={3} /><td className="px-1">Total</td><td className="px-1 text-right">{amount(sum(list, 'loan_amount'))}</td></tr></tfoot>
+        </table>
+        <End />
+      </div>, { title });
   };
   const whatsapp = async () => {
     if (!need()) return;
@@ -106,7 +123,7 @@ export default function AuctionPage() {
     } catch (e) { toast.error(e.message); }
   };
   const clear = () => { setRows([]); setSel([]); setShown(false); };
-  useKeys({ f5: show, f6: () => notice('FIRST', 'POST'), f7: () => notice('FINAL', 'REGISTERED'), f9: auctionList, f10: () => postList('Certificate of Posting List', false), f11: () => postList('Registered Post List', true),
+  useKeys({ f5: show, f6: () => notice('FIRST', 'POST'), f7: () => notice('FINAL', 'REGISTERED'), f9: auctionList, f10: () => postList('List of Certificate of Post', false), f11: () => postList('List of Registered Post', true),
     'ctrl+a': () => setSel(rows.map((r) => r.id)), 'ctrl+d': () => setSel([]), 'ctrl+w': whatsapp, 'ctrl+e': () => exportCsv('auction-list', cols, rows), f2: clear, escape: () => navigate('/') }, [f, rows, sel, auction, split]);
 
   const seg = (k, opts) => <div className="flex gap-1">{opts.map(([v, l]) => <button key={String(v)} type="button" onClick={() => setF({ ...f, [k]: v, ...(k === 'older' ? { to: dayjs(bd || undefined).subtract(v, 'month').format('YYYY-MM-DD') } : {}) })} className={clsx('h-10 rounded-md border px-4 text-sm font-semibold', f[k] === v ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800 dark:bg-ink-900 dark:text-white')}>{l}</button>)}</div>;
@@ -131,10 +148,10 @@ export default function AuctionPage() {
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-5">
             {tile('Loans in list', rows.length, `${chosen.length} ticked for printing`, 'border-t-navy-800')}
-            {tile('Gold', `Rs ${amount(sum(by('GOLD'), 'principal'))}`, `${by('GOLD').length} loans · ${weight(sum(by('GOLD'), 'net_wt'))} g`, 'border-t-amber-600')}
-            {tile('Silver', `Rs ${amount(sum(by('SILVER'), 'principal'))}`, `${by('SILVER').length} loans · ${weight(sum(by('SILVER'), 'net_wt'))} g`, 'border-t-ink-400')}
-            {tile('Mix', `Rs ${amount(sum(by('MIX'), 'principal'))}`, `${by('MIX').length} loans · ${weight(sum(by('MIX'), 'net_wt'))} g`, 'border-t-violet-600')}
-            <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Total loan amount</p><p className="num text-2xl font-bold">Rs {amount(sum(rows, 'principal'))}</p><p className="text-[11px]">{multi ? `${multi} customer${multi > 1 ? 's have' : ' has'} more than 1 loan` : 'No customer has more than one loan'}</p></div>
+            {tile('Gold', `Rs ${amount(sum(by('GOLD'), 'loan_amount'))}`, `${by('GOLD').length} loans · ${weight(sum(by('GOLD'), 'net_wt'))} g`, 'border-t-amber-600')}
+            {tile('Silver', `Rs ${amount(sum(by('SILVER'), 'loan_amount'))}`, `${by('SILVER').length} loans · ${weight(sum(by('SILVER'), 'net_wt'))} g`, 'border-t-ink-400')}
+            {tile('Mix', `Rs ${amount(sum(by('MIX'), 'loan_amount'))}`, `${by('MIX').length} loans · ${weight(sum(by('MIX'), 'net_wt'))} g`, 'border-t-violet-600')}
+            <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Total loan amount</p><p className="num text-2xl font-bold">Rs {amount(sum(rows, 'loan_amount'))}</p><p className="text-[11px]">{multi ? `${multi} customer${multi > 1 ? 's have' : ' has'} more than 1 loan` : 'No customer has more than one loan'}</p></div>
           </div>
           <div className="card overflow-auto">
             <table className="w-full min-w-[1000px] text-sm">
@@ -146,12 +163,13 @@ export default function AuctionPage() {
                   <tr key={r.id} onClick={() => toggle(r.id)} className={clsx('cursor-pointer', sel.includes(r.id) && 'bg-navy-50/70 dark:bg-ink-800')}>
                     <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.includes(r.id)} readOnly /></td>
                     <td className="px-2 font-semibold">{r.bill_no}{r.bank_pledge_id ? <span className="ml-1 text-[10px] font-bold text-violet-700">BANK</span> : ''}</td><td className="px-2">{date(r.loan_date)}</td><td className="px-2">{r.age}</td>
-                    <td className="px-2"><b>{r.customer_name}</b>{custCount[r.customer_id] > 1 && <span className="ml-1 rounded bg-rose-50 px-1 text-[9px] font-bold text-rose-700">{custCount[r.customer_id]} LOANS</span>}<span className="block text-[11px] text-ink-500">{r.customer_phone}{r.notices ? ` · ${r.notices} notice(s), last ${date(r.last_notice)}` : ''}</span></td>
-                    <td className="px-2">{r.item_summary}</td><td className="px-2">{r.loan_on}</td><td className="num px-2 text-right">{weight(r.gross_wt)}</td><td className="num px-2 text-right">{weight(r.stone_wt)}</td>
-                    <td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{amount(r.current_principal)}</td>
+                    <td className="px-2"><b>{r.customer_name}</b>{custCount[r.customer_id] > 1 && <span className="ml-1 rounded bg-rose-50 px-1 text-[9px] font-bold text-rose-700">{custCount[r.customer_id]} LOANS</span>}<span className="block text-[11px] text-ink-500">{r.relation_name ? `${r.relation_type || ''} ${r.relation_name} · ` : ''}{r.customer_phone}{r.notices ? ` · ${r.notices} notice(s), last ${date(r.last_notice)}` : ''}</span></td>
+                    <td className="px-2">{r.items_upper}</td><td className="px-2">{r.loan_on}</td><td className="num px-2 text-right">{weight(r.gross_wt)}</td><td className="num px-2 text-right">{weight(r.stone_wt)}</td>
+                    <td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{amount(r.loan_amount)}</td>
                   </tr>
                 ))}
               </tbody>
+              {rows.length > 0 && <tfoot className="navy-gradient text-xs font-bold text-white"><tr><td colSpan={4} /><td className="px-2 py-2">Total - {rows.length} loans</td><td colSpan={2} /><td className="num px-2 text-right">{weight(sum(rows, 'gross_wt'))}</td><td className="num px-2 text-right">{weight(sum(rows, 'stone_wt'))}</td><td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'loan_amount'))}</td></tr></tfoot>}
             </table>
           </div>
         </div>
@@ -168,9 +186,9 @@ export default function AuctionPage() {
           <div className="card space-y-3 p-4">
             <p className="text-sm font-bold text-amber-700 uppercase">Lists</p>
             {pr('Auction List (F9)', auctionList)}
-            <Field label="Post split amount (Rs)" hint="Splits the post lists into sheets of this postage value"><Input type="number" value={split} onChange={(e) => setSplit(e.target.value)} /></Field>
-            {pr('Cert. of Post List (F10)', () => postList('Certificate of Posting List', false), true)}
-            {pr('Regd. Post List (F11)', () => postList('Registered Post List', true), true)}
+            <Field label="Post split amount (Rs)" hint="Loans below this amount go in the Certificate of Post list, the rest in the Registered Post list"><Input type="number" value={split} onChange={(e) => setSplit(e.target.value)} /></Field>
+            {pr('Cert. of Post List (F10)', () => postList('List of Certificate of Post', false), true)}
+            {pr('Regd. Post List (F11)', () => postList('List of Registered Post', true), true)}
           </div>
         </div>
       </div>

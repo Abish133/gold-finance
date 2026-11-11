@@ -60,7 +60,7 @@ export function usePrinter() {
     const after = full.transactions.filter((t) => !t.is_void && t.id <= txn.id).reduce((s, t) => s + n(t.principal_amount), 0);
     const paidBefore = full.transactions.filter((t) => !t.is_void && t.id < txn.id && t.txn_type !== 'DISBURSE').reduce((s, t) => s + n(t.interest_amount), 0);
     const data = { company: company || {}, loan: full.loan, txn, balance: after, items: full.items, monthly: full.calc?.monthlyInterest, months: full.calc?.months, paidBefore };
-    show({ title: { RELEASE: 'Release Receipt', PART_PAYMENT: 'Part Payment Receipt', INTEREST: 'Interest Receipt', TOPUP: 'Top-up Receipt' }[txn.txn_type] || `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={data} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
+    show({ title: { RELEASE: 'Release Receipt', PART_PAYMENT: 'Part Payment Receipt', INTEREST: 'Part Payment Receipt', TOPUP: 'Top-up Receipt' }[txn.txn_type] || `Receipt ${txn.receipt_no}`, element: <TransactionReceipt data={data} />, log: { id: full.loan.id, doc_type: `RCPT_${txn.id}` } });
   }, [company, show]);
 
   const doPrint = async () => {

@@ -51,7 +51,7 @@ export default function ReleasePage() {
   const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
   const goldR = rateOf('GOLD');
   const silverR = rateOf('SILVER');
-  const otherOpen = (others.data?.data || []).filter((x) => x.id !== l?.id);
+  const otherOpen = (others.data || []).filter((x) => x.id !== l?.id);
 
   const start = () => { if (!open) return; if (total > 0 && !v.unable) setPay(true); else release([]); };
   const release = async (payments) => {

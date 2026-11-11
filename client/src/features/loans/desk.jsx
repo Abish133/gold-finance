@@ -526,9 +526,10 @@ export function useApproval() {
 }
 
 /* ------------------------------------------------------------------ payments received grid */
-const TXN_LABEL = { INTEREST: 'Interest', PART_PAYMENT: 'Part payment', TOPUP: 'Top-up', RELEASE: 'Release', RENEWAL: 'Re-loan', AUCTION: 'Auction' };
-export function PaymentsGrid({ transactions = [], loan }) {
-  const adv = loan && n(loan.advance_interest) ? [{ id: 'adv', txn_date: loan.loan_date, txn_type: 'ADVANCE', months_paid: loan.advance_months || 1, total_amount: loan.advance_interest, payments: [{ mode: 'at loan' }] }] : [];
+const PAY_WORD = { CASH: 'Cash', UPI: 'UPI', BANK: 'Bank', CARD: 'Card', CHEQUE: 'Cheque' };
+const TXN_LABEL = { INTEREST: 'Interest', PART_PAYMENT: 'Part Amount', TOPUP: 'Top-up', RELEASE: 'Release', RENEWAL: 'Re-loan', AUCTION: 'Auction' };
+export function PaymentsGrid({ transactions = [], loan, advanceMode = 'at loan' }) {
+  const adv = loan && n(loan.advance_interest) ? [{ id: 'adv', txn_date: loan.loan_date, txn_type: 'ADVANCE', months_paid: loan.advance_months || 1, total_amount: loan.advance_interest, payments: [{ mode: advanceMode }] }] : [];
   const rows = [...adv, ...transactions.filter((t) => !t.is_void && t.txn_type !== 'DISBURSE')];
   return (
     <div className="overflow-hidden rounded-md border border-ink-300">
@@ -538,7 +539,7 @@ export function PaymentsGrid({ transactions = [], loan }) {
           {!rows.length && <tr><td colSpan={5} className="py-6 text-center text-ink-400">No payments yet</td></tr>}
           {rows.map((t) => (
             <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}</td>
-              <td className="num px-3 text-right">{amount(t.total_amount)}</td><td className="px-3">{(t.payments || []).map((p) => p.mode).join(', ')}</td></tr>
+              <td className="num px-3 text-right">{amount(t.total_amount)}</td><td className="px-3">{(t.payments || []).map((p) => (p.amount ? <span key={p.id || p.mode} className="mr-1 rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-700">{PAY_WORD[p.mode] || p.mode} ₹{amount(p.amount).replace('.00', '')}</span> : p.mode))}</td></tr>
           ))}
         </tbody>
       </table>

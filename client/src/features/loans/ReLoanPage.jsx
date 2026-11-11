@@ -55,7 +55,7 @@ export default function ReLoanPage() {
   const deductions = round2(adv + n(f.doc_charges));
   const payToCustomer = round2(np - oldTotal + n(f.discount) - n(f.doc_charges) - adv);
   const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
-  const otherOpen = (others.data?.data || []).filter((x) => x.id !== l?.id);
+  const otherOpen = (others.data || []).filter((x) => x.id !== l?.id);
   const start = () => { if (!l || np <= 0) return toast.error('Enter new loan amount'); if (Math.abs(payToCustomer) > 0) setPayOpen(true); else save([]); };
 
   const save = async (payments) => {

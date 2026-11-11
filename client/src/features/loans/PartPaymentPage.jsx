@@ -40,9 +40,10 @@ export default function PartPaymentPage() {
 
   useEffect(() => { setMonths(0); setPartAmt(''); setLines([]); }, [loanId]);
   // nothing due yet -> desktop opens on Part Amount
-  useEffect(() => { if (c) setTab(c.interestDue > 0 ? 'INTEREST' : 'PART'); }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
+  // desktop: opens with all due months ready to pay
+  useEffect(() => { if (c) { setTab(c.interestDue > 0 ? 'INTEREST' : 'PART'); setMonths(Math.max(0, (c.monthsDue || 0) - (c.monthsPaid || 0))); } }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
   const others = useFetch(l ? '/loans' : null, { customer_id: l?.customer_id, status: 'OPEN', pageSize: 50 });
-  const openCount = others.data?.data?.length || 0;
+  const openCount = others.data?.length || 0;
 
   const monthly = c?.monthlyInterest || 0;
   const topupsAmt = round2((full?.transactions || []).filter((t) => !t.is_void && t.txn_type === 'TOPUP').reduce((s, t) => s + n(t.principal_amount), 0));
@@ -139,7 +140,7 @@ export default function PartPaymentPage() {
               {l && <span className="ml-auto">{l.bank_pledge_id ? <Chip tone="violet">At bank</Chip> : <Chip tone="green">In hand</Chip>}</span>}
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[['Pledge date', l ? date(l.loan_date) : '-'], ['Loan amount', c ? amount(c.principalOutstanding) : '-'], ['Rate / month', l ? `${c?.rateType === 'MONTHLY' ? c.rate : round2(c?.rate / 12)}% · ${amount(monthly)}` : '-']].map(([k, v]) => (
+              {[['Pledge date', l ? date(l.loan_date) : '-'], ['Loan amount', l ? money(n(l.principal) + topupsAmt) : '-'], ['Rate / month', l ? `${n(c?.rateType === 'MONTHLY' ? c.rate : round2(c?.rate / 12)).toFixed(2)}%` : '-']].map(([k, v]) => (
                 <div key={k} className="rounded-md border border-ink-200 bg-cream-50 px-3 py-2"><p className="label">{k}</p><p className="num font-bold text-navy-900">{v}</p></div>
               ))}
             </div>
@@ -153,18 +154,17 @@ export default function PartPaymentPage() {
             <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-ink-600">
               {[['adv', 'Advance'], ['paid', 'Paid'], ['now', 'Paying now'], ['due', 'Due'], ['not', 'Not yet']].map(([k, t]) => <span key={k} className="flex items-center gap-1"><span className={clsx('size-3 rounded', cell[k])} />{t}</span>)}
             </div>
-            {c && <p className="mt-2 text-xs text-ink-500">Running {c.elapsedDays} days · interest due {money(c.interestDue)} · {l.interest_type === 'COMPOUND' ? 'compound' : 'flat'} interest</p>}
             {c && (() => { const paidP = round2(n(l.principal) + topupsAmt - c.principalOutstanding); const pct = Math.min(100, (paidP / Math.max(1, n(l.principal) + topupsAmt)) * 100); return (
               <div className="mt-4">
                 <div className="flex justify-between text-sm"><span className="font-semibold text-emerald-700">PRINCIPAL &nbsp; Paid {money(paidP)}</span><span className="font-semibold text-rose-600">Outstanding {money(c.principalOutstanding)}</span></div>
                 <div className="mt-1 h-3 rounded bg-navy-100 dark:bg-ink-700"><div className="h-3 rounded bg-emerald-600" style={{ width: `${pct}%` }} /></div>
               </div>); })()}
           </Panel>
-          <Panel title="Payment history" bodyClassName="p-0"><PaymentsGrid transactions={full?.transactions} /></Panel>
+          <Panel title="Payment history" bodyClassName="p-0"><PaymentsGrid transactions={full?.transactions} loan={l} advanceMode="At loan time" /></Panel>
           <Panel title="Pledged items" bodyClassName="p-0">
             <table className="w-full text-sm">
               <thead className="navy-gradient text-white"><tr><th className="px-3 py-1.5 text-left">#</th><th className="px-3 text-left">Item</th><th className="px-3 text-right">Pcs</th><th className="px-3 text-right">Gross</th><th className="px-3 text-right">Less</th><th className="px-3 text-right">Net</th><th className="px-3 text-right">Purity</th><th className="px-3 text-left">Remark</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1">{k + 1}</td><td className="px-3">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="px-3 text-xs">{i.remarks}</td></tr>)}</tbody>
+              <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1">{k + 1}</td><td className="px-3 uppercase">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity).toFixed(2)}</td><td className="px-3 text-xs">{i.remarks}</td></tr>)}</tbody>
             </table>
           </Panel>
         </div>
@@ -201,7 +201,7 @@ export default function PartPaymentPage() {
               <Line label="Paying" value={`− ${money(partAmt)}`} />
               <Line bold label="New outstanding" value={c ? money(Math.max(0, c.principalOutstanding - n(partAmt))) : '-'} />
             </div>
-            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{settings?.PART_PAYMENT_REDUCES_INTEREST === '0' ? 'Interest is calculated on the original loan amount (as per current system).' : 'Interest from today is calculated on the new outstanding amount.'}</p>
+            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{c?.mode === 'MYBOOK' ? 'Interest is calculated on the original loan amount (as per current system).' : 'Interest from today is calculated on the new outstanding amount.'}</p>
             {c?.interestDue > 0 && <p className="text-xs text-amber-700">Interest due {money(c.interestDue)} - collect it in the Interest (F2) tab.</p>}
           </>}
           <p className="num text-center text-3xl font-extrabold text-navy-900">{money(total)}</p>

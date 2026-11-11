@@ -37,7 +37,7 @@ export default function TopUpPage() {
   const dayNo = l ? dayjs().diff(dayjs(l.loan_date), 'day') : 0;
   const tooLate = l && within > 0 && dayNo > within;
   const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
-  const otherOpen = (others.data?.data || []).filter((x) => x.id !== l?.id);
+  const otherOpen = (others.data || []).filter((x) => x.id !== l?.id);
   const valueToday = round2((full?.items || []).reduce((s2, i) => s2 + n(i.value), 0)) || n(l?.market_value);
   let after = n(l?.principal);
   const topupRows = topups.map((t) => { after += n(t.principal_amount); return { ...t, after }; });
