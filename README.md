@@ -55,28 +55,30 @@ npm run install:all
 Create `server/.env` from `server/.env.example` and set `DB_PASSWORD`, `JWT_SECRET` and `ADMIN_PASSWORD`.
 
 ```bash
-npm run db:setup      # creates database, tables and master data
+npm run db:setup      # creates database + tables, then runs the seed (server/src/db/seed.js)
 npm run dev:server    # API  -> http://localhost:5000
 npm run dev:client    # UI   -> http://localhost:5173
 ```
 
 Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env` (default `admin`).
 
-### Demo data (optional)
-`server/src/db/seed-demo.js` fills an **empty** database with a complete, connected shop history so every screen and
-report has something to show: 2 branches, rate board for every working day, ~200 customers, ~500 gold / silver / mixed
-loans (old paper loans, new loans, top-ups, interest, part payments, releases, re-loans, a cancelled loan), auction notices
-and sales, bank re-pledges, expenses, salary and attendance, the last week's Day End and today's stock check.
-It plays the months day by day through the real API, so receipts, vouchers, cash and bank balances all tie up.
-It refuses to run on a database that already has loans, so use a separate database:
+### Seed data
+`server/src/db/seed.js` is the one seed file. It always adds the master data the app needs (company, Head Office, admin,
+roles, metals, items, schemes, ledgers, SMS templates; safe to re-run). On a database **with no loans yet** it then adds a
+complete, connected demo shop history so every screen and report has something to show: 2 branches, rate board for every
+working day, ~200 customers, ~500 gold / silver / mixed loans (old paper loans, new loans, top-ups, interest, part payments,
+releases, re-loans, a cancelled loan), auction notices and sales, bank re-pledges, expenses, salary and attendance, the last
+week's Day End and today's stock check. It plays the months day by day through the real API, so receipts, vouchers, cash and
+bank balances all tie up. A database that already has loans only gets the master data.
 
 ```bash
 cd server
-DB_NAME=gold_finance_demo npm run db:demo     # PowerShell: $env:DB_NAME='gold_finance_demo'; npm run db:demo
+npm run db:seed                 # master data + demo history (empty database)
+SEED_DEMO=0 npm run db:seed     # master data only - a real new shop    (PowerShell: $env:SEED_DEMO='0'; npm run db:seed)
 ```
 
-Point the API at it (`DB_NAME=gold_finance_demo` in `server/.env`) to use it. Demo logins: `manager`, `cashier`,
-`accounts`, `kottar`, `kcashier`, `viewer` with password `Demo@123` (change with `DEMO_PASSWORD`), plus the admin user.
+Demo logins: `manager`, `cashier`, `accounts`, `kottar`, `kcashier`, `viewer` with password `Demo@123`
+(change with `DEMO_PASSWORD`), plus the admin user.
 
 ### First steps after login
 1. **Company** – name, licence no, address, logo (printed on bills)
