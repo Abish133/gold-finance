@@ -14,10 +14,10 @@ function Copy({ data, label }) {
   // desktop: a reprint says ** DUPLICATE COPY ** in the Item Remark line
   const remark = [data.copy === 'DUPLICATE' ? '** DUPLICATE COPY **' : '', ...items.map((i) => i.remarks)].filter(Boolean).join(', ');
   return (
-    <div className="border border-ink-300 text-black">
+    <div className="border border-[#0f1e3c] border-t-4 text-black">
       <div className="flex items-start justify-between border-b-2 border-[#b8892b] px-5 py-3">
         <div>
-          <p className="text-2xl font-extrabold text-[#0f1e3c]">{company.name}</p>
+          <p className="text-2xl font-extrabold uppercase text-[#0f1e3c]">{company.name}</p>
           <p className="text-[12px]">{[company.address1, company.address2, company.address3].filter(Boolean).join(', ')}</p>
           {(company.phone || company.mobile) && <p className="mt-2 text-[12px]">Ph: {company.phone || company.mobile}</p>}
         </div>
@@ -71,8 +71,8 @@ function Copy({ data, label }) {
       <p className="mx-5 text-[9px] leading-snug">{settings.TICKET_NOTE || NOTE}</p>
       <p className="mx-5 text-right text-[9px] italic">I declare that all the above mentioned are my own</p>
       <div className="mx-5 mt-8 flex justify-between pb-3 text-[9px]">
-        <div className="w-56 border-t border-black pt-1 text-center"><p className="text-[10px] font-bold">{loan.branch_code || ''}</p>Signature of the pawn broker or his agent</div>
-        <div className="w-56 border-t border-black pt-1 text-center">Signature or thumb impression of the pawner</div>
+        <div className="w-56 text-center"><p className="text-left text-[12px]">☞</p><p className="border-b border-black pt-3 text-[10px] font-bold">{loan.branch_code || ''}</p><p className="pt-1">Signature of the pawn broker or his agent</p></div>
+        <div className="w-56 text-center"><p className="text-left text-[12px]">☞</p><p className="border-b border-black pt-3 text-[10px] font-bold">&nbsp;</p><p className="pt-1">Signature or thumb impression of the pawner</p></div>
       </div>
     </div>
   );
@@ -83,7 +83,7 @@ export function PawnTicket({ data }) {
     <div className="mx-auto w-[194mm] space-y-4">
       <Copy data={data} label="CUSTOMER COPY" />
       <div className="border-t border-dashed border-ink-400" />
-      <Copy data={data} label="OFFICE COPY" />
+      <Copy data={data} label="PAWN BROKER COPY" />
     </div>
   );
 }

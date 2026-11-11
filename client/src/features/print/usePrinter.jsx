@@ -39,7 +39,7 @@ export function usePrinter() {
       const prev = await api.get(`/loans/${full.loan.id}/print-logs`);
       const again = prev.data.some((p) => p.doc_type === 'LOAN_RECEIPT');
       const data = await buildLoanPrintData({ full, company, settings, schemes: lookups?.schemes, copy: again && dupMark ? 'DUPLICATE' : 'ORIGINAL' });
-      await show({ title: `Loan bill #${full.loan.bill_no}`, element: <LoanReceipt data={data} />, log: { id: full.loan.id, doc_type: 'LOAN_RECEIPT' } }, again);
+      await show({ title: 'Loan Receipt', element: <LoanReceipt data={data} />, log: { id: full.loan.id, doc_type: 'LOAN_RECEIPT' } }, again);
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   }, [company, settings, lookups, show, dupMark]);
 

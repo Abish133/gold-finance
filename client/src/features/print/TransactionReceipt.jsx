@@ -16,10 +16,10 @@ const Row = ({ k, v, bold, indent }) => (
   <div className={`flex justify-between py-[3px] ${bold ? 'font-bold' : ''}`}><span className={indent ? 'pl-4' : ''}>{k}</span><span className="text-right">{v}</span></div>
 );
 
-function Head({ company, small }) {
+function Head({ company, small, serif }) {
   return (
     <div className="border-b border-black pb-2 text-center">
-      <p className="text-2xl font-bold">{company.name}</p>
+      <p className={`text-2xl font-bold ${serif ? 'font-serif' : ''}`}>{company.name}</p>
       <p className={small ? 'text-[12px] text-ink-600' : 'text-[13px]'}>{[company.address1, company.address2, company.address3].filter(Boolean).join(', ')}</p>
       {(company.phone || company.mobile) && <p className={small ? 'text-[12px] text-ink-600' : 'text-[13px]'}>{small ? 'Phone' : 'Ph:'} {company.phone || company.mobile}</p>}
     </div>
@@ -100,6 +100,34 @@ function ReleaseReceipt({ data }) {
   );
 }
 
+/** Top-up receipt like the desktop: loan before, top-up given today, TOTAL LOAN NOW, words, interest-from note, paid by. */
+function TopupReceipt({ data }) {
+  const { company, loan, txn } = data;
+  const topup = Math.abs(n(txn.principal_amount));
+  const pays = txn.payments || [];
+  const rel = loan.relation_name ? ` ${loan.relation_type || ''} ${loan.relation_name}` : '';
+  return (
+    <div className="mx-auto w-[160mm] text-[15px] text-black">
+      <Head company={company} small serif />
+      <div className="mt-2 flex justify-between text-lg font-bold"><span>TOP-UP RECEIPT</span><span>No {txn.receipt_no}</span></div>
+      <div className="flex justify-between font-bold"><span>Loan No {loan.bill_no}{loan.manual_bill_no ? `  ·  Bill Book ${loan.manual_bill_no}` : ''}</span><span>Date {d(txn.txn_date)}</span></div>
+      <p>Customer: {loan.customer_title ? `${loan.customer_title} ` : ''}{loan.customer_name}{rel}   (A/c {loan.customer_no})</p>
+      <p className="text-[13px] text-ink-600">Loan date {d(loan.loan_date)}  ·  Interest {n(loan.interest_rate).toFixed(2)}% {loan.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}</p>
+      <div className="my-2 border-t border-ink-400" />
+      <Row k="Loan amount before top-up" v={amount(n(data.balance) - topup)} />
+      <Row k="Top-up amount (given today)" v={amount(topup)} bold />
+      <div className="my-2 border-t border-ink-400" />
+      <Row k={<span className="text-lg">TOTAL LOAN NOW</span>} v={<span className="text-lg">₹ {amount(data.balance)}</span>} bold />
+      <p className="text-[13px] text-ink-600">Top-up: {words(topup)}</p>
+      <p className="text-[13px] text-ink-600">Interest on the top-up amount is charged from {d(txn.txn_date)}.</p>
+      {pays.length > 0 && <p className="text-[13px] text-ink-600">Paid by: {pays.map((p) => `${modeName(p)} ${amount(p.amount)}`).join(', ')}</p>}
+      <Signs company={company} release />
+    </div>
+  );
+}
+
 export function TransactionReceipt({ data }) {
-  return data.txn.txn_type === 'RELEASE' ? <ReleaseReceipt data={data} /> : <PaymentReceipt data={data} />;
+  if (data.txn.txn_type === 'RELEASE') return <ReleaseReceipt data={data} />;
+  if (data.txn.txn_type === 'TOPUP') return <TopupReceipt data={data} />;
+  return <PaymentReceipt data={data} />;
 }
