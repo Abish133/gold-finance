@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Undo2, Save, Printer } from 'lucide-react';
+import { Undo2, Save, Printer, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Button, Input, Select, Switch, Segmented, Textarea } from '@/components/ui';
@@ -159,24 +159,28 @@ export default function SystemSettingsPage() {
     return <Input type={i.type === 'number' ? 'number' : 'text'} className={clsx('text-right', i.type === 'number' ? 'w-28' : 'w-72 text-left')} value={val} onChange={(e) => set(e.target.value)} />;
   };
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">System Control</h1><p className="text-sm text-navy-100">How the software behaves - loan, bill book, print and payment settings</p></div>
+    /* fit-screen: groups on the left, the settings list scrolls on its own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">System Control</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">How the software behaves - loan, bill book, print and payment settings</p></div>
         {!isAllBranches && <Segmented value={scope} onChange={setScope} options={[{ value: 'global', label: 'All branches' }, { value: 'branch', label: `Only ${currentBranch?.name}` }]} />}
       </section>
-      <div className="card px-4 py-3"><p className="label">Search setting</p><Input className="max-w-sm" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-      <div className="grid items-start gap-3 xl:grid-cols-[220px_1fr]">
-        <div className="card p-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900">
+        <div className="w-80"><Input prefix={<Search className="size-3.5" />} className="!h-8 text-[13px]" placeholder="Search setting…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        <span className="ml-auto text-[11px] text-ink-500">{shown.length} settings{changed.length ? <b className="ml-2 text-amber-700">{changed.length} changed - press Save</b> : null}</span>
+      </div>
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[210px_1fr]">
+        <div className="card overflow-y-auto p-1.5 xl:min-h-0">
           {[{ key: 'all', label: 'All settings', n: items.length }, ...SETTING_GROUPS.map((g) => ({ key: g.key, label: g.label, n: g.items.length }))].map((g) => (
-            <button key={g.key} type="button" onClick={() => setGroup(g.key)} className={clsx('flex w-full justify-between rounded-md px-3 py-2 text-left text-sm font-semibold', group === g.key ? 'bg-navy-50 text-navy-900' : 'text-ink-700 hover:bg-ink-50')}>
-              <span>{g.label}</span><span className="rounded bg-ink-100 px-1.5 text-xs">{g.n}</span>
+            <button key={g.key} type="button" onClick={() => setGroup(g.key)} className={clsx('flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] font-semibold', group === g.key ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' : 'text-ink-700 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-ink-800')}>
+              <span className="truncate">{g.label}</span><span className="num rounded-sm bg-ink-100 px-1.5 text-[10px] dark:bg-ink-800">{g.n}</span>
             </button>
           ))}
         </div>
-        <div className="card max-h-[65vh] overflow-y-auto">
+        <div className="card min-h-64 overflow-y-auto xl:min-h-0">
           {(group === 'all' || group === 'bill') && !isAllBranches && (
-            <div className="border-b border-ink-200 bg-cream-100 px-4 py-3">
-              <p className="mb-2 text-xs font-bold text-gold-700 uppercase">Bill book · next numbers ({currentBranch?.name})</p>
+            <div className="border-b border-ink-200 bg-amber-50/60 px-3 py-2 dark:border-ink-800 dark:bg-amber-950/20">
+              <p className="mb-1.5 text-[10px] font-bold tracking-wider text-amber-800 uppercase dark:text-amber-300">Bill book · next numbers ({currentBranch?.name})</p>
               <div className="flex flex-wrap gap-4 text-sm">
                 {[['LOAN', 'Next loan no'], ['RECEIPT', 'Next receipt no'], ['CUSTOMER', 'Next customer no']].map(([k, l]) => <label key={k} className="flex items-center gap-2">{l}<Input type="number" className="h-8 w-28 text-right" value={s[k] || ''} onChange={(e) => setS({ ...s, [k]: e.target.value })} /></label>)}
               </div>
@@ -184,9 +188,9 @@ export default function SystemSettingsPage() {
           )}
           {shown.map((i, k) => (
             <div key={i.key}>
-              {(k === 0 || shown[k - 1].group.key !== i.group.key) && <p className="bg-ink-50 px-4 py-1.5 text-xs font-bold text-gold-700 uppercase">{i.group.label}</p>}
-              <div className={clsx('flex flex-wrap items-center gap-3 border-b border-ink-100 px-4 py-2.5', changed.includes(i) && 'bg-navy-50/60')}>
-                <div className="min-w-64 flex-1"><p className="text-sm font-semibold text-navy-900">{i.label}</p>{i.hint && <p className="text-xs text-ink-500">{i.hint}</p>}</div>
+              {(k === 0 || shown[k - 1].group.key !== i.group.key) && <p className="sticky top-0 z-10 flex items-center gap-2 border-b border-ink-200 bg-ink-50 px-3 py-1 text-[10px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:bg-ink-800 dark:text-white"><span className="h-3 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />{i.group.label}</p>}
+              <div className={clsx('flex flex-wrap items-center gap-3 border-b border-ink-100 px-3 py-1.5 dark:border-ink-800', changed.includes(i) && 'bg-amber-50/70 dark:bg-amber-950/20')}>
+                <div className="min-w-64 flex-1"><p className="text-[13px] font-semibold text-navy-900 dark:text-white">{i.label}</p>{i.hint && <p className="text-[11px] text-ink-500">{i.hint}</p>}</div>
                 <span className="w-14 text-right text-[10px] font-semibold text-ink-400">{i.code}</span>
                 <div className={i.type === 'textarea' ? 'w-full' : ''}>{control(i)}</div>
               </div>
@@ -194,7 +198,7 @@ export default function SystemSettingsPage() {
           ))}
         </div>
       </div>
-      <div className="card flex flex-wrap gap-2 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
         <Button variant="outline" icon={Undo2} onClick={() => setV(data || {})}>Undo All Changes {changed.length ? `(${changed.length})` : ''}</Button>
         <div className="ml-auto flex gap-2"><Button variant="outline" icon={Printer} onClick={print}>Print Settings (F9)</Button><Button variant="gold" icon={Save} onClick={save}>Save Changes (F2)</Button><ExitButton /></div>
       </div>

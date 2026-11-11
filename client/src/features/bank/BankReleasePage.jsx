@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { amount, date, n, round2, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { NeedBranch } from '@/components/common/NeedBranch';
 
 /** Bank Release (desktop): repay a bank loan - the pledged loans come back in hand. */
 export default function BankReleasePage() {
@@ -73,37 +74,44 @@ export default function BankReleasePage() {
       </div>}
     </ConfirmDrawer>
   );
-  if (isAllBranches) return <div className="card p-6 text-sm">Select a branch to release from bank.</div>;
+  if (isAllBranches) return <NeedBranch action="release from bank" />;
   if (lk && !banks.length) return <div className="card space-y-3 p-6 text-sm"><p>No bank account found. Please add the bank in Bank Accounts first.</p><Button onClick={() => navigate('/bank/accounts')}>Open Bank Accounts</Button></div>;
 
-  const tile = (l, v, h, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-xl font-bold">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>;
-  const line = (k, v, cls) => <div className={clsx('flex justify-between py-0.5', cls)}><span>{k}</span><b className="num">{v}</b></div>;
+  const tile = (l, v, h, bar) => (
+    <div className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800">
+      <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+      <p className="truncate text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p>
+      <p className="num truncate text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v}</p><p className="truncate text-[10px] text-ink-500">{h}</p>
+    </div>
+  );
+  const line = (k, v, cls) => <div className={clsx('flex justify-between border-b border-dashed border-ink-200 py-0.5 last:border-0 dark:border-ink-700', cls)}><span className="text-ink-500">{k}</span><b className="num">{v}</b></div>;
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">Bank Release</h1><p className="text-sm text-navy-100">Repay a bank loan - the pledged loans come back in hand</p></div>
-        <div className="rounded-md bg-white/10 px-4 py-1.5 text-center"><p className="text-[11px] font-bold uppercase">Billing date</p><p className="font-bold">{dayjs(today()).format('DD/MM/YYYY')}</p></div>
+    /* fit-screen: the page fits the window; tables and panels scroll on their own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Bank Release</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Repay a bank loan - the pledged loans come back in hand</p></div>
+        <div className="rounded-md border border-white/15 px-3 py-1 text-center"><p className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">Billing date</p><p className="font-bold">{dayjs(today()).format('DD/MM/YYYY')}</p></div>
       </section>
-      <div className="card flex flex-wrap items-end gap-3 px-4 py-3">
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2 shrink-0 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900">
         <Field label="Bank / branch" className="w-80"><Select value={bank} onChange={(e) => { setBank(e.target.value); setSelId(null); }} options={banks.map((b) => ({ value: b.id, label: `${b.bank_name}${b.bank_branch ? ` · ${b.bank_branch}` : ''}` }))} /></Field>
         <Field label="Release date"><Input type="date" max={today()} value={d} onChange={(e) => setD(e.target.value)} /></Field>
         <Field label="Bank loan no" className="w-72"><Input value={no} onChange={(e) => setNo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && rows[0] && setSelId(rows[0].id)} placeholder="type for suggestions" /></Field>
       </div>
-      <div className="grid gap-3 sm:grid-cols-4">
-        {tile('Pending at this bank', rows.length, 'bank loans', 'border-t-violet-600')}
-        {tile('Bank loan amount', `Rs. ${amount(sum(rows, 'amount'))}`, `${sum(rows, 'loan_count')} customer loans inside`, 'border-t-blue-600')}
-        {tile('Interest due to bank', `Rs. ${amount(open.data?.tiles?.interestDue || 0)}`, `as on ${date(d)}`, 'border-t-rose-600')}
-        {tile('Released on this date', releasedToday.data?.data?.length || 0, `Rs. ${amount(sum(releasedToday.data?.data || [], 'total_paid'))} paid on ${date(d)}`, 'border-t-emerald-700')}
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {tile('Pending at this bank', rows.length, 'bank loans', 'bg-violet-600')}
+        {tile('Bank loan amount', `Rs. ${amount(sum(rows, 'amount'))}`, `${sum(rows, 'loan_count')} customer loans inside`, 'bg-blue-600')}
+        {tile('Interest due to bank', `Rs. ${amount(open.data?.tiles?.interestDue || 0)}`, `as on ${date(d)}`, 'bg-rose-600')}
+        {tile('Released on this date', releasedToday.data?.data?.length || 0, `Rs. ${amount(sum(releasedToday.data?.data || [], 'total_paid'))} paid on ${date(d)}`, 'bg-emerald-700')}
       </div>
-      <div className="grid items-stretch gap-3 xl:grid-cols-[1fr_440px]">
-        <div className="space-y-3">
-          <div className="card overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="navy-gradient text-white"><tr>{['Bank Loan No', 'Loan Date', 'Loans', 'Weight', 'Amount', '% / Year', 'Days', 'Interest'].map((h, i) => <th key={h} className={clsx('px-2 py-2', i > 1 ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
-              <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-                {!rows.length && <tr><td colSpan={8} className="py-10 text-center text-ink-400">No pending bank loans at this bank</td></tr>}
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_360px]">
+        <div className="flex min-w-0 flex-col gap-2 xl:min-h-0">
+          <div className="min-h-48 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+            <table className="w-full text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{['Bank Loan No', 'Loan Date', 'Loans', 'Weight', 'Amount', '% / Year', 'Days', 'Interest'].map((h, i) => <th key={h} className={clsx('px-2 py-1.5 font-semibold', i > 1 ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+                {!rows.length && <tr><td colSpan={8} className="py-8 text-center text-[12px] text-ink-400">No pending bank loans at this bank</td></tr>}
                 {rows.map((r) => (
-                  <tr key={r.id} onClick={() => setSelId(r.id)} className={clsx('cursor-pointer', selId === r.id && 'bg-navy-50 dark:bg-ink-800')}>
+                  <tr key={r.id} onClick={() => setSelId(r.id)} className={clsx('cursor-pointer', selId === r.id && 'bg-emerald-50 dark:bg-emerald-950/30')}>
                     <td className="px-2 py-1.5 font-semibold">{r.pledge_no}</td><td className="px-2">{date(r.pledge_date)}</td><td className="num px-2 text-right">{r.loan_count}</td><td className="num px-2 text-right">{weight(r.total_wt)}</td>
                     <td className="num px-2 text-right">{amount(r.amount)}</td><td className="num px-2 text-right">{n(r.interest_rate)}</td><td className="num px-2 text-right">{r.days}</td><td className="num px-2 text-right">{amount(r.interest)}</td>
                   </tr>
@@ -111,14 +119,14 @@ export default function BankReleasePage() {
               </tbody>
             </table>
           </div>
-          <div className="card overflow-auto">
-            <p className="px-3 py-2 text-xs font-bold text-navy-900 uppercase dark:text-white">Customer loans in this bank loan</p>
-            <table className="w-full text-sm">
-              <thead className="navy-gradient text-white"><tr>{['Loan No', 'Customer', 'Metal', 'Items', 'Net Wt', 'Amount', 'Status Now'].map((h, i) => <th key={h} className={clsx('px-2 py-2', [4, 5].includes(i) ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
-              <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
+          <div className="min-h-48 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+            <p className="sticky top-0 z-20 flex h-8 items-center gap-2 border-b border-ink-200 bg-white px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:bg-ink-900 dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-violet-600" />Customer loans in this bank loan</p>
+            <table className="w-full text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{['Loan No', 'Customer', 'Metal', 'Items', 'Net Wt', 'Amount', 'Status Now'].map((h, i) => <th key={h} className={clsx('px-2 py-1.5 font-semibold', [4, 5].includes(i) ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                 {!bp && <tr><td colSpan={7} className="py-8 text-center text-ink-400">Select a bank loan</td></tr>}
                 {(bp?.loans || []).map((l) => (
-                  <tr key={l.id}><td className="px-2 py-1.5 font-semibold">{l.bill_no}{l.manual_bill_no ? ` / ${l.manual_bill_no}` : ''}</td><td className="px-2">{l.customer_name}</td><td className="px-2">{l.loan_on}</td><td className="px-2 uppercase">{l.items_text || l.item_summary}</td>
+                  <tr key={l.id}><td className="px-2 py-1.5 font-semibold">{l.bill_no}{l.manual_bill_no ? ` / ${l.manual_bill_no}` : ''}</td><td className="px-2">{l.customer_name}</td><td className="px-2">{l.loan_on}</td><td className="max-w-56 truncate px-2 uppercase" title={l.items_text || l.item_summary}>{l.items_text || l.item_summary}</td>
                     <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right">{amount(l.loan_amount ?? l.principal)}</td>
                     <td className="px-2">{l.status === 'OPEN' ? <span className="text-violet-700">In bank</span> : `${l.status === 'CLOSED' || l.status === 'RENEWED' ? 'released' : l.status.toLowerCase()} by customer`}</td></tr>
                 ))}
@@ -126,25 +134,29 @@ export default function BankReleasePage() {
             </table>
           </div>
         </div>
-        <div className="card space-y-2 p-4 text-sm">
-          <p className="navy-gradient -mx-4 -mt-4 mb-2 px-4 py-2 text-sm font-bold text-white uppercase">Release calculation</p>
+        <div className="flex flex-col gap-2 overflow-y-auto rounded-md border border-ink-200 bg-white p-3 text-[13px] xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+          <p className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Release calculation</p>
+          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800">
           {line('Loan date', bp ? date(bp.pledge_date) : '-')}{line('Loan amount', bp ? amount(bp.amount) : '-')}{line('Interest % / year', bp ? `${n(bp.interest_rate).toFixed(2)} (${(n(bp.interest_rate) / 12).toFixed(2)} / month)` : '-')}
           {line('Days', c ? c.days : '-')}{line('Per day interest', bp ? amount((n(bp.amount) * n(bp.interest_rate)) / 36500) : '-')}{line('Total interest', c ? amount(c.interest) : '-')}
           {line('Advance interest', bp ? amount(bp.advance_interest) : '-')}{line('Interest due', c ? amount(round2(c.interest - n(bp.advance_interest))) : '-', 'font-semibold')}
-          <div className="-mx-4 flex justify-between bg-cream-100 px-4 py-2 text-base font-bold dark:bg-ink-800"><span>PAYABLE TO BANK</span><span className="num">{bp ? amount(payable) : ''}</span></div>
-          <Field label="Actually paid to bank"><Input type="number" className="h-11 text-right text-lg font-bold" placeholder={bp ? String(payable) : ''} value={paid} onChange={(e) => setPaid(e.target.value)} /></Field>
+          </div>
+          <div className="navy-gradient flex items-baseline justify-between rounded-md px-3 py-2 text-white"><span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Payable to bank</span><span className="num text-xl font-extrabold">{bp ? amount(payable) : '-'}</span></div>
+          <Field label="Actually paid to bank"><Input type="number" className="!h-10 text-right text-base font-bold" placeholder={bp ? String(payable) : ''} value={paid} onChange={(e) => setPaid(e.target.value)} /></Field>
           <Field label="Paid from"><Select value={mode} onChange={(e) => setMode(e.target.value)} options={[{ value: 'BANK', label: 'Same bank account' }, { value: 'CASH', label: 'Cash' }]} /></Field>
+          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800">
           {line('Interest paid', bp ? amount(interestPaid) : '-')}{line('Difference', bp ? amount(diff) : '-', diff ? (diff > 0 ? 'text-rose-600' : 'text-emerald-700') : '')}{line('Effective rate', bp ? `${effRate}% / year` : '-')}
+          </div>
         </div>
       </div>
-      <div className="card flex flex-wrap gap-2 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
         <Button variant="outline" icon={RefreshCw} onClick={() => { open.refetch(); releasedToday.refetch(); }}>Refresh (F5)</Button>
         <span className="flex-1" />
         {can('bank_pledge', 'edit') && <Button variant="gold" icon={Unlock} loading={saving} disabled={!bp} onClick={() => release()}>Release from Bank (F2)</Button>}
         <Button variant="outline" icon={Printer} onClick={printReleases}>Print Releases (F9)</Button>
-        <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
+        <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
       </div>
-      <p className="px-1 text-xs text-ink-500">Type bank loan no = suggestions · Enter = select / amount paid · F2 = release · F5 = refresh · F9 = print releases of the day · Esc = exit</p>
+      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Type bank loan no = suggestions · Enter = select / amount paid · F2 = release · F5 = refresh · F9 = print releases of the day · Esc = exit</p>
       {confirm}
     </div>
   );

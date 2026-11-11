@@ -97,7 +97,7 @@
   /* counter screens are denser than ordinary forms */
   .desk .input, .dense .input { @apply h-9; }
   .desk .label, .dense .label { @apply mb-0.5 text-[10px]; }
-  .card { @apply rounded-md border border-ink-300/80 bg-white shadow-soft dark:border-ink-700 dark:bg-ink-900; }
+  .card { @apply rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900; }
   .input {
     @apply h-10 w-full rounded-md border border-ink-300 bg-white px-3 text-sm text-ink-900 outline-none transition
       placeholder:text-ink-400 focus:border-navy-500 focus:ring-3 focus:ring-navy-500/15 disabled:cursor-not-allowed disabled:bg-ink-100

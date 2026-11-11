@@ -25,9 +25,9 @@ export default function AppearancePage() {
     if (file.current) file.current.value = '';
   };
   return (
-    <div className="animate-rise space-y-3">
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
       <PageHeader icon={Palette} title="Appearance" subtitle="Background image shown faintly behind every screen" />
-      <div className="card space-y-4 p-4">
+      <div className="card space-y-3 p-3 text-[13px]">
         <div className="grid aspect-[16/6] max-w-3xl place-items-center overflow-hidden rounded-md border border-ink-200 bg-ink-50">
           {bg ? <img src={bg} alt="Background" className="size-full object-cover" /> : <p className="text-sm text-ink-500">No background image</p>}
         </div>

@@ -51,7 +51,7 @@ function MenuBar({ onAction, onExit }) {
   };
 
   /* the menu that owns the page you are on gets the underline */
-  const hasPath = (i) => i.path === location.pathname || i.items?.some(hasPath);
+  const hasPath = (i) => (i.path && i.path.split('?')[0] === location.pathname) || i.items?.some(hasPath);
   const current = menus.find((m) => m.items.some(hasPath))?.key;
 
   return (
@@ -332,10 +332,10 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
           onClick={billing?.behind ? () => navigate('/accounts/day-report') : undefined} title={billing?.behind ? 'Billing date is behind today - finish Day End' : 'Billing date'} />
         <Sep />
         <HeaderStat icon={<GoldIcon />} label="Gold" value={gold ? `₹${amount((gold.market_rate * 100) / (gold.purity || 100))}` : 'Not set'} accent={!todayRate ? 'text-rose-600' : undefined}
-          onClick={() => navigate('/masters/rates')} title={todayRate ? 'Gold rate per gram' : 'Gold rate not set for today'} />
+          onClick={() => navigate('/masters?tab=rates')} title={todayRate ? 'Gold rate per gram' : 'Gold rate not set for today'} />
         <Sep />
         <HeaderStat icon={<SilverIcon />} label="Silver" value={silver ? `₹${amount((silver.market_rate * 100) / (silver.purity || 100))}` : 'Not set'}
-          onClick={() => navigate('/masters/rates')} title="Silver rate per gram" />
+          onClick={() => navigate('/masters?tab=rates')} title="Silver rate per gram" />
       </div>
 
       <span className="flex-1" />
@@ -429,13 +429,13 @@ function ProfileDrawer({ open, onClose }) {
 function ShortcutsDrawer({ open, onClose }) {
   return (
     <Drawer open={open} onClose={onClose} title="Keyboard shortcuts" icon={Keyboard} size="sm">
-      <table className="w-full text-sm">
-        <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-          {[...HOTKEYS.map((h) => [h.key, h.label]), ['Ctrl + K', 'Search loans & customers'], ['Esc', 'Close drawer / menu']].map(([k, l]) => (
-            <tr key={k}><td className="py-2 pr-4"><kbd className="rounded border border-ink-300 bg-ink-50 px-2 py-0.5 text-xs font-bold dark:bg-ink-800">{k}</kbd></td><td className="py-2">{l}</td></tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="overflow-hidden rounded-md border border-ink-200 dark:border-ink-800">
+        {[...HOTKEYS.map((h) => [h.key, h.label]), ['Ctrl + K', 'Search loans & customers'], ['Esc', 'Close drawer / menu']].map(([k, l]) => (
+          <div key={k} className="flex items-center gap-3 border-b border-ink-100 px-3 py-1.5 text-[13px] last:border-0 dark:border-ink-800">
+            <kbd className="min-w-16 rounded-md border border-ink-300 bg-ink-50 px-2 py-0.5 text-center text-[11px] font-bold text-navy-900 dark:border-ink-600 dark:bg-ink-800 dark:text-white">{k}</kbd><span>{l}</span>
+          </div>
+        ))}
+      </div>
     </Drawer>
   );
 }
@@ -444,8 +444,15 @@ function AboutDrawer({ open, onClose }) {
   const { data: company } = useCompany();
   return (
     <Drawer open={open} onClose={onClose} title="About" icon={Info} size="sm">
-      <p className="font-bold text-3xl text-navy-900 dark:text-white">{company?.name || 'Gold Finance'}</p>
-      <p className="mt-1 text-sm text-ink-500">A complete pawn broker solution · multi-branch · web edition 1.0</p>
+      <div className="flex items-center gap-3 rounded-md border border-ink-200 p-3 dark:border-ink-800">
+        <span className="grid size-12 shrink-0 place-items-center rounded-md bg-navy-900 text-xl font-bold text-white dark:bg-white dark:text-navy-900">{(company?.name || 'G').replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</span>
+        <div className="min-w-0"><p className="truncate text-lg font-bold text-navy-900 dark:text-white">{company?.name || 'Gold Finance'}</p><p className="text-[12px] text-ink-500">A complete pawn broker solution</p></div>
+      </div>
+      <div className="mt-2 overflow-hidden rounded-md border border-ink-200 text-[13px] dark:border-ink-800">
+        {[['Edition', 'Web edition 1.0'], ['Branches', 'Multi-branch'], ['Licence', company?.licence_no || '-'], ['Phone', company?.mobile || company?.phone || '-']].map(([k, v]) => (
+          <div key={k} className="flex justify-between gap-3 border-b border-ink-100 px-3 py-1.5 last:border-0 dark:border-ink-800"><span className="text-ink-500">{k}</span><b className="text-right">{v}</b></div>
+        ))}
+      </div>
     </Drawer>
   );
 }

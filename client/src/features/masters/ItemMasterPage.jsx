@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Save, Trash2, FileDown, Printer, FileSpreadsheet } from 'lucide-react';
+import { Plus, Save, Trash2, FileDown, Printer, FileSpreadsheet, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Badge, Button, ConfirmDrawer, Field, Input } from '@/components/ui';
@@ -43,58 +43,60 @@ export default function ItemMasterPage() {
   useKeys({ 'ctrl+n': () => setIt({ name: '', local_name: '', description: '' }), f2: saveItem, delete: () => it.id && setDel(it), 'ctrl+p': print, f9: print, f10: () => exportCsv('items', cols, rows), escape: () => navigate('/') }, [it, cat, rows]);
 
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Item Master</h1><p className="text-sm text-navy-100">Loan item categories and item names</p></section>
-      <div className="card flex flex-wrap items-end gap-4 px-4 py-3">
-        <Field label="Search item / category"><Input className="w-72" value={q} onChange={(e) => setQ(e.target.value)} /></Field>
-        <div><p className="label">Show</p><div className="flex gap-1">{[['all', 'All items'], ['used', 'In use'], ['unused', 'Unused']].map(([k, l]) => <button key={k} type="button" onClick={() => setShow(k)} className={clsx('h-9 rounded-md border px-3 text-sm font-semibold', show === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800')}>{l}</button>)}</div></div>
-        <span className="ml-auto text-xs text-ink-500">{rows.length} items in {cat?.name}</span>
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 rounded-md px-4 py-2 text-white"><div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Item Master</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Loan item categories and item names</p></div></section>
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2 shrink-0 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900">
+        <Field label="Search item / category"><Input className="!h-8 w-72 text-[13px]" prefix={<Search className="size-3.5" />} value={q} onChange={(e) => setQ(e.target.value)} /></Field>
+        <div><p className="label">Show</p><div className="flex">{[['all', 'All items'], ['used', 'In use'], ['unused', 'Unused']].map(([k, l]) => <button key={k} type="button" onClick={() => setShow(k)} className={clsx('-ml-px flex h-8 items-center gap-1.5 border px-2.5 text-[12px] font-semibold whitespace-nowrap first:ml-0 first:rounded-l-md last:rounded-r-md', show === k ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300')}>{show === k && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}{l}</button>)}</div></div>
+        <span className="ml-auto pb-2 text-[11px] text-ink-500">{rows.length} items in {cat?.name}</span>
       </div>
-      <div className="grid gap-3 sm:grid-cols-4">
-        {[['Categories', catList.length, catList.map((c) => c.name).join(' - '), 'border-t-navy-800 bg-cream-100'], ['Items', itemList.length, 'all categories', 'border-t-gold-500'], ['In use', used, 'used in loans', 'border-t-navy-500'], ['Unused', itemList.length - used, 'can be deleted', 'border-t-emerald-600']].map(([l, v, h, c]) => (
-          <div key={l} className={clsx('card border-t-4 px-4 py-3', c)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold text-navy-900">{v}</p><p className="truncate text-[11px] text-ink-500">{h}</p></div>
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {[['Categories', catList.length, catList.map((c) => c.name).join(' - '), 'bg-navy-900 dark:bg-white'], ['Items', itemList.length, 'all categories', 'bg-amber-500'], ['In use', used, 'used in loans', 'bg-blue-600'], ['Unused', itemList.length - used, 'can be deleted', 'bg-emerald-600']].map(([l, v, h, c]) => (
+          <div key={l} className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800"><span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', c)} /><p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p><p className="num text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v}</p><p className="truncate text-[10px] text-ink-500">{h}</p></div>
         ))}
       </div>
-      <div className="grid items-start gap-3 xl:grid-cols-[360px_1fr]">
-        <div className="card overflow-hidden">
-          <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Categories · {catList.length}</p>
-          <table className="w-full text-sm">
-            <thead className="bg-navy-50 text-xs text-navy-800 uppercase"><tr><th className="px-3 py-1.5 text-left">Category</th><th className="px-3 text-left">Description</th><th className="px-3 text-right">Items</th><th className="px-3 text-right">Used</th></tr></thead>
-            <tbody className="divide-y divide-ink-200">{catList.map((c) => (
-              <tr key={c.id} onClick={() => setCat(c)} className={clsx('cursor-pointer hover:bg-navy-50/50', cat?.id === c.id && 'bg-cream-200 font-semibold')}><td className="px-3 py-1.5 uppercase">{c.name}</td><td className="px-3">{c.description}</td><td className="num px-3 text-right">{c.item_count}</td><td className="num px-3 text-right">{c.used || '-'}</td></tr>
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[340px_1fr]">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
+          <p className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Categories · {catList.length}</p>
+          <div className="min-h-0 flex-1 overflow-auto">
+          <table className="w-full text-[12px]">
+            <thead className="sticky top-0 z-10 bg-ink-50 text-[10px] tracking-wider text-ink-500 uppercase dark:bg-ink-800"><tr><th className="px-3 py-1.5 text-left">Category</th><th className="px-3 text-left">Description</th><th className="px-3 text-right">Items</th><th className="px-3 text-right">Used</th></tr></thead>
+            <tbody className="divide-y divide-ink-100 dark:divide-ink-800">{catList.map((c) => (
+              <tr key={c.id} onClick={() => setCat(c)} className={clsx('cursor-pointer', cat?.id === c.id ? 'bg-emerald-50 font-semibold dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}><td className="px-3 py-1 uppercase">{c.name}</td><td className="px-3">{c.description}</td><td className="num px-3 text-right">{c.item_count}</td><td className="num px-3 text-right">{c.used || '-'}</td></tr>
             ))}</tbody>
           </table>
-          <div className="space-y-2 border-t border-ink-200 p-3">
-            <p className="text-xs font-bold text-gold-700 uppercase">{ci.id ? `Edit category · ${ci.name}` : 'New category'}</p>
-            <div className="grid grid-cols-2 gap-2"><Field label="Category name"><Input value={ci.name} onChange={(e) => setCi({ ...ci, name: e.target.value })} /></Field><Field label="Description"><Input value={ci.description} onChange={(e) => setCi({ ...ci, description: e.target.value })} /></Field></div>
-            <div className="flex justify-end gap-2"><Button size="sm" variant="outline" onClick={() => setCi({ name: '', description: '' })}>New Category</Button><Button size="sm" icon={Save} onClick={saveCat}>Save Category</Button></div>
+          </div>
+          <div className="shrink-0 space-y-2 border-t border-ink-200 bg-ink-50/50 p-2.5 dark:border-ink-800 dark:bg-ink-800/30">
+            <p className="text-[10px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">{ci.id ? `Edit category · ${ci.name}` : 'New category'}</p>
+            <div className="grid grid-cols-2 gap-1.5"><Field label="Category name"><Input value={ci.name} onChange={(e) => setCi({ ...ci, name: e.target.value })} /></Field><Field label="Description"><Input value={ci.description} onChange={(e) => setCi({ ...ci, description: e.target.value })} /></Field></div>
+            <div className="grid grid-cols-2 gap-1.5 [&_button]:h-8 [&_button]:w-full [&_button]:text-[12px]"><Button size="sm" variant="outline" icon={Plus} onClick={() => setCi({ name: '', description: '' })}>New Category</Button><Button size="sm" icon={Save} onClick={saveCat}>Save Category</Button></div>
           </div>
         </div>
-        <div className="card overflow-hidden">
-          <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">Items in {cat?.name} · {rows.length} items</p>
-          <div className="grid items-end gap-2 border-b border-ink-200 p-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]">
+        <div className="flex min-h-0 flex-col overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
+          <p className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Items in {cat?.name} · {rows.length} items</p>
+          <div className="grid shrink-0 items-end gap-2 border-b border-ink-200 bg-ink-50/50 p-2.5 sm:grid-cols-[1fr_1fr_1fr_auto_auto] dark:border-ink-800 dark:bg-ink-800/30 [&_button]:h-9 [&_button]:text-[12px]">
             <Field label={it.id ? `Edit item · code ${it.id}` : 'Item name'}><Input value={it.name} onChange={(e) => setIt({ ...it, name: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === 'Enter' && saveItem()} /></Field>
             <Field label="Local (Tamil) name"><Input value={it.local_name || ''} onChange={(e) => setIt({ ...it, local_name: e.target.value })} /></Field>
             <Field label="Description"><Input value={it.description || ''} onChange={(e) => setIt({ ...it, description: e.target.value })} /></Field>
             <Button variant="outline" icon={Plus} onClick={() => setIt({ name: '', local_name: '', description: '' })}>New Item (Ctrl+N)</Button>
             <Button icon={Save} onClick={saveItem}>Save Item (F2)</Button>
           </div>
-          <div className="max-h-[52vh] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-navy-50 text-xs text-navy-800 uppercase"><tr><th className="w-16 px-3 py-1.5 text-left">Code</th><th className="px-3 text-left">Item Name</th><th className="px-3 text-left">Description</th><th className="px-3 text-right">Used in Loans</th><th className="px-3 text-center">Status</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{rows.map((i) => (
-                <tr key={i.id} onClick={() => setIt(i)} className={clsx('cursor-pointer hover:bg-navy-50/50', it.id === i.id && 'bg-cream-200')}>
-                  <td className="px-3 py-1.5">{i.id}</td><td className="px-3 font-bold"><span className="uppercase">{i.name}</span> {i.local_name && <span className="font-normal text-ink-500">· {i.local_name}</span>}</td><td className="px-3">{i.description}</td>
-                  <td className="num px-3 text-right">{i.used_in_loans || '-'}</td><td className="px-3 text-center"><Badge tone={i.used_in_loans ? 'blue' : 'green'} className="text-[10px]">{i.used_in_loans ? 'IN USE' : 'UNUSED'}</Badge></td>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <table className="w-full text-[12px]">
+              <thead className="sticky top-0 z-10 bg-ink-50 text-[10px] tracking-wider text-ink-500 uppercase dark:bg-ink-800"><tr><th className="w-16 px-3 py-1.5 text-left">Code</th><th className="px-3 text-left">Item Name</th><th className="px-3 text-left">Description</th><th className="px-3 text-right">Used in Loans</th><th className="px-3 text-center">Status</th></tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">{rows.map((i) => (
+                <tr key={i.id} onClick={() => setIt(i)} className={clsx('cursor-pointer', it.id === i.id ? 'bg-emerald-50 font-semibold dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+                  <td className="px-3 py-1">{i.id}</td><td className="px-3 font-bold"><span className="uppercase">{i.name}</span> {i.local_name && <span className="font-normal text-ink-500">· {i.local_name}</span>}</td><td className="px-3">{i.description}</td>
+                  <td className="num px-3 text-right">{i.used_in_loans || '-'}</td><td className="px-3 text-center"><Badge tone={i.used_in_loans ? 'blue' : 'green'} className="!py-0 text-[9px]">{i.used_in_loans ? 'IN USE' : 'UNUSED'}</Badge></td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
         </div>
       </div>
-      <div className="card flex flex-wrap gap-2 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
         <Button variant="soft-danger" icon={Trash2} disabled={!it.id || it.used_in_loans > 0} onClick={() => setDel(it)}>Delete (Del)</Button>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
           <Button variant="outline" icon={Printer} onClick={print}>Print Item List (F9)</Button>
           <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('items', cols, rows)}>Excel (F10)</Button>

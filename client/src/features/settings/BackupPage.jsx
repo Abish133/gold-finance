@@ -47,35 +47,41 @@ export default function BackupPage() {
   const canRestore = rs.confirm === 'RESTORE' && rs.password && (rs.source === 'upload' ? !!rs.upload : !!rs.file);
 
   useKeys({ f2: tab === 'backup' ? (admin ? fullBackup : branchBackup) : () => {}, escape: () => navigate('/') }, [tab, admin]);
-  const tile = (l, v, h, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="text-xl font-bold">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>;
+  const tile = (l, v, h, cls) => (
+    <div className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800">
+      <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', cls)} />
+      <p className="truncate text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p>
+      <p className="num truncate text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v}</p><p className="truncate text-[10px] text-ink-500">{h}</p>
+    </div>
+  );
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Backup Database</h1><p className="text-sm text-navy-100">Take a backup, restore a backup, and the nightly auto backup</p></section>
-      <div className="grid gap-3 sm:grid-cols-4">
-        {tile('Database', 'MySQL', data ? `${data.tables} tables · ${Math.round(data.sizeKb / 1024 * 10) / 10} MB` : '', 'border-t-navy-800')}
-        {tile('Last backup', last ? dateTime(last.created_at) : 'Never', last ? `${parse(last.details).type || 'Manual'} · by ${last.by_name || 'auto'}` : 'Take a backup now', last ? 'border-t-emerald-700' : 'border-t-rose-600')}
-        {tile('Auto backup', a.AUTO_BACKUP_ENABLED === '1' ? `On · ${a.AUTO_BACKUP_TIME}` : 'Off', `${list.length} files on server · keeps ${a.AUTO_BACKUP_KEEP || 30}`, a.AUTO_BACKUP_ENABLED === '1' ? 'border-t-amber-500' : 'border-t-rose-600')}
-        {tile('Scope', isAllBranches ? 'All branches' : currentBranch?.name, 'masters + transactions', 'border-t-blue-600')}
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 rounded-md px-4 py-2 text-white"><div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Backup Database</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Take a backup, restore a backup, and the nightly auto backup</p></div></section>
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {tile('Database', 'MySQL', data ? `${data.tables} tables · ${Math.round(data.sizeKb / 1024 * 10) / 10} MB` : '', 'bg-navy-800')}
+        {tile('Last backup', last ? dateTime(last.created_at) : 'Never', last ? `${parse(last.details).type || 'Manual'} · by ${last.by_name || 'auto'}` : 'Take a backup now', last ? 'bg-emerald-700' : 'bg-rose-600')}
+        {tile('Auto backup', a.AUTO_BACKUP_ENABLED === '1' ? `On · ${a.AUTO_BACKUP_TIME}` : 'Off', `${list.length} files on server · keeps ${a.AUTO_BACKUP_KEEP || 30}`, a.AUTO_BACKUP_ENABLED === '1' ? 'bg-amber-500' : 'bg-rose-600')}
+        {tile('Scope', isAllBranches ? 'All branches' : currentBranch?.name, 'masters + transactions', 'bg-blue-600')}
       </div>
-      <div className="flex gap-1">{[['backup', 'Backup'], ['restore', 'Restore'], ['auto', 'Auto Backup']].map(([k, l]) => (
+      <div className="flex">{[['backup', 'Backup'], ['restore', 'Restore'], ['auto', 'Auto Backup']].map(([k, l]) => (
         <button key={k} type="button" onClick={() => setTab(k)} className={clsx('h-9 rounded-md border px-5 text-sm font-semibold', tab === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800 dark:bg-ink-900 dark:text-white')}>{l}</button>
       ))}</div>
       <div className="grid items-start gap-3 xl:grid-cols-[1fr_1fr]">
-        <div className="card space-y-3 p-4 text-sm">
+        <div className="card space-y-2 p-3 text-[13px]">
           {tab === 'backup' && (<>
             {admin && (<>
               <p className="font-bold">Full backup (can be restored)</p>
               <p className="text-ink-600">Every table of every branch, users and settings included. Save it to a pen drive or Google Drive as a second copy.</p>
-              <Button variant="gold" size="lg" className="w-full" icon={DatabaseBackup} loading={busy === 'full'} onClick={fullBackup}>Take Full Backup Now (F2)</Button>
+              <Button variant="gold" className="h-10 w-full" icon={DatabaseBackup} loading={busy === 'full'} onClick={fullBackup}>Take Full Backup Now (F2)</Button>
               <hr className="border-ink-200 dark:border-ink-700" />
             </>)}
             <p className="font-bold">Branch data export</p>
             <p className="text-ink-600">Masters plus every customer, loan, receipt, voucher and bank entry of <b>{isAllBranches ? 'all your branches' : currentBranch?.name}</b>, as a readable file. This file is for keeping / checking, not for restore.</p>
-            <Button variant={admin ? 'outline' : 'gold'} size="lg" className="w-full" icon={Download} loading={busy === 'branch'} onClick={branchBackup}>{admin ? 'Export Branch Data' : 'Take Backup Now (F2)'}</Button>
+            <Button variant={admin ? 'outline' : 'gold'} className="h-10 w-full" icon={Download} loading={busy === 'branch'} onClick={branchBackup}>{admin ? 'Export Branch Data' : 'Take Backup Now (F2)'}</Button>
           </>)}
           {tab === 'restore' && (!admin ? <p className="text-ink-600">Only the super admin can restore a backup.</p> : (<>
             <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-rose-800">Restore puts the backup's data back over <b>all of today's data, in every branch</b>. Anything entered after that backup is lost. A safety backup of the current data is saved on the server first.</p>
-            <div className="flex gap-1">{[['server', 'Server backup file'], ['upload', 'Upload a file']].map(([k, l]) => (
+            <div className="flex">{[['server', 'Server backup file'], ['upload', 'Upload a file']].map(([k, l]) => (
               <button key={k} type="button" onClick={() => setRs({ ...rs, source: k })} className={clsx('h-9 rounded-md border px-4 text-sm font-semibold', rs.source === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800 dark:bg-ink-900 dark:text-white')}>{l}</button>
             ))}</div>
             {rs.source === 'server'
@@ -85,7 +91,7 @@ export default function BackupPage() {
               <Field label="Type RESTORE to confirm"><Input value={rs.confirm} onChange={(e) => setRs({ ...rs, confirm: e.target.value.toUpperCase() })} /></Field>
               <Field label="Your password"><Input type="password" value={rs.password} onChange={(e) => setRs({ ...rs, password: e.target.value })} /></Field>
             </div>
-            <Button variant="danger" size="lg" className="w-full" icon={RotateCcw} disabled={!canRestore} loading={busy === 'restore'} onClick={restore}>Restore Backup</Button>
+            <Button variant="danger" className="h-10 w-full" icon={RotateCcw} disabled={!canRestore} loading={busy === 'restore'} onClick={restore}>Restore Backup</Button>
           </>))}
           {tab === 'auto' && (<>
             <p className="text-ink-600">Every night the server saves a full backup in its <b>backups</b> folder and keeps the newest files. Copy that folder to a pen drive or cloud drive now and then.</p>
@@ -103,10 +109,10 @@ export default function BackupPage() {
         </div>
         <div className="card overflow-hidden">
           {tab === 'backup' ? (<>
-            <p className="navy-gradient px-3 py-2 text-xs font-bold text-white uppercase">Backup history · {rows.length}</p>
-            <table className="w-full text-sm">
-              <thead className="bg-navy-800 text-white"><tr><th className="px-2 py-1.5 text-left">Date / Time</th><th className="px-2 text-right">Rows</th><th className="px-2 text-right">Size</th><th className="px-2 text-left">Type</th><th className="px-2 text-left">By</th></tr></thead>
-              <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
+            <p className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Backup history · {rows.length}</p>
+            <table className="w-full text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="px-2 py-1.5 text-left">Date / Time</th><th className="px-2 text-right">Rows</th><th className="px-2 text-right">Size</th><th className="px-2 text-left">Type</th><th className="px-2 text-left">By</th></tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                 {!rows.length && <tr><td colSpan={5} className="py-10 text-center text-ink-400">No backups yet</td></tr>}
                 {rows.map((r) => { const d = parse(r.details); return (
                   <tr key={r.id}><td className="px-2 py-1.5">{dateTime(r.created_at)}</td><td className="num px-2 text-right">{d.rows ?? '-'}</td><td className="num px-2 text-right">{d.kb ? `${d.kb} KB` : '-'}</td><td className="px-2">{d.type || 'Manual'}{d.scope === 'FULL' ? ' (full)' : ''}</td><td className="px-2">{r.by_name || 'Auto'}</td></tr>
@@ -114,10 +120,10 @@ export default function BackupPage() {
               </tbody>
             </table>
           </>) : (<>
-            <p className="navy-gradient px-3 py-2 text-xs font-bold text-white uppercase">Backup files on the server · {list.length}</p>
-            <table className="w-full text-sm">
-              <thead className="bg-navy-800 text-white"><tr><th className="px-2 py-1.5 text-left">Date / Time</th><th className="px-2 text-left">File</th><th className="px-2 text-right">Size</th><th className="w-10" /></tr></thead>
-              <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
+            <p className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Backup files on the server · {list.length}</p>
+            <table className="w-full text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="px-2 py-1.5 text-left">Date / Time</th><th className="px-2 text-left">File</th><th className="px-2 text-right">Size</th><th className="w-10" /></tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                 {!list.length && <tr><td colSpan={4} className="py-10 text-center text-ink-400">No server backups yet</td></tr>}
                 {list.map((f) => (
                   <tr key={f.name}><td className="px-2 py-1.5">{dateTime(f.created_at)}</td><td className="px-2 font-mono text-xs">{f.name}</td><td className="num px-2 text-right">{f.kb} KB</td>
@@ -128,8 +134,8 @@ export default function BackupPage() {
           </>)}
         </div>
       </div>
-      <div className="card flex justify-end px-3 py-2"><Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button></div>
-      <p className="px-1 text-xs text-ink-500">F2 = take backup now · Esc = exit</p>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]"><Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button></div>
+      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F2 = take backup now · Esc = exit</p>
     </div>
   );
 }

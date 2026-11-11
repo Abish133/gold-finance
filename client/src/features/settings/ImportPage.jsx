@@ -45,25 +45,26 @@ export default function ImportPage() {
   };
   if (isAllBranches) return <Card><p className="text-sm">Select the branch to import into.</p></Card>;
   return (
-    <div className="animate-rise space-y-4">
+    /* fit-screen: the page fits the window; the preview / result table scrolls */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
       <PageHeader icon={DatabaseBackup} title="Database Migration" subtitle="Import customers and running loans from the old software (export them to Excel / CSV first)" />
-      <Card>
-        <div className="flex flex-wrap items-end gap-4">
+      <Card className="shrink-0" bodyClassName="p-3">
+        <div className="flex flex-wrap items-end gap-3 [&_button]:h-9 [&_button]:text-[12px]">
           <div><p className="label">What to import</p><Segmented value={type} onChange={(v) => { setType(v); setRows([]); setResult(null); }} options={[{ value: 'customers', label: '1. Customers' }, { value: 'loans', label: '2. Running loans' }]} /></div>
           <Button variant="outline" icon={Download} onClick={template}>Download template</Button>
           <Field label="CSV file"><input type="file" accept=".csv,text/csv" className="input pt-2" onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setRows(parseCsv(await file.text())); setResult(null); } }} /></Field>
           {type === 'loans' && <Field label="Scheme for these loans"><Select className="w-60" value={scheme} onChange={(e) => setScheme(e.target.value)} placeholder="Select" options={(lk?.schemes || []).map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} /></Field>}
           <Button variant="gold" icon={Upload} disabled={!rows.length || (type === 'loans' && !scheme)} loading={busy} onClick={run}>Import {rows.length || ''} rows</Button>
         </div>
-        <p className="mt-3 text-xs text-ink-500">Loans are imported as opening (old) entries, so today's cash is not changed. One CSV row per jewel item; rows with the same loan_no become one loan. Import customers first.</p>
+        <p className="mt-2 text-[11px] text-ink-500">Loans are imported as opening (old) entries, so today's cash is not changed. One CSV row per jewel item; rows with the same loan_no become one loan. Import customers first.</p>
       </Card>
       {result && (
-        <Card title={`Result · ${result.imported} imported · ${result.skipped} skipped`}>
-          {result.errors.length ? <DataTable dense rows={result.errors.map((e, i) => ({ ...e, id: i }))} columns={[{ key: 'row', label: 'CSV row' }, { key: 'error', label: 'Problem' }]} /> : <p className="text-sm text-emerald-700">All rows imported.</p>}
+        <Card className="flex min-h-0 flex-1 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col p-2" title={`Result · ${result.imported} imported · ${result.skipped} skipped`}>
+          {result.errors.length ? <DataTable fill rows={result.errors.map((e, i) => ({ ...e, id: i }))} columns={[{ key: 'row', label: 'CSV row' }, { key: 'error', label: 'Problem' }]} /> : <p className="text-sm text-emerald-700">All rows imported.</p>}
         </Card>
       )}
       {rows.length > 0 && !result && (
-        <DataTable dense rows={rows.slice(0, 50).map((r, i) => ({ ...r, id: i }))} columns={Object.keys(rows[0]).slice(0, 10).map((k) => ({ key: k, label: k }))} />
+        <DataTable fill rows={rows.slice(0, 50).map((r, i) => ({ ...r, id: i }))} columns={Object.keys(rows[0]).slice(0, 10).map((k) => ({ key: k, label: k }))} />
       )}
     </div>
   );

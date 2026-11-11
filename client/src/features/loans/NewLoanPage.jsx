@@ -418,7 +418,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
           {rateMissing && (
             <div className="flex items-center gap-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-[13px] text-rose-800">
               <AlertTriangle className="size-5" /> Today's gold / silver rate is not entered for {dayjs().format('DD/MM/YYYY')}. Please enter the rate first.
-              <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate('/masters/rates')}>Enter rate</Button>
+              <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate('/masters?tab=rates')}>Enter rate</Button>
             </div>
           )}
           <Panel title={`Pledge items · ${loanOn}`}>

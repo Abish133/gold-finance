@@ -40,34 +40,34 @@ export default function PrinterSetupPage() {
   useKeys({ f2: save, f7: test }, [v, sel]);
   const cur = DOCS.find((d) => d[0] === sel);
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">Printer Setup</h1><p className="text-sm text-navy-100">Which paper and how many copies each print uses</p></div>
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Printer Setup</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Which paper and how many copies each print uses</p></div>
         <div className="flex gap-1 rounded-md bg-white/10 p-1">{[['docs', 'Printers & paper'], ['bill', 'Bill content'], ['label', 'Label designer']].map(([k, l]) => <button key={k} type="button" onClick={() => setTab(k)} className={clsx('rounded px-3 py-1.5 text-sm font-semibold', tab === k ? 'bg-white text-navy-900' : 'text-white')}>{l}</button>)}</div>
       </section>
       {tab === 'label' ? <LabelDesigner /> : tab === 'bill' ? <PrintSettingsPage /> : (
         <>
           <div className="grid items-start gap-3 xl:grid-cols-[1fr_380px]">
             <div className="card overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">Print</th><th className="px-3 text-left">Printer</th><th className="px-3 text-left">Paper</th><th className="px-3 text-right">Copies</th></tr></thead>
-                <tbody className="divide-y divide-ink-200">{DOCS.map(([k, l]) => (
-                  <tr key={k} onClick={() => setSel(k)} className={clsx('cursor-pointer hover:bg-navy-50/50', sel === k && 'bg-cream-200')}><td className="px-3 py-2 font-semibold">{l}</td><td className="px-3 text-ink-500">Chosen in the print dialog</td><td className="px-3">{v[key(k, 'PAPER')] || 'A4'}</td><td className="num px-3 text-right">{v[key(k, 'COPIES')] || 1}</td></tr>
+              <table className="w-full text-[12px]">
+                <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="px-3 py-2 text-left">Print</th><th className="px-3 text-left">Printer</th><th className="px-3 text-left">Paper</th><th className="px-3 text-right">Copies</th></tr></thead>
+                <tbody className="divide-y divide-ink-100 dark:divide-ink-800">{DOCS.map(([k, l]) => (
+                  <tr key={k} onClick={() => setSel(k)} className={clsx('cursor-pointer', sel === k ? 'bg-emerald-50 font-semibold dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}><td className="px-3 py-2 font-semibold">{l}</td><td className="px-3 text-ink-500">Chosen in the print dialog</td><td className="px-3">{v[key(k, 'PAPER')] || 'A4'}</td><td className="num px-3 text-right">{v[key(k, 'COPIES')] || 1}</td></tr>
                 ))}</tbody>
               </table>
             </div>
             <div className="card overflow-hidden">
-              <p className="navy-gradient px-4 py-2 text-sm font-bold text-white uppercase">{cur[1]}</p>
+              <p className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />{cur[1]}</p>
               <div className="space-y-3 p-4">
                 {cur[2] && <p className="text-xs text-ink-500">{cur[2]}</p>}
                 <Field label="Paper"><Select value={v[key(sel, 'PAPER')] || 'A4'} onChange={(e) => setV({ ...v, [key(sel, 'PAPER')]: e.target.value })} options={PAPERS} /></Field>
                 <Field label="Copies"><Input type="number" min="1" value={v[key(sel, 'COPIES')] || 1} onChange={(e) => setV({ ...v, [key(sel, 'COPIES')]: e.target.value })} /></Field>
-                <p className="rounded-md bg-cream-100 p-3 text-xs text-ink-600">The printer is selected in the browser print window. Tick "Save as PDF" there for PDF files. Your choice is remembered by the browser.</p>
+                <p className="rounded-md bg-ink-50 dark:bg-ink-800/50 p-3 text-xs text-ink-600">The printer is selected in the browser print window. Tick "Save as PDF" there for PDF files. Your choice is remembered by the browser.</p>
                 <div className="grid grid-cols-2 gap-2"><Button variant="outline" icon={FileText} onClick={test}>Test Print (F7)</Button><Button icon={Save} onClick={save}>Save (F2)</Button></div>
               </div>
             </div>
           </div>
-          <div className="card flex justify-end gap-2 px-3 py-2"><Button variant="outline" icon={Printer} onClick={test}>Test print</Button><ExitButton /></div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]"><Button variant="outline" icon={Printer} onClick={test}>Test print</Button><ExitButton /></div>
         </>
       )}
     </div>

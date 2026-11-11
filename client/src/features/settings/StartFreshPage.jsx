@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { today } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { NeedBranch } from '@/components/common/NeedBranch';
 
 const KEPT = ['Company details and logo', 'Branches, users, passwords and rights', 'Items, metals, purity and rates', 'Schemes and System Control settings', 'Printer, receipt and sticker designs',
   'Account heads (capital entry made again)', 'Bank accounts, employees, SMS settings', 'Customers without any loan'];
@@ -35,12 +36,12 @@ export default function StartFreshPage() {
     setBusy(false);
   };
   useKeys({ escape: () => navigate('/') }, []);
-  if (isAllBranches) return <div className="card p-6 text-sm">Select one branch first.</div>;
+  if (isAllBranches) return <NeedBranch action="clear its practice entries" />;
   const rows = preview.data?.rows || [];
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Start Fresh - remove practice entries</h1><p className="text-sm text-navy-100">{currentBranch?.name}</p></section>
-      <div className="card space-y-4 p-4">
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 rounded-md px-4 py-2 text-white"><div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Start Fresh - remove practice entries</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">{currentBranch?.name}</p></div></section>
+      <div className="card space-y-3 p-3 text-[13px]">
         <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-rose-700">Use this once, before the shop starts real work. All entries below are removed for ever (a full backup is taken first).</p>
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-md border border-ink-300 p-4 text-sm dark:border-ink-700">
@@ -62,7 +63,7 @@ export default function StartFreshPage() {
           </div>
         )}
       </div>
-      <div className="card flex justify-end gap-2 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
         <Button variant="outline" icon={X} onClick={() => navigate('/')}>Cancel (Esc)</Button>
         {user.is_super_admin && <Button variant="danger" icon={Trash} disabled={!ready} loading={busy} onClick={run}>Remove practice entries</Button>}
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, FileDown, FileSpreadsheet, BookOpen, Printer, LogOut, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileDown, FileSpreadsheet, BookOpen, Printer, LogOut, Building2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Button, ConfirmDrawer, Drawer, Field, Input, Select, Textarea } from '@/components/ui';
@@ -42,32 +42,39 @@ export default function BankAccountsPage() {
   const remove = async () => { try { await api.del(`/masters/bank-accounts/${sel.id}`); toast.success('Bank deleted'); setDel(false); setSel(null); refresh(); } catch (e) { toast.error(e.message); } };
   const print = () => printTable({ title: 'Bank Accounts', company, columns: cols, rows });
   useKeys({ 'ctrl+n': () => !isAllBranches && setEdit({ used_for: 'BOTH', is_active: 1 }), f2: () => sel && setEdit(sel), delete: () => sel && setDel(true), f6: () => navigate('/bank/book'), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('bank-accounts', cols, rows), escape: () => navigate('/') }, [sel, rows]);
-  const tile = (l, v, h, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>;
+  const tile = (l, v, h, bar) => (
+    <div className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800">
+      <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+      <p className="truncate text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p>
+      <p className="num truncate text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v}</p><p className="truncate text-[10px] text-ink-500">{h}</p>
+    </div>
+  );
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Bank Accounts</h1><p className="text-sm text-navy-100">Banks for bank loans (potali) and for online / card / cheque money</p></section>
-      <div className="card flex items-end gap-3 px-4 py-3"><Field label="Search bank / branch / a/c no" className="w-96"><Input autoFocus className="bg-gold-50" value={q} onChange={(e) => setQ(e.target.value)} /></Field><span className="ml-auto text-xs text-ink-500">{rows.length} of {data.length} bank accounts</span></div>
-      <div className="grid gap-3 sm:grid-cols-4">
-        {tile('Bank accounts', data.length, 'all', 'border-t-navy-800 bg-cream-100')}
-        {tile('With open bank loans', data.filter((r) => n(r.open_count)).length, '', 'border-t-violet-600')}
-        {tile('Open potali', data.reduce((s, r) => s + n(r.open_count), 0), 'potali not released', 'border-t-blue-600')}
-        {tile('Outstanding', `Rs ${amount(data.reduce((s, r) => s + n(r.outstanding), 0))}`, 'bank loan amount outstanding', 'border-t-rose-600')}
+    /* fit-screen: the page fits the window; tables and panels scroll on their own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white"><h1 className="text-lg font-bold whitespace-nowrap">Bank Accounts</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Banks for bank loans (potali) and for online / card / cheque money</p></section>
+      <div className="flex items-end gap-3 shrink-0 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900"><Field label="Search bank / branch / a/c no" className="w-96"><Input autoFocus prefix={<Search className="size-3.5" />} value={q} onChange={(e) => setQ(e.target.value)} /></Field><span className="ml-auto pb-2 text-[11px] text-ink-500">{rows.length} of {data.length} bank accounts</span></div>
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {tile('Bank accounts', data.length, 'all', 'bg-navy-800')}
+        {tile('With open bank loans', data.filter((r) => n(r.open_count)).length, '', 'bg-violet-600')}
+        {tile('Open potali', data.reduce((s, r) => s + n(r.open_count), 0), 'potali not released', 'bg-blue-600')}
+        {tile('Outstanding', `Rs ${amount(data.reduce((s, r) => s + n(r.outstanding), 0))}`, 'bank loan amount outstanding', 'bg-rose-600')}
       </div>
-      <div className="card min-h-[calc(100vh-30rem)] overflow-auto">
-        <table className="w-full text-sm">
-          <thead className="navy-gradient text-white"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-3 py-2', ['money', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
-          <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-            {!rows.length && <tr><td colSpan={7} className="py-16 text-center text-ink-400">No bank accounts - press New Bank (Ctrl+N)</td></tr>}
+      <div className="min-h-48 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+        <table className="w-full text-[12px]">
+          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-3 py-1.5 font-semibold', ['money', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
+          <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+            {!rows.length && <tr><td colSpan={7} className="py-8 text-center text-[12px] text-ink-400">No bank accounts - press New Bank (Ctrl+N)</td></tr>}
             {rows.map((r) => (
-              <tr key={r.id} onClick={() => setSel(r)} onDoubleClick={() => setEdit(r)} className={clsx('cursor-pointer', sel?.id === r.id && 'bg-navy-50 dark:bg-ink-800', !r.is_active && 'text-ink-400')}>
-                <td className="px-3 py-2">{r.code}</td><td className="px-3 font-semibold">{r.bank_name}</td><td className="px-3">{r.bank_branch}</td><td className="px-3">{r.account_no}</td><td className="px-3">{r.used}</td>
+              <tr key={r.id} onClick={() => setSel(r)} onDoubleClick={() => setEdit(r)} className={clsx('cursor-pointer', sel?.id === r.id && 'bg-emerald-50 dark:bg-emerald-950/30', !r.is_active && 'text-ink-400')}>
+                <td className="px-3 py-1">{r.code}</td><td className="px-3 font-semibold">{r.bank_name}</td><td className="px-3">{r.bank_branch}</td><td className="px-3">{r.account_no}</td><td className="px-3">{r.used}</td>
                 <td className="num px-3 text-right">{r.open_count}</td><td className="num px-3 text-right">{amount(r.outstanding)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="card flex flex-wrap gap-2 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
         {can('bank_accounts', 'add') && !isAllBranches && <Button variant="outline" icon={Plus} onClick={() => setEdit({ used_for: 'BOTH', is_active: 1 })}>New Bank (Ctrl+N)</Button>}
         {can('bank_accounts', 'edit') && <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => setEdit(sel)}>Edit (F2)</Button>}
         {can('bank_accounts', 'delete') && <Button variant="soft-danger" icon={Trash2} disabled={!sel} onClick={() => setDel(true)}>Delete (Del)</Button>}
@@ -76,9 +83,9 @@ export default function BankAccountsPage() {
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('bank-accounts', cols, rows)}>Excel (Ctrl+E)</Button>
         <Button variant="outline" icon={BookOpen} onClick={() => navigate('/bank/book')}>Bank Pledge Book (F6)</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
-        <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
+        <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
       </div>
-      <p className="px-1 text-xs text-ink-500">Ctrl+N = new bank · F2 / double-click = edit · Del = delete · F6 = bank pledge book · F9 = print · Esc = exit</p>
+      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Ctrl+N = new bank · F2 / double-click = edit · Del = delete · F6 = bank pledge book · F9 = print · Esc = exit</p>
       <Drawer open={!!edit} onClose={() => setEdit(null)} size="md" icon={Building2} title={edit?.id ? `Edit bank · ${edit.bank_name}` : 'New bank'} subtitle="A ledger is created automatically for each bank account" footer={<Button variant="gold" onClick={save}>Save (F2)</Button>}>
         {edit && (
           <div className="grid grid-cols-2 gap-3">
