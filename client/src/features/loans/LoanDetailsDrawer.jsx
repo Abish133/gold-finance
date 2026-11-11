@@ -39,7 +39,7 @@ export function LoanDetailsDrawer({ full, onClose }) {
   return (
     <Drawer open={!!l} onClose={onClose} size="xl" icon={FileText} title={l ? `Loan Details - Loan No ${l.bill_no}` : ''}
       subtitle={l && [l.manual_bill_no && `Bill Book No ${l.manual_bill_no}`, `Pledged on ${date(l.loan_date)}`, l.loan_on].filter(Boolean).join(' · ')}
-      footer={<><span className={clsx('rounded px-5 py-1.5 text-sm font-bold text-white uppercase', st[1])}>{st[0]}</span><span className="flex-1" /><Button variant="outline" onClick={onClose}>Close (Esc)</Button></>}>
+      footer={<><span className={clsx('rounded px-5 py-1.5 text-sm font-bold text-white uppercase', st[1])}>{st[0]}</span><span className="flex-1" /><Button variant="soft-danger" onClick={onClose}>Close (Esc)</Button></>}>
       {l && (
         <div className="space-y-3">
           <div className="grid gap-3 lg:grid-cols-2">

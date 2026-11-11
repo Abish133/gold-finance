@@ -92,8 +92,11 @@
 
 @layer components {
   /* counter screen columns: panels stack, the last one fills the height */
-  .desk-col { @apply flex min-w-0 flex-col gap-3; }
+  .desk-col { @apply flex min-w-0 flex-col gap-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain; }
   .desk-col > :last-child { @apply flex-1; }
+  /* counter screens are denser than ordinary forms */
+  .desk .input, .dense .input { @apply h-9; }
+  .desk .label, .dense .label { @apply mb-0.5 text-[10px]; }
   .card { @apply rounded-md border border-ink-300/80 bg-white shadow-soft dark:border-ink-700 dark:bg-ink-900; }
   .input {
     @apply h-10 w-full rounded-md border border-ink-300 bg-white px-3 text-sm text-ink-900 outline-none transition

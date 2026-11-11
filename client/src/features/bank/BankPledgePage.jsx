@@ -24,7 +24,7 @@ function NewPledgeDrawer({ open, onClose }) {
   const banks = (lk?.banks || []).filter((b) => b.used_for !== 'OPERATING').map((b) => ({ value: b.id, label: `${b.bank_name} ${b.account_no || ''}` }));
   return (
     <Drawer open={open} onClose={onClose} size="full" icon={Landmark} title="New bank pledge" subtitle="Re-pledge customer jewels with a bank to raise funds"
-      footer={<><Button variant="outline" onClick={onClose}>Cancel</Button><Button variant="gold" loading={save.isPending} disabled={!sel.length} onClick={() => save.mutate()}>Save pledge</Button></>}>
+      footer={<><Button variant="soft-danger" onClick={onClose}>Cancel</Button><Button variant="gold" loading={save.isPending} disabled={!sel.length} onClick={() => save.mutate()}>Save pledge</Button></>}>
       <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
         <div className="space-y-4">
           <Field label="Bank" required><Select value={f.bank_account_id || ''} onChange={(e) => setF({ ...f, bank_account_id: e.target.value })} placeholder="Select bank" options={banks} /></Field>
@@ -78,7 +78,7 @@ function PledgeDetail({ id, onClose }) {
     <Drawer open={!!id} onClose={onClose} size="lg" icon={Landmark} title={data ? `Bank loan ${data.pledge_no}` : 'Bank pledge'} subtitle={data && `${data.bank_name} · ${date(data.pledge_date)}`}
       footer={data?.status === 'OPEN' && (
         <>
-          {can('bank_pledge', 'delete') && <Button variant="outline" icon={Trash2} onClick={() => setDel(true)}>Delete</Button>}
+          {can('bank_pledge', 'delete') && <Button variant="soft-danger" icon={Trash2} onClick={() => setDel(true)}>Delete</Button>}
           {can('bank_pledge', 'edit') && <Button variant="gold" icon={Unlock} loading={rel.isPending} onClick={() => rel.mutate()}>Release from bank</Button>}
         </>
       )}>

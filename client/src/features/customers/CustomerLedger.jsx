@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, FileDown, ArrowLeft } from 'lucide-react';
+import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, FileDown, ArrowLeft, Search, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Button, Drawer, Field, Input, Spinner, Textarea } from '@/components/ui';
-import { PhotoBox } from '@/components/common/PhotoBox';
+import { ImagePreview } from '@/components/common/ImagePreview';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
 import { CustomerFormDrawer } from '@/features/customers/CustomerFormDrawer';
 import { useFetch, useCompany } from '@/hooks/useApi';
@@ -23,6 +23,13 @@ const cols = [
   { key: 'interest_rate', label: 'ROI %', type: 'number' }, { key: 'months', label: 'Months', type: 'number' }, { key: 'interest_due', label: 'Interest *', type: 'money' },
   { key: 'total_due', label: 'Total', type: 'money' }, { key: 'close_date', label: 'Closed On', type: 'date' }, { key: 'status', label: 'Status' },
 ];
+
+const Dot = () => (
+  <span className="relative flex size-1.5" aria-hidden>
+    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+    <span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" />
+  </span>
+);
 
 /** Customer Ledger (desktop F5): complete loan history of one customer - pending, released, auctioned. */
 export function CustomerLedgerDrawer({ customerId, onClose }) {
@@ -66,10 +73,18 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
     const map = { f5: refetch, f6: () => setPanel('edit'), f7: () => document.getElementById('ledger-photo')?.click(), f8: () => setPanel('docs'), 'ctrl+b': () => setPanel('block'), f9: print, 'ctrl+p': print, 'ctrl+w': whatsapp, 'ctrl+e': () => exportCsv('customer-ledger', cols, printRows) };
     if (c && map[k]) { e.preventDefault(); map[k](); }
   };
-  const seg = (val, cur, set, label) => <button key={val} type="button" onClick={() => set(val)} className={clsx('h-9 rounded-md border px-4 text-sm font-semibold', cur === val ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800 dark:bg-ink-900 dark:text-white')}>{label}</button>;
+  const seg = (val, cur, set, label) => (
+    <button key={val} type="button" onClick={() => set(val)}
+      className={clsx('-ml-px flex h-8 items-center gap-1.5 border px-3 text-[12px] font-semibold first:ml-0 first:rounded-l-md last:rounded-r-md',
+        cur === val ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300')}>
+      {cur === val && <Dot />}{label}
+    </button>
+  );
+  const statusOf = (l) => STATUS[l.status === 'OPEN' && l.bank_pledge_id ? 'IN_BANK' : l.status];
 
   return (
-    <Drawer open={!!customerId} onClose={onClose} size="full" icon={BookUser} title="Customer Ledger" subtitle="Complete loan history of one customer - pending, released, auctioned"
+    <Drawer open={!!customerId} onClose={onClose} size="full" icon={BookUser} title={c ? `Customer Ledger · ${c.name} · A/c ${c.customer_no}` : 'Customer Ledger'} subtitle="Complete loan history of one customer - pending, released, auctioned"
+      bodyClassName="flex !px-3 !py-2.5 !overflow-hidden"
       footer={c && (
         <>
           <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F5)</Button>
@@ -78,75 +93,95 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
           <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
           <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
           <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('customer-ledger', cols, printRows)}>Excel (Ctrl+E)</Button>
-          <Button variant="outline" icon={ArrowLeft} onClick={onClose}>Back (Esc)</Button>
+          <Button variant="soft-danger" icon={ArrowLeft} onClick={onClose}>Back (Esc)</Button>
         </>
       )}>
       {isLoading || !c ? <Spinner /> : (
-        <div className="space-y-3" onKeyDown={keys} tabIndex={-1}>
-          <div className="flex flex-wrap gap-5 rounded-md bg-ink-50 p-3 dark:bg-ink-800">
-            <PhotoBox src={c.photo} className="h-48 w-44" onClick={() => document.getElementById('ledger-photo')?.click()} />
+        <div className="flex min-h-0 w-full flex-col gap-2" onKeyDown={keys} tabIndex={-1}>
+          {/* customer strip */}
+          <div className="flex shrink-0 flex-wrap items-stretch gap-3 rounded-md border border-ink-200 p-2 dark:border-ink-800">
+            <ImagePreview src={c.photo} title={`${c.name} · A/c ${c.customer_no}`} className="min-h-28 w-28 shrink-0 self-stretch rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+              {c.photo ? <img src={c.photo} alt="" className="size-full object-cover" /> : <span className="grid size-full place-items-center text-ink-400"><UserRound className="size-9" strokeWidth={1.25} /></span>}
+            </ImagePreview>
             <input id="ledger-photo" type="file" accept="image/*" className="hidden" onChange={(e) => { e.target.files?.[0] && photo(e.target.files[0]); e.target.value = ''; }} />
-            <div className="min-w-64 flex-1 space-y-2 text-sm">
-              <p className="text-2xl font-bold text-navy-900 dark:text-white">{c.title} {c.name}</p>
-              <span className={clsx('inline-block rounded px-6 py-1 text-sm font-bold text-white', c.status === 'BLOCKED' ? 'bg-rose-600' : 'bg-emerald-700')}>{c.status}</span>
-              {[['Relation', c.relation_name && `${c.relation_type || ''} ${c.relation_name}`], ['Address', address], ['Phone', c.phone], ['ID Proof', c.id_proof_type && `${c.id_proof_type} ${c.id_proof_no || ''}`]].map(([k, v]) => (
-                <p key={k} className="grid grid-cols-[100px_1fr]"><span className="text-ink-500">{k}</span><b>{v || '-'}</b></p>
-              ))}
+            <div className="flex min-w-64 flex-1 flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-bold text-navy-900 dark:text-white">{c.title} {c.name}</p>
+                <span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase', c.status === 'BLOCKED' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{c.status}</span>
+                <span className="num rounded-sm bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-600 dark:bg-ink-800 dark:text-ink-300">A/C {c.customer_no}</span>
+              </div>
+              <div className="grid flex-1 grid-cols-1 content-stretch overflow-hidden rounded-md border border-ink-200 text-[12px] md:grid-cols-2 2xl:grid-cols-4 dark:border-ink-800">
+                {[['Relation', c.relation_name && `${c.relation_type || ''} ${c.relation_name}`], ['Phone', c.phone], ['Address', address], ['ID Proof', c.id_proof_type && `${c.id_proof_type} ${c.id_proof_no || ''}`],
+                  ['Customer since', date(data.since || c.created_at)], ['Last loan', loans[0] ? date(loans[0].loan_date) : 'Never'], ['Documents', data.documents ? `${data.documents} file(s)` : 'None'],
+                  ['Released by other', data.releasedByOther ? date(data.releasedByOther) : 'Never'], ...(c.block_reason ? [['Blocked reason', c.block_reason]] : [])].map(([k, v]) => (
+                  <p key={k} className="flex flex-col justify-center border-r border-b border-ink-100 px-2.5 py-1 dark:border-ink-800"><span className="text-[10px] font-semibold tracking-wider text-ink-400 uppercase">{k}</span><b className="truncate text-[12px] text-navy-900 dark:text-white" title={v || ''}>{v || '-'}</b></p>
+                ))}
+              </div>
             </div>
-            <div className="min-w-64 space-y-2 text-sm">
-              {[['Customer since', date(data.since || c.created_at)], ['Last loan', loans[0] ? date(loans[0].loan_date) : 'Never'], ['Documents', data.documents ? `${data.documents} file(s)` : 'None'], ['Released by other', data.releasedByOther ? date(data.releasedByOther) : 'Never'], ['Blocked reason', c.block_reason]].filter(([, v]) => v).map(([k, v]) => (
-                <p key={k} className="grid grid-cols-[130px_1fr]"><span className="text-ink-500">{k}</span><b>{v}</b></p>
-              ))}
-            </div>
-            <div className="grid w-64 content-start gap-2">
+            <div className="flex w-full flex-col justify-between gap-1 sm:w-56 [&_button]:h-8 [&_button]:w-full [&_button]:justify-start [&_button]:px-2.5 [&_button]:text-[12px] [&_button_svg]:shrink-0">
               {can('customers', 'edit') && <Button variant="outline" icon={Pencil} onClick={() => setPanel('edit')}>Edit Customer (F6)</Button>}
               <Button variant="outline" icon={Camera} onClick={() => document.getElementById('ledger-photo')?.click()}>Change Photo (F7)</Button>
               <Button variant="outline" icon={FolderOpen} onClick={() => setPanel('docs')}>Documents (F8)</Button>
-              {can('customer_blocked', 'edit') && <Button variant="outline" icon={Ban} className="text-rose-700" onClick={() => { setReason(''); setPanel('block'); }}>{c.status === 'BLOCKED' ? 'Unblock' : 'Block'} Customer (Ctrl+B)</Button>}
+              {can('customer_blocked', 'edit') && <Button variant="soft-danger" icon={Ban} onClick={() => { setReason(''); setPanel('block'); }}>{c.status === 'BLOCKED' ? 'Unblock' : 'Block'} Customer (Ctrl+B)</Button>}
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-            {[['All loans', loans.length, `Rs. ${amount(sum(loans, 'principal'))}`, 'border-t-navy-800', 'all'], ['Pending', pending.length, `Rs. ${amount(sum(pending, 'principal'))}`, 'border-t-blue-600', 'pending'],
-              ['Interest due today', `Rs. ${amount(sum(pending, 'interest_due'))}`, `on pending loans, as on ${date(data.asOn || new Date())}`, 'border-t-amber-600'],
-              ['Released', released.length, `Rs. ${amount(sum(released, 'principal'))} · int. ${amount(sum(released, 'interest_received'))}`, 'border-t-rose-600', 'released'],
-              ['Auctioned', auctioned.length, `Rs. ${amount(sum(auctioned, 'principal'))}`, 'border-t-emerald-700', 'auctioned'], ['Part payments', partCount.length, `Rs. ${amount(sum(loans, 'part_paid'))}`, 'border-t-violet-600']].map(([l, v, h, cls, k]) => (
-              <button key={l} type="button" disabled={!k} onClick={() => k && setShow(k)} className={clsx('card border-t-4 px-4 py-3 text-left', cls, k && show === k && 'bg-amber-50/60 dark:bg-ink-800')}>
-                <p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold text-navy-900 dark:text-white">{v}</p><p className="text-[11px] text-ink-500">{h}</p>
+
+          {/* figures - the counted ones also filter the table */}
+          <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 sm:grid-cols-3 xl:grid-cols-6 dark:border-ink-800">
+            {[['All loans', loans.length, `₹${amount(sum(loans, 'principal'))}`, 'bg-navy-900 dark:bg-white', 'all'], ['Pending', pending.length, `₹${amount(sum(pending, 'principal'))}`, 'bg-blue-600', 'pending'],
+              ['Interest due', `₹${amount(sum(pending, 'interest_due'))}`, `as on ${date(data.asOn || new Date())}`, 'bg-amber-500'],
+              ['Released', released.length, `₹${amount(sum(released, 'principal'))} · int. ${amount(sum(released, 'interest_received'))}`, 'bg-emerald-600', 'released'],
+              ['Auctioned', auctioned.length, `₹${amount(sum(auctioned, 'principal'))}`, 'bg-rose-600', 'auctioned'], ['Part payments', partCount.length, `₹${amount(sum(loans, 'part_paid'))}`, 'bg-violet-600']].map(([l, v, h, bar, k]) => (
+              <button key={l} type="button" disabled={!k} onClick={() => k && setShow(k)}
+                className={clsx('relative border-ink-200 px-3 py-1.5 pl-4 text-left transition not-last:border-r dark:border-ink-800', k ? 'hover:bg-ink-50 dark:hover:bg-ink-800/50' : 'cursor-default', k && show === k && 'bg-emerald-50/70 dark:bg-emerald-950/30')}>
+                <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+                <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}{k && show === k && <Dot />}</p>
+                <p className="num text-lg leading-tight font-bold text-navy-900 dark:text-white">{v}</p>
+                <p className="truncate text-[10px] text-ink-500">{h}</p>
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-end gap-4">
-            <div><p className="label">Show</p><div className="flex gap-1">{[['pending', 'Pending'], ['released', 'Released'], ['auctioned', 'Auctioned'], ['all', 'All']].map(([k, l]) => seg(k, show, setShow, l))}</div></div>
-            <div><p className="label">Metal</p><div className="flex gap-1">{[['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']].map(([k, l]) => seg(k, metal, setMetal, l))}</div></div>
-            <Field label="Search" className="min-w-64 flex-1"><Input className="bg-gold-50" value={q} onChange={(e) => setQ(e.target.value)} /></Field>
-            {[['Gold', 'GOLD', 'border-t-amber-500'], ['Silver', 'SILVER', 'border-t-ink-400'], ['Total', '', 'border-t-navy-800']].map(([l, m, cls]) => (
-              <div key={l} className={clsx('card min-w-56 border-t-4 px-3 py-1.5', cls)}><p className="text-[10px] font-bold text-ink-500 uppercase">{l}</p><p className="num text-xs font-semibold">{wt(m)}</p></div>
+
+          {/* filters */}
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="flex">{[['pending', 'Pending'], ['released', 'Released'], ['auctioned', 'Auctioned'], ['all', 'All']].map(([k, l]) => seg(k, show, setShow, l))}</div>
+            <div className="flex">{[['', 'All metals'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']].map(([k, l]) => seg(k, metal, setMetal, l))}</div>
+            <div className="min-w-56 flex-1"><Input prefix={<Search className="size-3.5" />} className="!h-8 text-[13px]" placeholder="Search loan no, bill book or item…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            {[['Gold', 'GOLD', 'bg-amber-500'], ['Silver', 'SILVER', 'bg-slate-400'], ['Total', '', 'bg-navy-900 dark:bg-white']].map(([l, m, dot]) => (
+              <span key={l} className="flex h-8 items-center gap-1.5 rounded-md border border-ink-200 px-2 text-[11px] dark:border-ink-800">
+                <span className={clsx('size-2 rounded-sm', dot)} /><b className="text-ink-500 uppercase">{l}</b><span className="num font-semibold">{wt(m)}</span>
+              </span>
             ))}
           </div>
-          <div className="overflow-x-auto rounded-md border border-ink-300 dark:border-ink-700">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="navy-gradient text-white"><tr>{[...cols.map((x) => x.label), 'Photo'].map((h) => <th key={h} className={clsx('px-2 py-2', ['Net Wt', 'Loan Amount', 'ROI %', 'Months', 'Interest *', 'Total'].includes(h) ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
-              <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-                {!rows.length && <tr><td colSpan={14} className="py-10 text-center text-ink-400">No loans</td></tr>}
+
+          {/* loans - fills the rest; header and total stay put while rows scroll */}
+          <div className="min-h-40 flex-1 overflow-auto rounded-md border border-ink-200 dark:border-ink-800">
+            <table className="w-full min-w-[1100px] text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{[...cols.map((x) => x.label), 'Photo'].map((h) => <th key={h} className={clsx('px-2 py-1.5 font-semibold', ['Net Wt', 'Loan Amount', 'ROI %', 'Months', 'Interest *', 'Total'].includes(h) ? 'text-right' : 'text-left')}>{h}</th>)}</tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+                {!rows.length && <tr><td colSpan={14} className="py-10 text-center text-[12px] text-ink-400">No loans in this view</td></tr>}
                 {rows.map((l) => (
-                  <tr key={l.id} className="cursor-pointer hover:bg-navy-50/60" onDoubleClick={() => { onClose(); navigate(`/loans/counter?loan=${l.id}`); }}>
-                    <td className="px-2 py-1.5 font-semibold">{l.bill_no}</td><td className="px-2">{l.manual_bill_no || '-'}</td><td className="px-2">{date(l.loan_date)}</td>
-                    <td className="px-2"><span className="rounded bg-amber-50 px-1.5 text-[11px] font-bold text-amber-800">{l.loan_on}</span></td><td className="px-2 uppercase">{l.items_text || l.item_summary}</td>
+                  <tr key={l.id} className="cursor-pointer hover:bg-ink-50 dark:hover:bg-ink-800/50" title="Click for loan details" onClick={() => { onClose(); navigate(`/loans/counter?loan=${l.id}`); }}>
+                    <td className="num px-2 py-1 font-semibold">{l.bill_no}</td><td className="px-2">{l.manual_bill_no || '-'}</td><td className="num px-2">{date(l.loan_date)}</td>
+                    <td className="px-2"><span className={clsx('rounded-sm px-1.5 text-[10px] font-bold', l.loan_on === 'SILVER' ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-800')}>{l.loan_on}</span></td>
+                    <td className="max-w-72 truncate px-2 uppercase" title={l.items_text || l.item_summary}>{l.items_text || l.item_summary}</td>
                     <td className="num px-2 text-right">{weight(l.net_wt)}</td><td className="num px-2 text-right font-bold">{amount(l.principal)}</td><td className="num px-2 text-right">{n(l.interest_rate)}</td>
-                    <td className="num px-2 text-right">{Math.ceil(n(l.months)) || n(l.months_due)}</td><td className="num px-2 text-right">{amount(l.interest_due)}</td><td className="num px-2 text-right">{amount(l.total_due)}</td>
-                    <td className="px-2">{l.close_date ? date(l.close_date) : ''}</td>
-                    <td className="px-2"><span className={clsx('rounded px-2 py-0.5 text-[11px] font-bold', STATUS[l.status === 'OPEN' && l.bank_pledge_id ? 'IN_BANK' : l.status]?.[1])}>{STATUS[l.status === 'OPEN' && l.bank_pledge_id ? 'IN_BANK' : l.status]?.[0] || l.status}</span></td>
-                    <td className="px-2">{l.item_photo ? <a href={l.item_photo} target="_blank" rel="noreferrer" className="text-xs font-semibold underline">View</a> : <span className="text-xs text-ink-400">-</span>}</td>
+                    <td className="num px-2 text-right">{Math.ceil(n(l.months)) || n(l.months_due)}</td><td className="num px-2 text-right">{amount(l.interest_due)}</td><td className="num px-2 text-right font-semibold">{amount(l.total_due)}</td>
+                    <td className="num px-2">{l.close_date ? date(l.close_date) : ''}</td>
+                    <td className="px-2"><span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold', statusOf(l)?.[1])}>{statusOf(l)?.[0] || l.status}</span></td>
+                    <td className="px-2 py-0.5" onClick={(e) => e.stopPropagation()}>{l.item_photo
+                      ? <ImagePreview src={l.item_photo} title={`Item photo · Loan #${l.bill_no}`} className="block size-7 rounded-sm border border-ink-200 dark:border-ink-700"><img src={l.item_photo} alt="" className="size-full object-cover" /></ImagePreview>
+                      : <span className="text-ink-300">-</span>}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="navy-gradient text-white"><tr className="font-bold">
-                <td colSpan={5} className="px-2 py-2">Total - {rows.length} loan{rows.length === 1 ? '' : 's'}</td><td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'principal'))}</td>
+              <tfoot className="sticky bottom-0 z-10 border-t-2 border-amber-400 bg-amber-50 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100"><tr className="font-bold">
+                <td colSpan={5} className="px-2 py-1.5">Total · {rows.length} loan{rows.length === 1 ? '' : 's'}</td><td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'principal'))}</td>
                 <td /><td /><td className="num px-2 text-right">{amount(sum(rows, 'interest_due'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'total_due'))}</td><td colSpan={3} />
               </tr></tfoot>
             </table>
           </div>
-          <p className="text-xs text-ink-500">* interest as on today · double-click = loan details · F6 edit customer · F7 change photo · F8 documents · Ctrl+B block / unblock · F9 print · Ctrl+W WhatsApp · Ctrl+E Excel · Esc back</p>
+          <p className="shrink-0 truncate text-[11px] text-ink-400">* interest as on today · click a loan = loan details · F6 edit · F7 photo · F8 documents · Ctrl+B block · F9 print · Ctrl+W WhatsApp · Ctrl+E Excel · Esc back</p>
         </div>
       )}
       <CustomerFormDrawer open={panel === 'edit'} customer={c} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); refetch(); }} />

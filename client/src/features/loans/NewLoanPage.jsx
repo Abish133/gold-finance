@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, FileText, Search, BookOpen } from 'lucide-react';
+import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, FileText, Search, BookOpen, Layers, IndianRupee, Percent, TrendingUp, Receipt, Wallet, Coins, StickyNote } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { money, amount, n, round2, today, weight, date } from '@/lib/format';
 import { whatsappAfterSave } from '@/lib/whatsapp';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate } from './desk';
+import { NeedBranch } from '@/components/common/NeedBranch';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
 
@@ -27,6 +28,8 @@ function FindCustomerDrawer({ open, initial, by: by0, onClose, onPick, onNew }) 
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
   const input = useRef(null);
+  const tableBox = useRef(null);
+  useEffect(() => { tableBox.current?.querySelector('tbody')?.children[idx]?.scrollIntoView({ block: 'nearest' }); }, [idx]);
   useEffect(() => { if (open) { setQ(initial || ''); setBy(by0 === 'mobile' || by0 === 'acno' ? by0 : 'name'); setIdx(0); setTimeout(() => input.current?.focus(), 60); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const dq = useDebounce(q, 200);
   const list = useList('/customers', { search: dq, by, pageSize: 50, sort: 'name', order: 'asc' }, { enabled: open && dq.length >= 1 });
@@ -39,34 +42,56 @@ function FindCustomerDrawer({ open, initial, by: by0, onClose, onPick, onNew }) 
     if (e.key === 'F1') { e.preventDefault(); onNew(); }
   };
   return (
-    <Drawer open={open} onClose={onClose} size="xl" icon={Search} title="Find Customer" subtitle="Type name, mobile, A/c no or area - Down = list, Enter = select, F1 = new customer"
-      footer={<><Button variant="outline" icon={UserPlus} onClick={onNew}>New Customer (F1)</Button><span className="flex-1" /><Button variant="outline" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" disabled={!rows[idx]} onClick={() => pick(rows[idx])}>Select (Enter)</Button></>}>
-      <div className="space-y-3" onKeyDown={keys}>
-        <div className="flex flex-wrap gap-2">
-          <Input ref={input} value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} className="h-12 min-w-72 flex-1 bg-gold-50 text-xl font-bold" />
-          {[['name', 'Name'], ['mobile', 'Mobile'], ['acno', 'A/c No'], ['area', 'Area']].map(([k, l]) => (
-            <button key={k} type="button" onClick={() => { setBy(k); input.current?.focus(); }} className={clsx('h-12 w-28 rounded-md border text-sm font-semibold', by === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 text-ink-600')}>{l}</button>
-          ))}
+    <Drawer open={open} onClose={onClose} size="xl" icon={Search} bodyClassName="!px-4 !py-3 !overflow-hidden" title="Find Customer" subtitle="Type name, mobile, A/c no or area - Down = list, Enter = select, F1 = new customer"
+      footer={<><Button variant="outline" icon={UserPlus} onClick={onNew}>New Customer (F1)</Button><span className="flex-1" /><Button variant="soft-danger" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" disabled={!rows[idx]} onClick={() => pick(rows[idx])}>Select (Enter)</Button></>}>
+      <div className="flex h-full min-h-0 flex-col gap-2" onKeyDown={keys}>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Input ref={input} prefix={<Search className="size-4" />} value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} placeholder="Type to search…"
+            className="!h-10 min-w-64 flex-1 text-base font-bold" />
+          <div className="flex">
+            {[['name', 'Name'], ['mobile', 'Mobile'], ['acno', 'A/c No'], ['area', 'Area']].map(([k, l]) => (
+              <button key={k} type="button" onClick={() => { setBy(k); input.current?.focus(); }}
+                className={clsx('-ml-px flex h-10 min-w-20 items-center justify-center gap-1.5 border px-3 text-[12px] font-semibold first:ml-0 first:rounded-l-md last:rounded-r-md',
+                  by === k ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>
+                {by === k && (
+                  <span className="relative flex size-1.5" aria-hidden>
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" />
+                  </span>
+                )}
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="overflow-hidden rounded-md border border-ink-300 dark:border-ink-700">
-          <table className="w-full text-sm">
-            <thead className="navy-gradient text-white"><tr><th className="w-16 px-3 py-2">A/c</th><th className="px-3 text-left">Name</th><th className="px-3 text-left">Address</th><th className="px-3 text-left">Mobile</th><th className="px-3">Open loans</th><th className="px-3">Status</th></tr></thead>
-            <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-              {!rows.length && <tr><td colSpan={6} className="py-12 text-center text-ink-400">{dq ? (list.isFetching ? 'Searching…' : 'No customer found - press F1 to add') : 'Start typing to search'}</td></tr>}
+        {/* the table fills the drawer; only its rows scroll, the header stays */}
+        <div ref={tableBox} className="min-h-0 flex-1 overflow-auto rounded-md border border-ink-200 dark:border-ink-700">
+          <table className="w-full text-[13px]">
+            <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase">
+              <tr><th className="w-14 px-2 py-1.5 font-semibold">A/c</th><th className="px-2 text-left font-semibold">Name</th><th className="px-2 text-left font-semibold">Address</th><th className="px-2 text-left font-semibold">Mobile</th><th className="w-20 px-2 font-semibold">Loans</th><th className="w-20 px-2 font-semibold">Status</th></tr>
+            </thead>
+            <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+              {!rows.length && (
+                <tr><td colSpan={6} className="py-10 text-center text-[13px] text-ink-400">
+                  <Search className="mx-auto mb-1.5 size-5" />
+                  {dq ? (list.isFetching ? 'Searching…' : 'No customer found - press F1 to add') : 'Start typing to search'}
+                </td></tr>
+              )}
               {rows.map((c, i) => (
-                <tr key={c.id} onMouseEnter={() => setIdx(i)} onClick={() => pick(c)} className={clsx('cursor-pointer', i === idx && 'bg-navy-50 dark:bg-ink-800')}>
-                  <td className="px-3 py-2 text-center">{c.customer_no}</td>
-                  <td className="px-3 font-semibold">{c.title} {c.name}{c.relation_name ? ` ${c.relation_type || ''} ${c.relation_name}` : ''}</td>
-                  <td className="px-3">{[c.street, c.area, c.city].filter(Boolean).join(', ')}</td>
-                  <td className="px-3">{c.phone}</td>
-                  <td className="px-3 text-center">{n(c.open_loans) || '-'}</td>
-                  <td className="px-3 text-center"><span className={clsx('text-xs font-bold', c.status === 'BLOCKED' ? 'text-rose-600' : 'text-emerald-700')}>{c.status}</span></td>
+                <tr key={c.id} onMouseEnter={() => setIdx(i)} onClick={() => pick(c)}
+                  className={clsx('cursor-pointer', i === idx ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+                  <td className={clsx('num border-l-2 px-2 py-1.5 text-center', i === idx ? 'border-emerald-600' : 'border-transparent')}>{c.customer_no}</td>
+                  <td className="px-2 font-semibold">{c.title} {c.name}{c.relation_name ? <span className="font-normal text-ink-500"> {c.relation_type || ''} {c.relation_name}</span> : ''}</td>
+                  <td className="max-w-64 truncate px-2 text-ink-600 dark:text-ink-400">{[c.street, c.area, c.city].filter(Boolean).join(', ')}</td>
+                  <td className="num px-2">{c.phone}</td>
+                  <td className="num px-2 text-center">{n(c.open_loans) || '-'}</td>
+                  <td className="px-2 text-center"><span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold', c.status === 'BLOCKED' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{c.status}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-ink-500">{rows.length} customer{rows.length === 1 ? '' : 's'} found</p>
+        <p className="shrink-0 text-[11px] text-ink-500">{rows.length} customer{rows.length === 1 ? '' : 's'} found{rows.length ? ' · ↑ ↓ to move, Enter to select' : ''}</p>
       </div>
     </Drawer>
   );
@@ -96,14 +121,24 @@ function CustomerSearch({ value, onChange, onNew, nameFirst = true }) {
     <Panel title="Customer">
       <div className="mb-2 grid grid-cols-4 gap-1">
         {[['mobile', 'Mobile'], ['name', 'Name'], ['acno', 'A/c No'], ['loan', 'Loan No']].map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setBy(k)} className={clsx('rounded-md border px-1 py-1.5 text-sm font-semibold', by === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 text-ink-600')}>{l}</button>
+          <button key={k} type="button" onClick={() => setBy(k)}
+            className={clsx('flex items-center justify-center gap-1.5 rounded-md border px-1 py-1 text-[12px] font-semibold transition',
+              by === k ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-300 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>
+            {by === k && (
+              <span className="relative flex size-1.5" aria-hidden>
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" />
+              </span>
+            )}
+            {l}
+          </button>
         ))}
       </div>
-      <Input autoFocus value={q} placeholder={placeholder}
+      <div className="mb-3"><Input prefix={<Search className="size-3.5" />} autoFocus value={q} placeholder={placeholder}
         onChange={(e) => { setQ(e.target.value); if (by !== 'loan' && e.target.value) { if (value) onChange(null); setFind(true); } }}
         onKeyDown={(e) => { if (e.key === 'Enter' && by === 'loan') findByLoan(); if ((e.key === 'Enter' || e.key === 'ArrowDown') && by !== 'loan') setFind(true); }}
-        className="mb-3 h-10 bg-gold-50 font-semibold" />
-      <CustomerCard customer={value} onLedger={value ? () => setLedger(true) : null}
+        className="h-10 font-semibold" /></div>
+      <CustomerCard customer={value} onNew={onNew} onLedger={value ? () => setLedger(true) : null}
         rows={[['Open loans', value ? (t ? (n(t.open_loans) ? `${t.open_loans} · ${money(t.outstanding)}` : 'none') : '…') : '-'], ['Interest due today', t && n(t.interest_due) ? money(t.interest_due) : '-'], ['Last loan', value ? (last ? `#${last.bill_no} · ${date(last.loan_date)}` : 'first loan') : '-']]} />
       <FindCustomerDrawer open={find} initial={q} by={by} onClose={() => setFind(false)} onPick={(c) => { setFind(false); onChange(c); }} onNew={() => { setFind(false); onNew(); }} />
       <CustomerLedgerDrawer customerId={ledger ? value?.id : null} onClose={() => setLedger(false)} />
@@ -121,7 +156,7 @@ function BillBookDrawer({ open, first, initial, onClose, onOk }) {
   const ok = () => { if (!no.trim()) return toast.error('Enter bill book number'); if (chk && !chk.free) return toast.error(`Already used on loan ${chk.used_by}`); onOk(no.trim()); };
   return (
     <Drawer open={open} onClose={onClose} size="sm" icon={BookOpen} title="Manual Bill Book No" subtitle={first ? 'First loan - enter the starting number of your paper bill book' : 'Paper bill book number for this loan'}
-      footer={<><Button variant="outline" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" onClick={ok}>OK (Enter)</Button></>}>
+      footer={<><Button variant="soft-danger" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" onClick={ok}>OK (Enter)</Button></>}>
       <Field label={first ? 'Bill book starting no.' : 'Bill book no.'}>
         <Input autoFocus className="h-14 bg-gold-50 text-center text-2xl font-bold" value={no} onChange={(e) => setNo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ok()} />
       </Field>
@@ -272,31 +307,33 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   }, [canSave, f.advance, isOld, ltv, ltvWarn]);
 
   if (isLoading) return <Spinner />;
-  if (isAllBranches) return <div className="card p-6 text-sm">Select a single branch from the header to create loans.</div>;
+  if (isAllBranches) return <NeedBranch action="create loans" />;
 
   const right = (
-    <Panel title="Loan">
-      <div className="space-y-3">
-        <Field label="Scheme"><Select value={schemeId} onChange={(e) => setSchemeId(e.target.value)} options={schemes.map((s) => ({ value: s.id, label: `${s.code} · ${s.name} (${n(s.ltv_percent)}%)` }))} /></Field>
+    <Panel title="Loan" bodyClassName="flex flex-col gap-2">
+      <div className="space-y-2">
+        <Field label="Scheme"><Select prefix={<Layers className="size-3.5" />} value={schemeId} onChange={(e) => setSchemeId(e.target.value)} options={schemes.map((s) => ({ value: s.id, label: `${s.code} · ${s.name} (${n(s.ltv_percent)}%)` }))} /></Field>
         <Field label="Loan amount (₹)" error={principal > eligible && settings?.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && scheme?.calc_mode !== 'MYBOOK' ? `Above eligible ${money(eligible)}` : null}>
-          <div className="flex gap-1"><Input type="number" className="h-12 text-xl font-bold" value={f.principal} onChange={(e) => set({ principal: e.target.value })} />
+          <div className="flex gap-1"><Input prefix={<IndianRupee className="size-4" />} type="number" className="h-12 text-xl font-bold" value={f.principal} onChange={(e) => set({ principal: e.target.value })} />
             <Button variant="soft" className="h-12" onClick={() => set({ principal: String(eligible) })} title="Use eligible amount">Max</Button></div>
         </Field>
         <div className="grid grid-cols-2 gap-2">
-          <Field label={`Int. % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input type="number" step="0.01" value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
-          <Field label="Interest type"><Select value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
-          <Field label="Doc. charges"><Input type="number" value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
+          <Field label={`Int. % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input prefix={<Percent className="size-3.5" />} type="number" step="0.01" value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
+          <Field label="Interest type"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
+          <Field label="Doc. charges"><Input prefix={<Receipt className="size-3.5" />} type="number" value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
           <Field label="Advance interest (F6)">
             <div className="flex gap-1">
-              <button type="button" onClick={() => set({ advance: !f.advance })} className={clsx('h-10 w-14 rounded-md text-sm font-bold', f.advance ? 'bg-emerald-100 text-emerald-800' : 'bg-ink-100 text-ink-500')}>{f.advance ? 'Yes' : 'No'}</button>
-              <Input readOnly className="bg-ink-50 text-right" value={amount(advance)} />
+              <button type="button" onClick={() => set({ advance: !f.advance })} className={clsx('h-9 w-14 shrink-0 rounded-md border text-sm font-bold', f.advance ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300')}>{f.advance ? 'Yes' : 'No'}</button>
+              <Input prefix={<Wallet className="size-3.5" />} readOnly className="bg-ink-50 text-right" value={amount(advance)} />
             </div>
           </Field>
         </div>
         <LtvBar value={ltv} max={ltvMax} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="of value" />
-        <Line label="Eligible amount" value={money(eligible)} />
-        <div className="flex items-center justify-between text-sm"><span>Due date</span><Input type="date" className="h-8 w-40" value={f.due_date} onChange={(e) => set({ due_date: e.target.value })} /></div>
-        <Line label="Interest / month" value={perMonth ? amount(perMonth) : '-'} />
+        <div className="overflow-hidden rounded-md border border-ink-200 text-[13px] dark:border-ink-800 [&>div]:flex [&>div]:items-center [&>div]:justify-between [&>div]:gap-3 [&>div]:px-2.5 [&>div:not(:last-child)]:border-b [&>div]:border-ink-100 dark:[&>div]:border-ink-800">
+          <div className="py-1.5"><span className="text-ink-500">Eligible amount</span><span className="num font-bold text-navy-900 dark:text-white">{money(eligible)}</span></div>
+          <div className="py-1"><span className="text-ink-500">Due date</span><Input type="date" className="!h-7 w-36 text-[13px]" value={f.due_date} onChange={(e) => set({ due_date: e.target.value })} /></div>
+          <div className="py-1.5"><span className="text-ink-500">Interest / month</span><span className="num font-bold text-navy-900 dark:text-white">{perMonth ? amount(perMonth) : '-'}</span></div>
+        </div>
         {isOld && (
           <div className="rounded-md bg-cream-100 p-2">
             <p className="text-xs font-bold text-gold-700 uppercase">Till today</p>
@@ -304,6 +341,9 @@ export default function NewLoanPage({ mode = 'NEW' }) {
             <Line label="Interest due" value={till ? amount(till.interestDue) : '-'} tone="text-rose-600" />
           </div>
         )}
+      </div>
+      {/* pinned to the bottom of the panel */}
+      <div className="mt-auto space-y-2 pt-1">
         <BigTotal label={isOld ? 'Opening entry · not in today\'s cash' : 'Amount to pay customer'} value={isOld ? principal : netPay} words={!isOld} />
         <GoldButton disabled={!canSave} loading={save.isPending && !step} onClick={trySave}>{isOld ? 'Save Old Loan (F2)' : 'Save Loan (F2)'}</GoldButton>
       </div>
@@ -325,12 +365,12 @@ export default function NewLoanPage({ mode = 'NEW' }) {
         </>}
         center={<>
           {oldOpen.length > 0 && (
-            <div className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+            <div className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-[13px] text-amber-900">
               <AlertTriangle className="size-5" /> {customer.name} has {oldOpen.length} open loan(s) older than {warnMonths} months: {oldOpen.map((l) => `#${l.bill_no} (${date(l.loan_date)})`).join(', ')}. Collect interest before giving a new loan.
             </div>
           )}
           {rateMissing && (
-            <div className="flex items-center gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">
+            <div className="flex items-center gap-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-[13px] text-rose-800">
               <AlertTriangle className="size-5" /> Today's gold / silver rate is not entered for {dayjs().format('DD/MM/YYYY')}. Please enter the rate first.
               <Button size="sm" variant="outline" className="ml-auto" onClick={() => navigate('/masters/rates')}>Enter rate</Button>
             </div>
@@ -338,35 +378,45 @@ export default function NewLoanPage({ mode = 'NEW' }) {
           <Panel title={`Pledge items · ${loanOn}`}>
             {isOld && (
               <div className="mb-3 grid gap-2 border-b border-ink-200 pb-3 sm:grid-cols-4">
-                <Field label="Bill book no (required)" required><Input value={f.manual_bill_no} onChange={(e) => set({ manual_bill_no: e.target.value })} /></Field>
+                <Field label="Bill book no (required)" required><Input prefix={<BookOpen className="size-3.5" />} value={f.manual_bill_no} onChange={(e) => set({ manual_bill_no: e.target.value })} /></Field>
                 <Field label="Pledge date (F4)" hint={`not after ${dayjs().format('DD/MM/YYYY')}`}><Input id="pledge-date" type="date" max={today()} value={f.loan_date} onChange={(e) => set({ loan_date: e.target.value, due_date: dayjs(e.target.value).add(scheme?.tenure_months || 12, 'month').format('YYYY-MM-DD') })} /></Field>
-                <Field label="Gold rate (₹/g)" error={!f.gold_rate && loanOn !== 'SILVER' ? 'enter rate' : null}><Input type="number" value={f.gold_rate} onChange={(e) => set({ gold_rate: e.target.value })} /></Field>
-                <Field label="Silver rate (₹/g)" error={!f.silver_rate && loanOn !== 'GOLD' ? 'enter rate' : null}><Input type="number" value={f.silver_rate} onChange={(e) => set({ silver_rate: e.target.value })} /></Field>
+                <Field label="Gold rate (₹/g)" error={!f.gold_rate && loanOn !== 'SILVER' ? 'enter rate' : null}><Input prefix={<Coins className="size-3.5" />} type="number" value={f.gold_rate} onChange={(e) => set({ gold_rate: e.target.value })} /></Field>
+                <Field label="Silver rate (₹/g)" error={!f.silver_rate && loanOn !== 'GOLD' ? 'enter rate' : null}><Input prefix={<Coins className="size-3.5" />} type="number" value={f.silver_rate} onChange={(e) => set({ silver_rate: e.target.value })} /></Field>
               </div>
             )}
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-gold-700">LOAN ON</span>
+            <div className="mb-2.5 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold tracking-wider text-ink-500">LOAN ON</span>
               {['GOLD', 'SILVER', 'MIX'].map((m) => (
-                <button key={m} type="button" onClick={() => setLoanOn(m)} className={clsx('h-9 min-w-24 rounded-md border px-4 text-sm font-bold', loanOn === m ? 'border-navy-800 bg-navy-800 text-white' : 'border-ink-300 bg-white text-navy-800')}>{m.charAt(0) + m.slice(1).toLowerCase()}</button>
+                <button key={m} type="button" onClick={() => setLoanOn(m)} className={clsx('h-7 min-w-16 border px-3 text-[12px] font-bold first-of-type:rounded-l-md last-of-type:rounded-r-md -ml-px', loanOn === m ? 'relative z-10 flex items-center justify-center gap-1.5 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300')}>
+                  {loanOn === m && (
+                    <span className="relative flex size-1.5" aria-hidden>
+                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                      <span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" />
+                    </span>
+                  )}
+                  {m.charAt(0) + m.slice(1).toLowerCase()}
+                </button>
               ))}
-              <span className="text-xs text-ink-500">Mix = gold + silver items in one loan</span>
+              <span className="ml-1 text-[11px] text-ink-400">Mix = gold + silver items in one loan</span>
             </div>
             <ItemEntry loanOn={loanOn} rates={rates} lookups={lk} editing={editing}
               onAdd={(it) => { setItems((l) => (editing ? l.map((x) => (x.key === editing.key ? it : x)) : [...l, it])); setEditing(null); }} />
-            <div className="mt-3"><ItemsTable items={rows} onRemove={(i) => setItems((l) => l.filter((x) => x.key !== i.key))} onEdit={(i) => setEditing(i)} /></div>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <div className="mt-2.5"><ItemsTable items={rows} onRemove={(i) => setItems((l) => l.filter((x) => x.key !== i.key))} onEdit={(i) => setEditing(i)} /></div>
+            <div className="mt-2.5 grid grid-cols-2 overflow-hidden rounded-md border border-ink-200 text-[13px] sm:grid-cols-4 dark:border-ink-800 [&>div]:border-ink-200 [&>div]:px-3 [&>div]:py-1.5 [&>div:not(:last-child)]:border-r dark:[&>div]:border-ink-800">
               <div><p className="label">Gold fine</p><p className="num font-bold">{weight(tot.fineG)} g @ {rates.gold ? amount(rates.gold) : '-'}</p></div>
               <div><p className="label">Silver fine</p><p className="num font-bold">{weight(tot.fineS)} g @ {rates.silver ? amount(rates.silver) : '-'}</p></div>
               <div><p className="label">Item value</p><p className="num font-bold">{amount(tot.value)}</p></div>
               <div><p className="label">Loan / gram</p><p className="num font-bold">{tot.net ? amount(principal / tot.net) : '0.00'}</p></div>
             </div>
-            <Field label="Remarks" className="mt-3"><Input value={f.remarks} onChange={(e) => set({ remarks: e.target.value })} /></Field>
-            {!isOld && <Field label="Bill book no (optional)" className="mt-2"><Input value={f.manual_bill_no} onChange={(e) => set({ manual_bill_no: e.target.value })} /></Field>}
+            <div className={clsx('mt-2.5 grid gap-2', !isOld && 'sm:grid-cols-[1fr_200px]')}>
+              <Field label="Remarks"><Input prefix={<StickyNote className="size-3.5" />} value={f.remarks} onChange={(e) => set({ remarks: e.target.value })} /></Field>
+              {!isOld && <Field label="Bill book no (optional)"><Input prefix={<BookOpen className="size-3.5" />} value={f.manual_bill_no} onChange={(e) => set({ manual_bill_no: e.target.value })} /></Field>}
+            </div>
           </Panel>
         </>}
         right={right}
         footerLeft={<>
-          <Button variant="outline" icon={Plus} onClick={clear}>New / Clear (Ctrl+N)</Button>
+          <Button variant="soft-danger" icon={Plus} onClick={clear}>New / Clear (Ctrl+N)</Button>
           {!isOld && <Button variant="outline" icon={FileText} disabled={!rows.length} onClick={printEstimate}>Estimate (Ctrl+E)</Button>}
           {isOld && <Button variant="outline" icon={ListChecks} onClick={() => setMarkOld(true)}>Mark Old Loans (Ctrl+M)</Button>}
           {!customer && <Button variant="outline" icon={UserPlus} onClick={() => setNewCust(true)}>New customer (F1)</Button>}

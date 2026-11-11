@@ -89,7 +89,7 @@ export default function LedgersPage() {
       <div className="card flex flex-wrap gap-2 px-3 py-2">
         {can('acc_ledgers', 'add') && <Button variant="outline" icon={Plus} onClick={openNew}>New Account (F2)</Button>}
         <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => openEdit(sel)}>Edit (F3)</Button>
-        <Button variant="outline" icon={Trash2} disabled={!sel || sel.is_system} onClick={() => setDel(sel)}>Delete (Del)</Button>
+        <Button variant="soft-danger" icon={Trash2} disabled={!sel || sel.is_system} onClick={() => setDel(sel)}>Delete (Del)</Button>
         <Button variant="outline" icon={BookOpen} disabled={!sel} onClick={() => navigate('/accounts/ledger')}>Ledger (F4)</Button>
         <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F6)</Button>
         <div className="ml-auto flex flex-wrap gap-2">

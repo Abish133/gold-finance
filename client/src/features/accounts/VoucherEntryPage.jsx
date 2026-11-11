@@ -108,7 +108,7 @@ export default function VoucherEntryPage() {
           <Field label="Narration"><Input value={f.narration} onChange={(e) => setF({ ...f, narration: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && save()} /></Field>
           <div className="grid grid-cols-[1fr_auto] gap-2 pt-2">
             <Button variant="outline" size="lg" icon={Save} disabled={isClosed || !can('acc_voucher', 'add')} onClick={save}>Save Voucher (F10)</Button>
-            <Button variant="outline" size="lg" icon={Eraser} onClick={clear}>Clear</Button>
+            <Button variant="soft-danger" size="lg" icon={Eraser} onClick={clear}>Clear</Button>
           </div>
           <button type="button" onClick={() => setJournal(true)} className="text-xs font-semibold text-navy-700 hover:underline">Journal / Contra voucher →</button>
         </div>
@@ -138,7 +138,7 @@ export default function VoucherEntryPage() {
           </div>
           <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
             <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => edit(sel)}>Edit (F3)</Button>
-            <Button variant="outline" icon={Trash2} disabled={!sel || !can('acc_voucher', 'delete')} onClick={() => setDel(sel)}>Delete (Del)</Button>
+            <Button variant="soft-danger" icon={Trash2} disabled={!sel || !can('acc_voucher', 'delete')} onClick={() => setDel(sel)}>Delete (Del)</Button>
             <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
             <Button variant="outline" icon={BookOpen} onClick={() => window.location.assign('/accounts/ledger')}>Account Ledger</Button>
             <ExitButton />

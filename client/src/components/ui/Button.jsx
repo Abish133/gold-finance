@@ -10,6 +10,8 @@ const VARIANTS = {
   danger: 'bg-rose-600 text-white hover:bg-rose-500',
   success: 'bg-emerald-600 text-white hover:bg-emerald-500',
   soft: 'bg-navy-50 text-navy-800 hover:bg-navy-100 dark:bg-navy-800/30 dark:text-navy-200',
+  /* clear / cancel / close / remove / delete */
+  'soft-danger': 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-300 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/70',
 };
 const SIZES = {
   sm: 'h-8 px-3 text-xs gap-1.5 rounded-md',

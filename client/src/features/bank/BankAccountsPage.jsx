@@ -70,7 +70,7 @@ export default function BankAccountsPage() {
       <div className="card flex flex-wrap gap-2 px-3 py-2">
         {can('bank_accounts', 'add') && !isAllBranches && <Button variant="outline" icon={Plus} onClick={() => setEdit({ used_for: 'BOTH', is_active: 1 })}>New Bank (Ctrl+N)</Button>}
         {can('bank_accounts', 'edit') && <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => setEdit(sel)}>Edit (F2)</Button>}
-        {can('bank_accounts', 'delete') && <Button variant="outline" icon={Trash2} disabled={!sel} onClick={() => setDel(true)}>Delete (Del)</Button>}
+        {can('bank_accounts', 'delete') && <Button variant="soft-danger" icon={Trash2} disabled={!sel} onClick={() => setDel(true)}>Delete (Del)</Button>}
         <span className="flex-1" />
         <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('bank-accounts', cols, rows)}>Excel (Ctrl+E)</Button>

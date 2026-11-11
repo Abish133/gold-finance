@@ -76,15 +76,16 @@ export function ImageCapture({ value, onChange, upload, label = 'Photo', aspect 
   return (
     <div className={className}>
       <span className="label">{label}</span>
-      <div className={`group relative ${aspect} w-full overflow-hidden rounded-2xl border-2 border-dashed border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-950`}>
-        {value ? <img src={value} alt={label} className="size-full object-cover" /> : (
+      <div className={`@container group relative ${aspect} w-full min-h-0 overflow-hidden rounded-md border-2 border-dashed border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-950`}>
+        {value ? <img src={value} alt={label} className="size-full object-contain" /> : (
           <div className="grid size-full place-items-center text-ink-400"><ImagePlus className="size-8" /></div>
         )}
         {busy && <div className="absolute inset-0 grid place-items-center bg-white/70 text-sm font-semibold dark:bg-ink-900/70">Uploading…</div>}
-        <div className="absolute inset-x-2 bottom-2 flex justify-center gap-1.5 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-          <Button size="sm" variant="outline" icon={ImagePlus} onClick={() => input.current?.click()}>Upload</Button>
-          <Button size="sm" variant="outline" icon={Camera} onClick={() => setCam(true)}>Camera</Button>
-          {value && <Button size="sm" variant="outline" icon={Trash2} onClick={() => onChange?.(null)} />}
+        {/* buttons drop their words when the box is narrow, so they never get cut off */}
+        <div className="absolute inset-x-1.5 bottom-1.5 flex justify-center gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+          <Button size="sm" variant="outline" icon={ImagePlus} title="Upload" className="min-w-0 px-2" onClick={() => input.current?.click()}><span className="hidden @min-[200px]:inline">Upload</span></Button>
+          <Button size="sm" variant="outline" icon={Camera} title="Camera" className="min-w-0 px-2" onClick={() => setCam(true)}><span className="hidden @min-[200px]:inline">Camera</span></Button>
+          {value && <Button size="sm" variant="soft-danger" icon={Trash2} title="Remove" className="min-w-0 px-2" onClick={() => onChange?.(null)} />}
         </div>
       </div>
       <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handle(e.target.files?.[0]); e.target.value = ''; }} />

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { printTable } from '@/lib/printTable';
 import { date } from '@/lib/format';
 import { ExitButton } from '@/features/loans/desk';
+import { NeedBranch } from '@/components/common/NeedBranch';
 
 const Chips = ({ list, tone }) => (list.length ? <div className="flex flex-wrap gap-1">{list.map((x) => <Badge key={x} tone={tone}>{x}</Badge>)}</div> : <p className="text-sm text-emerald-700">None - all in order.</p>);
 
@@ -13,7 +14,7 @@ export default function BillBookCheckPage() {
   const { isAllBranches } = useAuth();
   const { data: company } = useCompany();
   const { data, isFetching, refetch } = useFetch(isAllBranches ? null : '/desk/bill-book-check');
-  if (isAllBranches) return <div className="card p-6 text-sm">Select a single branch from the header to check its bill book.</div>;
+  if (isAllBranches) return <NeedBranch action="check its bill book" />;
   if (!data) return <Spinner />;
   const print = () => printTable({ title: `Bill Book Check · ${data.fy}`, company, rows: [
     { k: 'Loans this year', v: `${data.total} (No ${data.first ?? '-'} to ${data.last ?? '-'})` },

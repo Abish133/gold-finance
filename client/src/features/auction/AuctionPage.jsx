@@ -199,7 +199,7 @@ export default function AuctionPage() {
         <span className="flex-1" />
         <Button className="!bg-emerald-700 !text-white" icon={MessageCircle} onClick={whatsapp}>WhatsApp / SMS (Ctrl+W)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auction-list', cols, rows)}>Excel (Ctrl+E)</Button>
-        <Button variant="outline" icon={Eraser} onClick={clear}>Clear (F2)</Button>
+        <Button variant="soft-danger" icon={Eraser} onClick={clear}>Clear (F2)</Button>
         <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
       </div>
       <p className="px-1 text-xs text-ink-500">F5 = show · Space or click = tick / untick loan · Ctrl+A = tick all · Ctrl+D = untick all · F9 = auction list · Ctrl+W = WhatsApp / SMS · Ctrl+E = Excel · F2 = clear · Esc = exit</p>

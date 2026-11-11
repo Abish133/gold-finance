@@ -14,7 +14,8 @@
     "db:migrate": "node src/db/migrate.js",
     "db:seed": "node src/db/seed.js",
     "db:setup": "node src/db/migrate.js && node src/db/seed.js",
-    "test": "node test/run-all.mjs"
+    "test": "node test/run-all.mjs",
+    "db:demo": "node src/db/seed-demo.js"
   },
   "imports": {
     "#config/*": "./src/config/*",

@@ -105,7 +105,7 @@ export default function EditLoanPage() {
       </Panel>
       <div className="card flex flex-wrap items-center justify-end gap-2 px-3 py-2">
         <p className="mr-auto text-sm text-ink-600">{!l ? '' : changes.length ? `Changed: ${changes.join(', ')}` : 'No changes yet'}</p>
-        <Button variant="outline" icon={Undo2} onClick={reset}>Cancel Changes (Ctrl+Z)</Button>
+        <Button variant="soft-danger" icon={Undo2} onClick={reset}>Cancel Changes (Ctrl+Z)</Button>
         <Button variant="gold" icon={Save} loading={saving} disabled={!l} onClick={save}>Save All Changes (F2)</Button>
         <ExitButton />
       </div>

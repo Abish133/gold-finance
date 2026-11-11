@@ -4,3 +4,4 @@ export * from './Display';
 export * from './Drawer';
 export * from './DataTable';
 export * from './ImageCapture';
+export * from './Modal';

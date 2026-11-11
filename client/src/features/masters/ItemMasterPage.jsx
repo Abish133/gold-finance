@@ -93,7 +93,7 @@ export default function ItemMasterPage() {
         </div>
       </div>
       <div className="card flex flex-wrap gap-2 px-3 py-2">
-        <Button variant="outline" icon={Trash2} disabled={!it.id || it.used_in_loans > 0} onClick={() => setDel(it)}>Delete (Del)</Button>
+        <Button variant="soft-danger" icon={Trash2} disabled={!it.id || it.used_in_loans > 0} onClick={() => setDel(it)}>Delete (Del)</Button>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
           <Button variant="outline" icon={Printer} onClick={print}>Print Item List (F9)</Button>

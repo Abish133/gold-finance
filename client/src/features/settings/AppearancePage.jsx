@@ -34,7 +34,7 @@ export default function AppearancePage() {
         <input ref={file} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
         <div className="flex gap-2">
           <Button icon={ImageUp} loading={busy} onClick={() => file.current?.click()}>Choose image</Button>
-          {bg && <Button variant="outline" icon={Trash2} onClick={() => send(null)}>Remove</Button>}
+          {bg && <Button variant="soft-danger" icon={Trash2} onClick={() => send(null)}>Remove</Button>}
           <span className="ml-auto"><ExitButton /></span>
         </div>
         <p className="text-xs text-ink-500">Use a light picture (logo, shop photo). It is shown very faintly so text stays easy to read. Applies to all branches.</p>

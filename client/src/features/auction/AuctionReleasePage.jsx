@@ -107,7 +107,7 @@ export default function AuctionReleasePage() {
               </div>
               <div className="flex justify-between"><span>{profit == null ? 'Profit / Loss' : profit >= 0 ? 'Profit' : 'Loss'}</span><b className={clsx('num', profit < 0 ? 'text-rose-600' : 'text-emerald-700')}>{profit == null ? '' : `${profit >= 0 ? '+ ' : '- '}${amount(Math.abs(profit))}`}</b></div>
               <Button variant={cur?.sale_date ? 'gold' : 'outline'} size="lg" className="w-full" icon={Save} loading={busy} disabled={!cur || (cur.sale_date && !admin)} onClick={saveSale}>{cur?.sale_date ? 'Change Sale (Admin)' : 'Save Sale (F10)'}</Button>
-              <Button variant="outline" size="lg" className="w-full" icon={Trash2} disabled={!cur?.sale_date} onClick={removeSale}>Remove Sale (Ctrl+R)</Button>
+              <Button variant="soft-danger" size="lg" className="w-full" icon={Trash2} disabled={!cur?.sale_date} onClick={removeSale}>Remove Sale (Ctrl+R)</Button>
               <Button variant="outline" size="lg" className="w-full text-rose-700" icon={Undo2} disabled={!cur || !!cur.sale_date || !admin} onClick={undo}>{cur?.sale_date ? 'Undo Auction (remove sale first)' : 'Undo Auction (Admin)'}</Button>
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auctioned', COLS, rows)}>Excel (Ctrl+E)</Button>

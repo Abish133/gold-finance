@@ -140,7 +140,7 @@ export default function BankLoanPage() {
       </div>
       <div className="card flex flex-wrap gap-2 px-3 py-2">
         <Button variant="outline" icon={Plus} onClick={() => { setF(blank()); setSel([]); setCur(null); }}>New (Ctrl+N)</Button>
-        <Button variant="outline" icon={Trash2} disabled={!cur} onClick={remove}>Remove Loan (Del)</Button>
+        <Button variant="soft-danger" icon={Trash2} disabled={!cur} onClick={remove}>Remove Loan (Del)</Button>
         <span className="flex-1" />
         <Button variant="gold" icon={Save} loading={saving} onClick={() => save()}>Save Bank Loan (F2)</Button>
         <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>

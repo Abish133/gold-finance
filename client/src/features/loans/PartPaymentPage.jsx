@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Minus, Plus, RefreshCw, Save, Printer, X, Trash2 } from 'lucide-react';
+import { Minus, Plus, RefreshCw, Save, Printer, X, Trash2, ScanLine, UserRound, ImagePlus } from 'lucide-react';
+import { ImagePreview } from '@/components/common/ImagePreview';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -12,7 +13,7 @@ import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, money, date, n, round2, today, weight } from '@/lib/format';
 import { whatsappAfterSave } from '@/lib/whatsapp';
-import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer, PhotoBox, Chip } from './desk';
+import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer, Chip, GoldButton } from './desk';
 
 const MODES = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK', 'Bank / NEFT'], ['CARD', 'Card'], ['CHEQUE', 'Cheque']];
 
@@ -100,94 +101,116 @@ export default function PartPaymentPage() {
   const cell = { adv: 'bg-violet-200 text-violet-900', paid: 'bg-emerald-200 text-emerald-900', now: 'bg-ink-900 text-white', due: 'bg-rose-100 text-rose-800', not: 'bg-ink-100 text-ink-400' };
 
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex flex-wrap items-center gap-4 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">Part Payment &amp; Interest</h1><p className="text-sm text-navy-100">Received from customer</p></div>
-        <div className="flex items-center gap-2 rounded-md bg-white p-1.5">
-          <span className="px-2 text-sm text-ink-600">Loan No / Barcode</span>
-          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} className="h-10 w-72 bg-gold-50 text-base font-bold" />
-          <Button onClick={load}>Load</Button>
+    /* fit-screen: on desktop the page fits the window; each column scrolls on its own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3">
+          <h1 className="text-lg font-bold whitespace-nowrap">Part Payment &amp; Interest</h1>
+          <p className="hidden truncate text-[12px] text-white/60 lg:block">Received from customer</p>
         </div>
-        <div className="rounded-md bg-white/10 px-4 py-2 text-lg font-bold">{dayjs().format('DD/MM/YYYY')}</div>
+        <div className="flex items-center gap-1 rounded-md bg-white p-1">
+          <Input autoFocus prefix={<ScanLine className="size-4" />} placeholder="Loan no / barcode" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} className="!h-8 w-64 text-[13px] font-bold" />
+          <Button size="sm" onClick={load}>Load</Button>
+        </div>
+        <div className="flex items-baseline gap-2 rounded-md border border-white/15 px-3 py-1">
+          <span className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">Date</span>
+          <span className="num text-[13px] font-bold">{dayjs().format('DD/MM/YYYY')}</span>
+        </div>
       </section>
 
-      <div className="grid items-start gap-3 xl:grid-cols-[320px_1fr_420px]">
-        <Panel title="Customer" bodyClassName="flex flex-col gap-3 p-4">
-          <div className="flex gap-3">
-            <PhotoBox src={l?.customer_photo || l?.customer_photo_master} className="h-28 w-24" />
-            <div className="min-w-0 text-sm">
-              <p className="text-lg font-bold text-navy-900 dark:text-white">{l ? `${l.customer_title || ''} ${l.customer_name}` : ''}</p>
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[300px_1fr_400px]">
+        <div className="desk-col">
+        <Panel title="Customer" bodyClassName="flex flex-col gap-2 p-3">
+          <div className="flex flex-col gap-2">
+            <ImagePreview src={l?.customer_photo || l?.customer_photo_master} title={l ? `Customer · ${l.customer_name}` : 'Customer photo'}
+              className="aspect-[4/3] w-full shrink-0 rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+              {(l?.customer_photo || l?.customer_photo_master)
+                ? <img src={l.customer_photo || l.customer_photo_master} alt="" className="size-full object-contain" />
+                : <span className="grid size-full place-items-center text-center text-ink-400"><span><UserRound className="mx-auto size-12" strokeWidth={1.25} /><span className="mt-1 block px-1 text-[10px] leading-tight font-bold uppercase">Photo not available</span></span></span>}
+            </ImagePreview>
+            <div className="min-w-0 text-[13px]">
+              <p className="truncate text-[15px] font-bold text-navy-900 dark:text-white">{l ? `${l.customer_title || ''} ${l.customer_name}` : ''}</p>
               {l?.relation_name && <p className="text-ink-600">{l.relation_type} {l.relation_name}</p>}
               {l && <div className="mt-2 flex flex-wrap gap-2"><Chip tone="green">{l.customer_status || 'Active'}</Chip><Chip tone="gold">{openCount} open loan{openCount === 1 ? '' : 's'}</Chip></div>}
             </div>
           </div>
-          <div className="space-y-1.5 text-sm">
+          <div className="overflow-hidden rounded-md border border-ink-200 text-[13px] dark:border-ink-800">
             {[['A/c No', l?.customer_no], ['Phone', l?.customer_phone], ['Address', l && [l.door_no, l.street, l.area, l.city].filter(Boolean).join(', ')], ['ID Proof', l?.id_proof_type]].map(([k, v]) => (
-              <p key={k} className="grid grid-cols-[90px_1fr]"><span className="text-ink-500">{k}</span><span className="font-semibold">{v || ''}</span></p>
+              <p key={k} className="grid grid-cols-[72px_1fr] gap-2 border-ink-100 px-2.5 py-1 not-last:border-b dark:border-ink-800"><span className="text-ink-500">{k}</span><span className="truncate font-semibold">{v || '-'}</span></p>
             ))}
           </div>
-          {l && <Button size="sm" variant="outline" className="self-start" onClick={() => setLedger(true)}>Customer ledger</Button>}
-          <div className="grid min-h-56 flex-1 place-items-center overflow-hidden rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
-            {l?.item_photo ? <img src={l.item_photo} alt="" className="size-full object-cover" /> : <span className="text-2xl font-bold text-ink-300">Image not available</span>}
-          </div>
+          {l && <Button size="sm" variant="outline" className="w-full" onClick={() => setLedger(true)}>Customer ledger</Button>}
+          <p className="label -mb-1">Item photo</p>
+          <ImagePreview src={l?.item_photo} title={l ? `Item photo · Loan #${l.bill_no}` : 'Item photo'}
+            className="grid min-h-32 w-full flex-1 place-items-center rounded-md border border-dashed border-ink-300 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+            {l?.item_photo ? <img src={l.item_photo} alt="" className="size-full object-contain" /> : <span className="flex flex-col items-center gap-1 text-[12px] text-ink-400"><ImagePlus className="size-6" strokeWidth={1.5} />No item photo</span>}
+          </ImagePreview>
         </Panel>
+        </div>
 
-        <div className="space-y-3">
+        <div className="desk-col min-w-0">
           <Panel title="Loan" className="[&>header]:hidden">
-            <div className="mb-3 flex flex-wrap items-center gap-3">
-              <p className="text-3xl font-extrabold text-navy-900 dark:text-white">Loan #{l?.bill_no || ''}</p>
+            <div className="mb-2 flex flex-wrap items-center gap-3">
+              <p className="text-xl font-extrabold text-navy-900 dark:text-white">Loan #{l?.bill_no || ''}</p>
               {l && <span className="text-sm text-ink-600">{[l.manual_bill_no && `Bill Book ${l.manual_bill_no}`, l.loan_on].filter(Boolean).join(' · ')}</span>}
               {l && <span className="ml-auto">{l.bank_pledge_id ? <Chip tone="violet">At bank</Chip> : <Chip tone="green">In hand</Chip>}</span>}
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[['Pledge date', l ? date(l.loan_date) : '-'], ['Loan amount', l ? money(n(l.principal) + topupsAmt) : '-'], ['Rate / month', l ? `${n(c?.rateType === 'MONTHLY' ? c.rate : round2(c?.rate / 12)).toFixed(2)}%` : '-']].map(([k, v]) => (
-                <div key={k} className="rounded-md border border-ink-200 bg-cream-50 px-3 py-2"><p className="label">{k}</p><p className="num font-bold text-navy-900">{v}</p></div>
+                <div key={k} className="rounded-md border border-ink-200 px-3 py-1.5 dark:border-ink-800"><p className="label">{k}</p><p className="num text-[13px] font-bold text-navy-900 dark:text-white">{v}</p></div>
               ))}
             </div>
-            <p className="label mt-4">Interest months {c && <span className="ml-2 normal-case">Total {c.monthsDue} · Paid {paidMonths} · Due {dueMonths}</span>}</p>
+            <p className="label mt-2.5">Interest months {c && <span className="ml-2 normal-case">Total {c.monthsDue} · Paid {paidMonths} · Due {dueMonths}</span>}</p>
             <div className="grid grid-cols-6 gap-1 sm:grid-cols-12">
               {strip.map((st, i) => (
                 <div key={i} className={clsx('rounded py-1 text-center text-xs font-bold leading-tight', cell[st])}>{i + 1}
                   {l && <span className="block text-[10px] font-medium opacity-80">{dayjs(l.loan_date).add(i, 'month').format('MMM')}</span>}</div>
               ))}
             </div>
-            <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-ink-600">
+            <div className="mt-1.5 flex flex-wrap gap-3 text-[11px] text-ink-600">
               {[['adv', 'Advance'], ['paid', 'Paid'], ['now', 'Paying now'], ['due', 'Due'], ['not', 'Not yet']].map(([k, t]) => <span key={k} className="flex items-center gap-1"><span className={clsx('size-3 rounded', cell[k])} />{t}</span>)}
             </div>
             {c && (() => { const paidP = round2(n(l.principal) + topupsAmt - c.principalOutstanding); const pct = Math.min(100, (paidP / Math.max(1, n(l.principal) + topupsAmt)) * 100); return (
-              <div className="mt-4">
-                <div className="flex justify-between text-sm"><span className="font-semibold text-emerald-700">PRINCIPAL &nbsp; Paid {money(paidP)}</span><span className="font-semibold text-rose-600">Outstanding {money(c.principalOutstanding)}</span></div>
-                <div className="mt-1 h-3 rounded bg-navy-100 dark:bg-ink-700"><div className="h-3 rounded bg-emerald-600" style={{ width: `${pct}%` }} /></div>
+              <div className="mt-2.5">
+                <div className="flex justify-between text-[12px]"><span className="font-semibold text-emerald-700">PRINCIPAL &nbsp; Paid {money(paidP)}</span><span className="font-semibold text-rose-600">Outstanding {money(c.principalOutstanding)}</span></div>
+                <div className="mt-1 h-2 rounded-sm bg-ink-100 dark:bg-ink-700"><div className="h-2 rounded-sm bg-emerald-600" style={{ width: `${pct}%` }} /></div>
               </div>); })()}
           </Panel>
-          <Panel title="Payment history" bodyClassName="p-0"><PaymentsGrid transactions={full?.transactions} loan={l} advanceMode="At loan time" /></Panel>
           <Panel title="Pledged items" bodyClassName="p-0">
-            <table className="w-full text-sm">
-              <thead className="navy-gradient text-white"><tr><th className="px-3 py-1.5 text-left">#</th><th className="px-3 text-left">Item</th><th className="px-3 text-right">Pcs</th><th className="px-3 text-right">Gross</th><th className="px-3 text-right">Less</th><th className="px-3 text-right">Net</th><th className="px-3 text-right">Purity</th><th className="px-3 text-left">Remark</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1">{k + 1}</td><td className="px-3 uppercase">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity).toFixed(2)}</td><td className="px-3 text-xs">{i.remarks}</td></tr>)}</tbody>
+            <table className="w-full text-[13px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="w-8 px-3 py-1.5 text-left font-semibold">#</th><th className="px-3 text-left font-semibold">Item</th><th className="px-3 text-right font-semibold">Pcs</th><th className="px-3 text-right font-semibold">Gross</th><th className="px-3 text-right font-semibold">Less</th><th className="px-3 text-right font-semibold">Net</th><th className="px-3 text-right font-semibold">Purity</th><th className="px-3 text-left font-semibold">Remark</th></tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">{!full && <tr><td colSpan={8} className="py-5 text-center text-[12px] text-ink-400">Load a loan to see its items</td></tr>}{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1">{k + 1}</td><td className="px-3 uppercase">{i.item_name}</td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.stone_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity).toFixed(2)}</td><td className="px-3 text-xs">{i.remarks}</td></tr>)}</tbody>
             </table>
           </Panel>
+          <Panel title="Payment history" bodyClassName="flex min-h-36 flex-col p-2"><PaymentsGrid className="min-h-0 flex-1" transactions={full?.transactions} loan={l} advanceMode="At loan time" /></Panel>
         </div>
 
-        <Panel title="Receive" bodyClassName="space-y-3 p-4">
-          <div className="grid grid-cols-2 gap-1 rounded-md bg-cream-100 p-1">
+        <div className="desk-col">
+        <Panel title="Receive" bodyClassName="flex flex-col gap-2 p-3">
+          <div className="grid grid-cols-2">
             {[['INTEREST', 'Interest (F2)'], ['PART', 'Part Amount (F3)']].map(([k, t]) => (
-              <button key={k} type="button" onClick={() => setTab(k)} className={clsx('rounded-md py-2.5 font-bold', tab === k ? 'bg-navy-800 text-white' : 'text-navy-800')}>{t}</button>
+              <button key={k} type="button" onClick={() => setTab(k)}
+                className={clsx('-ml-px flex h-9 items-center justify-center gap-1.5 border text-[13px] font-bold first:ml-0 first:rounded-l-md last:rounded-r-md',
+                  tab === k ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>
+                {tab === k && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}{t}
+              </button>
             ))}
           </div>
           {tab === 'INTEREST' && <>
-          <p className="text-center text-xs font-bold text-ink-600 uppercase">Months to pay</p>
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" size="lg" className="w-16" onClick={() => setMonths((m) => Math.max(0, m - 1))}><Minus /></Button>
-            <span className="num w-16 text-center text-4xl font-extrabold text-navy-900">{months}</span>
-            <Button variant="outline" size="lg" className="w-16" onClick={() => setMonths((m) => m + 1)}><Plus /></Button>
+          <div className="flex items-center gap-2 rounded-md border border-ink-200 p-1.5 dark:border-ink-800">
+            <span className="flex-1 pl-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Months to pay</span>
+            <Button variant="outline" size="icon" className="size-8" onClick={() => setMonths((m) => Math.max(0, m - 1))}><Minus className="size-4" /></Button>
+            <input type="number" min="0" inputMode="numeric" aria-label="Months to pay" value={months}
+              onChange={(e) => setMonths(Math.max(0, Math.floor(Number(e.target.value) || 0)))} onFocus={(e) => e.target.select()}
+              className="num h-8 w-14 rounded-md border border-ink-200 bg-white text-center text-xl font-extrabold text-navy-900 outline-none [appearance:textfield] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-ink-700 dark:bg-ink-950 dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+            <Button variant="outline" size="icon" className="size-8" onClick={() => setMonths((m) => m + 1)}><Plus className="size-4" /></Button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5 [&_button]:h-8 [&_button]:text-[12px]">
             <Button variant="outline" onClick={() => setMonths(1)}>1 month</Button>
             <Button variant="outline" onClick={() => setMonths(3)}>3 months</Button>
             <Button variant="outline" onClick={() => setMonths(dueMonths)}>All due ({dueMonths})</Button>
           </div>
-          <div className="rounded-md bg-cream-100 p-3 dark:bg-ink-800">
+          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">
             <Line label="Interest / month" value={amount(monthly)} />
             <Line label="Months" value={months} />
             <Line label="Paid up to (after save)" value={paidUpTo ? date(paidUpTo) : '-'} />
@@ -195,38 +218,44 @@ export default function PartPaymentPage() {
           </div>
           </>}
           {tab === 'PART' && <>
-            <Field label="Amount received"><Input type="number" autoFocus className="h-14 bg-gold-50 text-right text-2xl font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} /></Field>
-            <div className="rounded-md bg-cream-100 p-3 dark:bg-ink-800">
+            <Field label="Amount received"><Input type="number" autoFocus className="!h-11 text-right text-xl font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} /></Field>
+            <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">
               <Line label="Outstanding now" value={c ? money(c.principalOutstanding) : '-'} />
               <Line label="Paying" value={`− ${money(partAmt)}`} />
               <Line bold label="New outstanding" value={c ? money(Math.max(0, c.principalOutstanding - n(partAmt))) : '-'} />
             </div>
-            <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{c?.mode === 'MYBOOK' ? 'Interest is calculated on the original loan amount (as per current system).' : 'Interest from today is calculated on the new outstanding amount.'}</p>
+            <p className="rounded-md bg-emerald-50 px-2.5 py-1.5 text-[12px] text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{c?.mode === 'MYBOOK' ? 'Interest is calculated on the original loan amount (as per current system).' : 'Interest from today is calculated on the new outstanding amount.'}</p>
             {c?.interestDue > 0 && <p className="text-xs text-amber-700">Interest due {money(c.interestDue)} - collect it in the Interest (F2) tab.</p>}
           </>}
-          <p className="num text-center text-3xl font-extrabold text-navy-900">{money(total)}</p>
-          <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2">
+          <div className="navy-gradient flex items-baseline justify-between rounded-md px-3 py-2 text-white">
+            <span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Total to receive</span>
+            <span className="num text-2xl font-extrabold">{money(total)}</span>
+          </div>
+          <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-1.5">
             <Field label="Payment mode"><Select value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })} options={MODES.map(([v, t]) => ({ value: v, label: t }))} /></Field>
             <Field label="Amount"><Input type="number" placeholder={String(balance)} value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} /></Field>
             <Field label="Reference / UTR"><Input value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} /></Field>
-            <Button onClick={addLine}>Add</Button>
+            <Button className="h-9" onClick={addLine}>Add</Button>
           </div>
           {pay.mode !== 'CASH' && <Select value={pay.bank_account_id} onChange={(e) => setPay({ ...pay, bank_account_id: e.target.value })} placeholder="Bank account" options={banks} />}
-          <div className="overflow-hidden rounded-md border border-ink-300">
-            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-1.5 text-left">Mode</th><th className="px-3 text-right">Amount</th><th className="px-3 text-left">Reference</th><th /></tr></thead>
+          <div className="overflow-hidden rounded-md border border-ink-200 dark:border-ink-800">
+            <table className="w-full text-[13px]"><thead className="bg-ink-50 text-[10px] tracking-wider text-ink-500 uppercase dark:bg-ink-800"><tr><th className="px-3 py-1 text-left font-semibold">Mode</th><th className="px-3 text-right font-semibold">Amount</th><th className="px-3 text-left font-semibold">Reference</th><th /></tr></thead>
               <tbody>{lines.map((x, i) => <tr key={i}><td className="px-3 py-1">{x.mode}</td><td className="num px-3 text-right">{amount(x.amount)}</td><td className="px-3">{x.reference}</td><td><button type="button" onClick={() => setLines(lines.filter((_, k) => k !== i))}><Trash2 className="size-4 text-rose-500" /></button></td></tr>)}
                 {!lines.length && <tr><td colSpan={4} className="px-3 py-2 text-xs text-ink-400">No lines - full amount taken as cash</td></tr>}</tbody></table>
           </div>
-          <div className="flex items-center justify-between text-sm font-bold"><span>Balance</span><span className={clsx('num', lines.length && balance !== 0 ? 'text-rose-600' : 'text-emerald-600')}>{money(lines.length ? balance : 0)} {(!lines.length || balance === 0) && '✓'}</span></div>
-          <Button size="lg" variant="outline" className="h-12 w-full text-base" icon={Printer} loading={saving} onClick={() => save(true)}>Save &amp; Print Receipt (F10)</Button>
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" icon={RefreshCw} onClick={() => { setSp({}); setQ(''); }}>Refresh (F5)</Button>
-            <Button variant="outline" icon={Save} loading={saving} onClick={() => save(false)}>Save only</Button>
-            <Button variant="outline" icon={X} onClick={() => navigate('/')}>Close (Esc)</Button>
+          <div className="flex items-center justify-between text-[13px] font-bold"><span>Balance</span><span className={clsx('num', lines.length && balance !== 0 ? 'text-rose-600' : 'text-emerald-600')}>{money(lines.length ? balance : 0)} {(!lines.length || balance === 0) && '✓'}</span></div>
+          <div className="mt-auto space-y-1.5 pt-1">
+            <GoldButton icon={Printer} loading={saving} onClick={() => save(true)}>Save &amp; Print Receipt (F10)</GoldButton>
+            <div className="grid grid-cols-3 gap-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[12px]">
+              <Button variant="outline" icon={RefreshCw} onClick={() => { setSp({}); setQ(''); }}>Refresh (F5)</Button>
+              <Button variant="outline" icon={Save} loading={saving} onClick={() => save(false)}>Save only</Button>
+              <Button variant="soft-danger" icon={X} onClick={() => navigate('/')}>Close (Esc)</Button>
+            </div>
           </div>
         </Panel>
+        </div>
       </div>
-      <p className="px-1 text-xs text-ink-500">Enter = load · F2 Interest · F3 Part amount · + / − months · F4 Add payment · F5 Refresh · F10 Save · Esc Close</p>
+      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Enter = load · F2 Interest · F3 Part amount · + / − months · F4 Add payment · F5 Refresh · F10 Save · Esc Close</p>
       <CustomerLedgerDrawer customerId={ledger ? l?.customer_id : null} onClose={() => setLedger(false)} />
       {approval.ui}
       {printerUi}

@@ -16,7 +16,7 @@ export function Field({ label, error, hint, required, children, className }) {
 const PasswordInput = forwardRef(function PasswordInput({ className, prefix, ...props }, ref) {
   const [show, setShow] = useState(false);
   return (
-    <div className="relative">
+    <div className="relative w-full">
       {prefix && <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-ink-400">{prefix}</span>}
       <input ref={ref} className={clsx('input pr-10', prefix && 'pl-8', className)} {...props} type={show ? 'text' : 'password'} />
       <button type="button" tabIndex={-1} title={show ? 'Hide password' : 'Show password'} aria-label={show ? 'Hide password' : 'Show password'}
@@ -32,7 +32,7 @@ export const Input = forwardRef(function Input({ className, prefix, suffix, ...p
   if (props.type === 'password') return <PasswordInput ref={ref} className={className} prefix={prefix} {...props} />;
   if (!prefix && !suffix) return <input ref={ref} className={clsx('input', className)} {...props} />;
   return (
-    <div className="relative">
+    <div className="relative w-full">
       {prefix && <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-ink-400">{prefix}</span>}
       <input ref={ref} className={clsx('input', prefix && 'pl-8', suffix && 'pr-12', className)} {...props} />
       {suffix && <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-medium text-ink-400">{suffix}</span>}
@@ -40,9 +40,9 @@ export const Input = forwardRef(function Input({ className, prefix, suffix, ...p
   );
 });
 
-export const Select = forwardRef(function Select({ className, options = [], placeholder, ...props }, ref) {
-  return (
-    <select ref={ref} className={clsx('input appearance-none bg-[length:16px] bg-[right_0.75rem_center] bg-no-repeat pr-9', className)}
+export const Select = forwardRef(function Select({ className, options = [], placeholder, prefix, ...props }, ref) {
+  const sel = (
+    <select ref={ref} className={clsx('input appearance-none bg-[length:16px] bg-[right_0.75rem_center] bg-no-repeat pr-9', prefix && 'pl-8', className)}
       style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")" }}
       {...props}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
@@ -50,6 +50,13 @@ export const Select = forwardRef(function Select({ className, options = [], plac
         ? <option key={o.value} value={o.value}>{o.label}</option>
         : <option key={o} value={o}>{o}</option>))}
     </select>
+  );
+  if (!prefix) return sel;
+  return (
+    <div className="relative w-full">
+      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-ink-400">{prefix}</span>
+      {sel}
+    </div>
   );
 });
 

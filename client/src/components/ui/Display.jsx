@@ -101,7 +101,7 @@ export function PageHeader({ title, subtitle, actions, icon: Icon, children }) {
 
 export function Tabs({ tabs, value, onChange, className }) {
   return (
-    <div className={clsx('flex gap-1 overflow-x-auto border-b border-ink-200 dark:border-ink-800', className)}>
+    <div className={clsx('flex gap-1 overflow-x-auto overflow-y-hidden border-b border-ink-200 [scrollbar-width:none] dark:border-ink-800 [&::-webkit-scrollbar]:hidden', className)}>
       {tabs.map((t) => (
         <button key={t.value} type="button" onClick={() => onChange(t.value)}
           className={clsx('-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition',

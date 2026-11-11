@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import {
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
-import { Badge, Card, Spinner, Stat } from '@/components/ui';
+import { Badge, Card, Spinner } from '@/components/ui';
 import { useFetch, useSettings } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { allowed } from '@/config/navigation';
@@ -33,6 +33,45 @@ const ACTIONS = [
   { label: 'Re-loan', set: 'HOME_BTN_RELOAN', hint: 'Release old, new loan in one step', icon: RefreshCcw, color: 'text-sky-600', path: '/loans/reloan', screen: 'loan_renewal' },
 ];
 
+/* ---------------------------------------------------------------- compact building blocks */
+const Chip = ({ tone, children }) => (
+  <span className={clsx('rounded-md px-1.5 py-0.5 font-medium',
+    tone === 'bad' ? 'bg-rose-500/25 text-rose-100' : tone === 'good' ? 'bg-emerald-500/20 text-emerald-100' : 'bg-white/10 text-white/80')}>{children}</span>
+);
+
+/** One cell of the figures strip; a thin coloured bar on the left marks what it is. */
+const Kpi = ({ tone, label, value, hint, valueClass }) => (
+  <div className="relative border-ink-200 px-3 py-2 pl-4 not-last:border-b sm:not-last:border-b-0 sm:odd:border-r xl:not-last:border-r dark:border-ink-800">
+    <span aria-hidden className={clsx('absolute inset-y-2 left-0 w-0.5 rounded-r-sm', tone)} />
+    <p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{label}</p>
+    <div className="flex items-baseline gap-2">
+      <span className={clsx('num text-xl font-bold', valueClass || 'text-navy-900 dark:text-white')}>{value}</span>
+      <span className="truncate text-[11px] text-ink-500">{hint}</span>
+    </div>
+  </div>
+);
+
+/** Bordered box with a 36px header; the body scrolls when given the scroll classes. */
+const Panel = ({ title, count, head, className, bodyClass, children }) => (
+  <section className={clsx('flex flex-col overflow-hidden rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900', className)}>
+    <header className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 dark:border-ink-800">
+      {head || <>
+        <h3 className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">{title}</h3>
+        {count > 0 && <span className="num rounded-sm bg-ink-100 px-1.5 text-[10px] font-bold text-ink-600 dark:bg-ink-800 dark:text-ink-300">{count}</span>}
+      </>}
+    </header>
+    <div className={bodyClass}>{children}</div>
+  </section>
+);
+
+const Remind = ({ tone, onClick, go, children }) => (
+  <button type="button" onClick={onClick}
+    className={clsx('flex w-full items-center gap-2 rounded-md border-l-2 px-2.5 py-1.5 text-left text-[13px] transition',
+      tone === 'bad' ? 'border-rose-600 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-200' : 'border-navy-900 bg-ink-50 hover:bg-ink-100 dark:border-white dark:bg-ink-800')}>
+    <span className="flex-1">{children}</span><span className="text-[11px] font-bold whitespace-nowrap">{go} →</span>
+  </button>
+);
+
 export default function DashboardPage() {
 
   const { data: status } = useFetch('/dashboard/status');
@@ -44,6 +83,7 @@ export default function DashboardPage() {
   const showDue = settings?.HOME_SHOW_DUE_SOON !== '0';
   const { user, can, isAllBranches, currentBranch } = useAuth();
   const navigate = useNavigate();
+  const [tab, setTab] = useState('actions');
   // owner on a new install: Getting Started opens by itself once; afterwards a banner until it is finished
   const { data: setup } = useFetch(user?.is_super_admin ? '/desk/setup-status' : null);
   useEffect(() => {
@@ -62,106 +102,130 @@ export default function DashboardPage() {
   const on = (k) => settings?.[k] !== '0';   // System Control > Home page
   const actions = ACTIONS.filter((a) => on(a.set) && allowed(can, a.screen) && !(isAllBranches && ['loan_new', 'loan_old'].includes(a.screen)));
 
+  const scroll = 'min-h-0 flex-1 overflow-y-auto overscroll-contain';
+  const todayRows = data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(billing?.billingDate || undefined), 'day'));
+  const tabBtn = (key, label) => (
+    <button type="button" onClick={() => setTab(key)}
+      className={clsx('relative h-full px-1 text-[11px] font-bold tracking-wider uppercase transition',
+        tab === key ? 'text-navy-900 dark:text-white' : 'text-ink-400 hover:text-navy-700')}>
+      {label}
+      {tab === key && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-navy-900 dark:bg-white" />}
+    </button>
+  );
+  const remindCount = alerts.length + (billing?.behind ? 1 : 0);
+
   return (
-    <div className="animate-rise space-y-4">
+    /* fit-screen: on desktop the page itself never scrolls; each section below scrolls on its own */
+    <div className="fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
       {setup && setup.done < setup.total && (
-        <button type="button" onClick={() => navigate('/getting-started')} className="flex w-full items-center gap-3 rounded-md border border-gold-300 bg-gold-50 px-4 py-2 text-left text-sm text-gold-900 hover:bg-gold-100 dark:bg-ink-800 dark:text-gold-200">
-          <span className="font-bold">Setup {setup.done} of {setup.total} done.</span><span className="flex-1">Finish Getting Started before the shop starts real work.</span><span className="font-bold underline">Continue setup →</span>
+        <button type="button" onClick={() => navigate('/getting-started')}
+          className="flex w-full shrink-0 items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-left text-[13px] text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <span className="h-1.5 w-20 shrink-0 overflow-hidden rounded-sm bg-amber-200 dark:bg-amber-900"><span className="block h-full bg-amber-600" style={{ width: `${(setup.done / setup.total) * 100}%` }} /></span>
+          <span className="font-bold">Setup {setup.done}/{setup.total}</span>
+          <span className="flex-1 truncate">Finish Getting Started before the shop starts real work.</span>
+          <span className="font-bold">Continue →</span>
         </button>
       )}
-      {/* greeting banner */}
-      <section className="navy-gradient flex flex-wrap items-center gap-4 rounded-md border-l-[6px] border-gold-500 px-6 py-5 text-white">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold sm:text-3xl">{greet}, {user.full_name.split(' ')[0].toUpperCase()}</h1>
-          <p className="mt-1 text-sm text-coral-400 sm:text-base">
-            {dayjs(billing?.billingDate || undefined).format('dddd, DD MMMM YYYY')} <span className="mx-2">·</span> Billing date <span className={clsx(billing?.behind && 'font-bold text-rose-300')}>{dayjs(billing?.billingDate).format('DD/MM/YYYY')}</span>
-            <span className="mx-2">·</span> {goldToday ? <span className="text-gold-300">Gold rate entered</span> : 'Gold rate NOT entered'}
-            <span className="mx-2">·</span> <span className="text-navy-100">{isAllBranches ? 'All branches' : currentBranch?.name}</span>
-          </p>
+
+      {/* greeting: one slim line */}
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-md px-4 py-2 text-white">
+        <h1 className="text-lg font-bold">{greet}, {user.full_name.split(' ')[0].toUpperCase()}</h1>
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <Chip>{dayjs(billing?.billingDate || undefined).format('ddd, DD MMM YYYY')}</Chip>
+          <Chip tone={billing?.behind ? 'bad' : undefined}>Billing {dayjs(billing?.billingDate).format('DD/MM/YYYY')}</Chip>
+          <Chip tone={goldToday ? 'good' : 'bad'}>{goldToday ? 'Gold rate entered' : 'Gold rate NOT entered'}</Chip>
+          <Chip>{isAllBranches ? 'All branches' : currentBranch?.name}</Chip>
         </div>
         {data.canSeeAccounts && on('HOME_TILE_CASH') && (
-          <div className="rounded-md bg-white/10 px-5 py-3 text-right">
-            <p className="text-xs font-bold tracking-wide text-navy-100 uppercase">Cash in hand (expected)</p>
-            <p className="num text-3xl font-bold text-gold-300">{amount(data.today.cash.closing)}</p>
+          <div className="ml-auto flex items-baseline gap-2">
+            <span className="text-[10px] font-semibold tracking-wider text-white/60 uppercase">Cash in hand</span>
+            <span className="num text-xl font-bold">₹{amount(data.today.cash.closing)}</span>
           </div>
         )}
       </section>
 
-      {/* four tiles */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {on('HOME_TILE_LOANS') && <Stat tone="blue" label="Loans today" value={data.today.loans.cnt} hint={`${amount(n(data.today.loans.principal) + n(t.TOPUP?.principal))} · ${grams(data.today.loans.net_wt)}`} />}
-        {on('HOME_TILE_RELEASES') && <Stat tone="green" label="Releases today" value={n(t.RELEASE?.cnt) + n(t.AUCTION?.cnt)} hint={amount(n(t.RELEASE?.principal) + n(t.AUCTION?.principal))} />}
-        {on('HOME_TILE_INTEREST') && <Stat tone="gold" label="Interest today" value={amount(interestToday)} hint="advance + release + part payment" />}
-        {on('HOME_TILE_AUCTION') && <Stat tone="red" label="Due for auction" value={n(status?.unsettled_12m)} hint={`open for over 12 months · ${n(data.overdue.cnt)} past due date`} />}
+      {/* four figures in one strip */}
+      <div className="grid shrink-0 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-2 xl:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {on('HOME_TILE_LOANS') && <Kpi tone="bg-navy-900 dark:bg-white" label="Loans today" value={data.today.loans.cnt} hint={`₹${amount(n(data.today.loans.principal) + n(t.TOPUP?.principal))} · ${grams(data.today.loans.net_wt)}`} />}
+        {on('HOME_TILE_RELEASES') && <Kpi tone="bg-emerald-600" label="Releases today" value={n(t.RELEASE?.cnt) + n(t.AUCTION?.cnt)} hint={`₹${amount(n(t.RELEASE?.principal) + n(t.AUCTION?.principal))}`} />}
+        {on('HOME_TILE_INTEREST') && <Kpi tone="bg-amber-500" label="Interest today" value={`₹${amount(interestToday)}`} hint="advance + release + part payment" />}
+        {on('HOME_TILE_AUCTION') && <Kpi tone="bg-rose-600" label="Due for auction" value={n(status?.unsettled_12m)} hint={`over 12 months · ${n(data.overdue.cnt)} past due`} valueClass={n(status?.unsettled_12m) ? 'text-rose-600' : undefined} />}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_440px]">
-        <Card title="Quick actions">
-          <div className="grid gap-2.5 sm:grid-cols-2 2xl:grid-cols-3">
-            {actions.map((a) => (
-              <button key={a.label} type="button" onClick={() => navigate(a.path)}
-                className="group flex items-center gap-3 rounded-md border border-ink-300 bg-white px-4 py-3.5 text-left transition hover:border-navy-500 hover:bg-navy-50/50 hover:shadow-sm dark:border-ink-700 dark:bg-ink-900">
-                <a.icon className={clsx('size-6 shrink-0', a.color)} strokeWidth={2.4} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-bold text-navy-900 dark:text-white">{a.label}</span>
-                  <span className="block truncate text-xs text-ink-500">{a.hint}</span>
-                </span>
-                {a.hot && <kbd className="rounded border border-ink-300 bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-navy-800 dark:bg-ink-800 dark:text-ink-200">{a.hot}</kbd>}
-              </button>
-            ))}
-          </div>
-        </Card>
+      <div className="grid gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_380px]">
+        <Panel head={<div className="flex h-full gap-4">{tabBtn('actions', 'Quick actions')}{tabBtn('overview', 'Business overview')}</div>}
+          bodyClass={clsx('p-2', scroll)}>
+          {tab === 'actions' ? (
+            <div className="grid gap-1.5 sm:grid-cols-2 2xl:grid-cols-3">
+              {actions.map((a) => (
+                <button key={a.label} type="button" onClick={() => navigate(a.path)}
+                  className="group flex items-center gap-2.5 rounded-md border border-ink-200 px-2.5 py-2 text-left transition hover:border-navy-900 hover:bg-ink-50 dark:border-ink-800 dark:hover:border-white dark:hover:bg-ink-800">
+                  <span className={clsx('grid size-8 shrink-0 place-items-center rounded-md bg-current/10', a.color)}>
+                    <a.icon className="size-4" strokeWidth={2.4} />
+                  </span>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate text-[13px] font-bold text-navy-900 dark:text-white">{a.label}</span>
+                    <span className="block truncate text-[11px] text-ink-500">{a.hint}</span>
+                  </span>
+                  {a.hot && <kbd className="rounded border border-ink-200 px-1 text-[10px] font-bold text-ink-500 group-hover:border-navy-900 group-hover:text-navy-900 dark:border-ink-700">{a.hot}</kbd>}
+                </button>
+              ))}
+            </div>
+          ) : <Overview data={data} trend={trend} showCharts={showCharts} />}
+        </Panel>
 
-        <div className="flex flex-col gap-4">
-          <Card title="Today" actions={<span className="text-xs text-ink-500">last entries</span>} bodyClassName="p-0" className="flex-1">
-            {!data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(billing?.billingDate || undefined), 'day')).length ? (
-              <div className="flex flex-col items-center justify-center py-14 text-ink-500"><CalendarDays className="size-7 text-rose-500" /><p className="mt-3">No entries yet today</p></div>
+        <div className="flex flex-col gap-2 xl:min-h-0">
+          <Panel title="Today" count={todayRows.length} className="xl:flex-[3]" bodyClass={scroll}>
+            {!todayRows.length ? (
+              <div className="flex h-full min-h-28 flex-col items-center justify-center gap-2 text-[13px] text-ink-400"><CalendarDays className="size-5" />No entries yet today</div>
             ) : (
-              <ul className="divide-y divide-ink-200 dark:divide-ink-800">
-                {data.recent.filter((r) => dayjs(r.txn_date).isSame(dayjs(billing?.billingDate || undefined), 'day')).map((r) => (
+              <ul className="divide-y divide-ink-100 dark:divide-ink-800">
+                {todayRows.map((r) => (
                   <li key={r.id}>
-                    <button type="button" onClick={() => navigate(`/loans/counter?loan=${r.loan_id}`)} className="flex w-full items-center gap-3 px-5 py-2.5 text-left hover:bg-navy-50/50 dark:hover:bg-ink-800/40">
+                    <button type="button" onClick={() => navigate(`/loans/counter?loan=${r.loan_id}`)} className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left hover:bg-ink-50 dark:hover:bg-ink-800/40">
                       <Badge tone={TXN_TONE[r.txn_type]}>{TXN_LABEL[r.txn_type]}</Badge>
-                      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{r.customer_name}</span><span className="text-xs text-ink-500">{r.manual_bill_no ? `${r.manual_bill_no} / ` : '#'}{r.bill_no} · {dayjs(r.created_at).format('hh:mm A')}</span></span>
-                      <span className="num text-sm font-bold">{amount(['DISBURSE', 'TOPUP', 'RELEASE', 'AUCTION'].includes(r.txn_type) ? Math.abs(r.principal_amount) : r.total_amount)}</span>
+                      <span className="min-w-0 flex-1 leading-tight"><span className="block truncate text-[13px] font-semibold">{r.customer_name}</span><span className="text-[11px] text-ink-500">{r.manual_bill_no ? `${r.manual_bill_no} / ` : '#'}{r.bill_no} · {dayjs(r.created_at).format('hh:mm A')}</span></span>
+                      <span className="num text-[13px] font-bold">{amount(['DISBURSE', 'TOPUP', 'RELEASE', 'AUCTION'].includes(r.txn_type) ? Math.abs(r.principal_amount) : r.total_amount)}</span>
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-          </Card>
-          <Card title="Reminders" bodyClassName="space-y-2 p-4">
-            {!alerts.length && <p className="text-sm text-ink-500">All good - nothing pending</p>}
+          </Panel>
+          <Panel title="Reminders" count={remindCount} className="xl:flex-[2]" bodyClass={clsx('space-y-1 p-2', scroll)}>
+            {!remindCount && !(showDue && data.dueSoon.length) && <p className="px-1 py-2 text-[13px] text-ink-400">All good - nothing pending</p>}
             {billing?.behind && (
-              <button type="button" onClick={() => navigate('/accounts/day-report')} className="flex w-full items-center justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 px-4 py-2.5 text-left text-sm text-rose-800">
-                <span>Billing date {dayjs(billing.billingDate).format('DD/MM/YYYY')} is behind today. Finish Day End to move to {dayjs().format('DD/MM/YYYY')}.</span><span className="font-semibold whitespace-nowrap">Day End →</span>
-              </button>
+              <Remind tone="bad" onClick={() => navigate('/accounts/day-report')} go="Day End">
+                Billing date {dayjs(billing.billingDate).format('DD/MM/YYYY')} is behind today. Finish Day End to move to {dayjs().format('DD/MM/YYYY')}.
+              </Remind>
             )}
-            {alerts.map((a) => (
-              <button key={a.key} type="button" onClick={() => navigate(a.link)} className="flex w-full items-center justify-between gap-3 rounded-md bg-cream-200 px-4 py-2.5 text-left text-sm hover:bg-gold-100 dark:bg-ink-800">
-                <span>{a.text}</span><span className="font-semibold whitespace-nowrap text-navy-700">Open →</span>
-              </button>
-            ))}
-            {showDue && data.dueSoon.length > 0 && <p className="pt-1 text-xs font-bold tracking-wide text-ink-500 uppercase">Due in next 15 days</p>}
+            {alerts.map((a) => <Remind key={a.key} onClick={() => navigate(a.link)} go="Open">{a.text}</Remind>)}
+            {showDue && data.dueSoon.length > 0 && <p className="px-1 pt-1.5 text-[10px] font-bold tracking-wider text-ink-400 uppercase">Due in next 15 days</p>}
             {showDue && data.dueSoon.slice(0, 5).map((r) => (
-              <button key={r.id} type="button" onClick={() => navigate(`/loans/counter?loan=${r.id}`)} className="flex w-full items-center justify-between rounded-md border border-ink-200 px-3 py-2 text-left text-sm hover:border-navy-300 dark:border-ink-700">
-                <span className="truncate">#{r.bill_no} {r.customer_name}</span><span className="text-xs text-rose-600">{date(r.due_date)}</span>
+              <button key={r.id} type="button" onClick={() => navigate(`/loans/counter?loan=${r.id}`)} className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-ink-50 dark:hover:bg-ink-800">
+                <span className="truncate">#{r.bill_no} {r.customer_name}</span><span className="num text-[11px] font-semibold text-rose-600">{date(r.due_date)}</span>
               </button>
             ))}
-          </Card>
+          </Panel>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* modern extras: portfolio + trends */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat tone="blue" label="Outstanding portfolio" value={compact(data.portfolio.outstanding)} hint={`${n(data.portfolio.open_loans)} open loans`} />
-        <Stat tone="gold" label="Gold in custody" value={grams(data.portfolio.net_wt)} hint={`Market value ${compact(data.portfolio.market_value)} · LTV ${data.portfolio.ltv}%`} />
-        <Stat tone="green" label="This month lent" value={compact(data.month.loans.principal)} hint={`${data.month.loans.cnt} loans`} />
-        <Stat tone="violet" label="Active customers" value={n(data.portfolio.active_customers)} hint="with open loans" />
+/** Second tab of the main card: portfolio tiles, trend charts and branch-wise table. */
+function Overview({ data, trend, showCharts }) {
+  return (
+    <div className="space-y-2">
+      <div className="grid overflow-hidden rounded-md border border-ink-200 sm:grid-cols-2 2xl:grid-cols-4 dark:border-ink-800">
+        <Kpi tone="bg-navy-900 dark:bg-white" label="Outstanding" value={compact(data.portfolio.outstanding)} hint={`${n(data.portfolio.open_loans)} open loans`} />
+        <Kpi tone="bg-amber-500" label="Gold in custody" value={grams(data.portfolio.net_wt)} hint={`MV ${compact(data.portfolio.market_value)} · LTV ${data.portfolio.ltv}%`} />
+        <Kpi tone="bg-emerald-600" label="This month lent" value={compact(data.month.loans.principal)} hint={`${data.month.loans.cnt} loans`} />
+        <Kpi tone="bg-violet-600" label="Active customers" value={n(data.portfolio.active_customers)} hint="with open loans" />
       </div>
-      {showCharts && <div className="grid gap-4 xl:grid-cols-3">
+      {showCharts && <div className="grid gap-2 xl:grid-cols-3">
         <Card title="Business trend · 6 months" className="xl:col-span-2">
-          <div className="h-64">
+          <div className="h-52">
             <ResponsiveContainer>
               <AreaChart data={trend}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#dfe4ea" />
@@ -176,7 +240,7 @@ export default function DashboardPage() {
           </div>
         </Card>
         <Card title="Interest collected">
-          <div className="h-64">
+          <div className="h-52">
             <ResponsiveContainer>
               <BarChart data={trend}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#dfe4ea" />

@@ -87,7 +87,7 @@ export default function UsersPage() {
       <div className="card flex flex-wrap gap-2 px-3 py-2">
         {can('s_users', 'add') && <Button variant="outline" icon={Plus} onClick={() => setEdit({})}>New User (Ctrl+N)</Button>}
         {can('s_users', 'edit') && <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => setEdit(sel)}>Edit User (F2)</Button>}
-        {can('s_users', 'delete') && <Button variant="outline" icon={Trash2} disabled={!sel || sel.id === me.id} onClick={() => setDel(sel)}>Delete User (Del)</Button>}
+        {can('s_users', 'delete') && <Button variant="soft-danger" icon={Trash2} disabled={!sel || sel.id === me.id} onClick={() => setDel(sel)}>Delete User (Del)</Button>}
         <span className="flex-1" />
         <Button variant="outline" icon={Shield} onClick={() => navigate('/settings/roles')}>Roles &amp; Permissions (F6)</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>

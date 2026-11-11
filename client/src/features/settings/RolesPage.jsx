@@ -181,7 +181,7 @@ export default function RolesPage() {
         </div>
       </div>
       <div className="card flex flex-wrap gap-2 px-3 py-2">
-        <Button variant="outline" icon={Trash2} disabled={ro || isNew || !sel} onClick={() => setDel(true)}>Delete Role (Del)</Button>
+        <Button variant="soft-danger" icon={Trash2} disabled={ro || isNew || !sel} onClick={() => setDel(true)}>Delete Role (Del)</Button>
         <span className="flex-1" />
         <Button variant="outline" icon={Users} onClick={() => navigate('/settings/users')}>User Accounts (F6)</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
