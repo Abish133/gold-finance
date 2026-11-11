@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
+// API_TARGET lets a second dev server talk to another API (e.g. the demo database on :5001)
+const api = process.env.API_TARGET || 'http://localhost:5000';
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -11,8 +14,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost:5000', changeOrigin: true },
-      '/uploads': { target: 'http://localhost:5000', changeOrigin: true },
+      '/api': { target: api, changeOrigin: true },
+      '/uploads': { target: api, changeOrigin: true },
     },
   },
   build: {
