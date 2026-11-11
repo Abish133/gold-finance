@@ -43,12 +43,12 @@ export function EditLoanDrawer({ open, onClose, full, onSaved }) {
         <div className="flex max-h-[40%] shrink-0 flex-col">
           <div className="mb-1 flex items-center justify-between"><span className="label mb-0">Jewels · {items.length}</span>
             <Button size="sm" variant="soft" className="h-7" icon={Plus} onClick={() => setItems((l) => [...l, { item_name: '', pcs: 1, gross_wt: '', stone_wt: '', purity: 91.6 }])}>Add</Button></div>
-          <div className="grid grid-cols-[1fr_56px_88px_88px_72px_32px] gap-1.5 px-0.5 pb-0.5 text-[10px] font-semibold tracking-wider text-ink-400 uppercase">
+          <div className="grid grid-cols-[minmax(0,1fr)_56px_88px_88px_72px_36px] gap-1.5 px-0.5 pb-0.5 text-[10px] font-semibold tracking-wider text-ink-400 uppercase">
             <span>Item</span><span>Pcs</span><span>Gross g</span><span>Less g</span><span>Purity</span><span />
           </div>
-          <div className="min-h-0 space-y-1.5 overflow-y-auto">
+          <div className="min-h-0 space-y-1.5 overflow-x-hidden overflow-y-auto">
             {items.map((it, i) => (
-              <div key={i} className="grid grid-cols-[1fr_56px_88px_88px_72px_32px] gap-1.5">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_56px_88px_88px_72px_36px] gap-1.5">
                 <Input value={it.item_name} onChange={(e) => upd(i, { item_name: e.target.value })} placeholder="Item" />
                 <Input type="number" value={it.pcs} onChange={(e) => upd(i, { pcs: e.target.value })} />
                 <Input type="number" step="0.001" value={it.gross_wt} onChange={(e) => upd(i, { gross_wt: e.target.value })} placeholder="Gross" />

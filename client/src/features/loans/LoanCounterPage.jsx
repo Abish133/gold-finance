@@ -14,24 +14,39 @@ import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { money, date, grams, n, round2, today } from '@/lib/format';
 import { EditLoanDrawer } from './EditLoanDrawer';
-import { Panel } from './desk';
+import { Panel, useAutoMode, AutoManualSwitch } from './desk';
 import { ImagePreview } from '@/components/common/ImagePreview';
 
 function LoanFinder({ onFound }) {
   const [q, setQ] = useState('');
   const [matches, setMatches] = useState(null);
-  const find = async (e) => {
+  const [miss, setMiss] = useState(false);
+  const [auto, setAuto] = useAutoMode('counterFind');
+  // quiet = typed (auto) lookup: no "not found" toast
+  const find = async (e, quiet = false) => {
     e?.preventDefault();
     if (!q.trim()) return;
     try {
       const r = await api.get('/loans/find', { q: q.trim() });
-      if (r.data.length === 1) { onFound(r.data[0].id); setQ(''); setMatches(null); } else if (!r.data.length) toast.error('No loan found'); else setMatches(r.data);
-    } catch (err) { toast.error(err.message); }
+      setMiss(!r.data.length);
+      if (r.data.length === 1) { onFound(r.data[0].id); setQ(''); setMatches(null); } else if (!r.data.length) { if (!quiet) toast.error('No loan found'); } else setMatches(r.data);
+    } catch (err) { if (!quiet) toast.error(err.message); }
   };
+  // auto: look the number up once typing pauses (Enter still works at once)
+  useEffect(() => {
+    setMiss(false);
+    if (!auto || !q.trim()) { if (!q.trim()) setMatches(null); return undefined; }
+    const t = setTimeout(() => find(null, true), 550);
+    return () => clearTimeout(t);
+  }, [q, auto]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <form onSubmit={find} className="relative w-full sm:w-80">
+    <form onSubmit={find} className="relative flex w-full items-center gap-1 rounded-md bg-white p-1 sm:w-auto">
+      <AutoManualSwitch value={auto} onChange={setAuto} className="h-8 [&_button]:px-2" />
+      <div className="relative w-full sm:w-72">
       <ScanLine className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-400" />
-      <input className="input !h-8 bg-white pl-8 text-[13px] font-semibold text-ink-900" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Scan barcode / loan no + Enter" autoFocus />
+      <input className={clsx('input !h-8 bg-white pl-8 text-[13px] font-semibold text-ink-900', miss && '!border-rose-300')} value={q} onChange={(e) => setQ(e.target.value)}
+        placeholder={auto ? 'Loan no / barcode - loads as you type' : 'Scan barcode / loan no + Enter'} title={miss ? `No loan "${q.trim()}"` : undefined} autoFocus />
+      </div>
       {matches && (
         <div className="absolute right-0 z-30 mt-1 w-full rounded-md border border-ink-200 bg-white p-1 text-ink-900 dark:border-ink-700 dark:bg-ink-900 dark:text-white">
           {matches.map((m) => (

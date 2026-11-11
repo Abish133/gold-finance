@@ -132,6 +132,28 @@ export const GoldButton = ({ children, ...p }) => (
   <Button {...p} size="lg" className="h-11 w-full rounded-md border-0 !bg-ink-900 text-base !text-white hover:!bg-ink-700 disabled:!bg-ink-300 dark:!bg-white dark:!text-ink-900">{children}</Button>
 );
 
+/* ------------------------------------------------------------------ auto / manual search */
+/** Remembered per box on this computer: true = search as you type, false = only Enter. */
+export function useAutoMode(key, initial = true) {
+  const [auto, setAuto] = useState(() => { try { const v = localStorage.getItem(`gf.auto.${key}`); return v == null ? initial : v === '1'; } catch { return initial; } });
+  const set = (v) => { setAuto(v); try { localStorage.setItem(`gf.auto.${key}`, v ? '1' : '0'); } catch { /* private window */ } };
+  return [auto, set];
+}
+
+/** Small "Auto | Manual" switch shown next to a search box. */
+export function AutoManualSwitch({ value, onChange, className }) {
+  return (
+    <div className={clsx('flex shrink-0 overflow-hidden rounded-md border border-ink-200 text-[10px] font-bold tracking-wider dark:border-ink-700', className)} title="Auto = searches as you type · Manual = press Enter">
+      {[[true, 'Auto'], [false, 'Manual']].map(([v, t]) => (
+        <button key={t} type="button" onClick={() => onChange(v)}
+          className={clsx('flex items-center gap-1 px-2 py-0.5 uppercase transition', value === v ? 'bg-emerald-600 text-white' : 'text-ink-500 hover:bg-ink-50 dark:hover:bg-ink-800')}>
+          {value === v && v && <span className="size-1.5 animate-pulse rounded-full bg-white" />}{t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ keys */
 export function useKeys(map, deps = []) {
   const ref = useRef(map);
@@ -160,18 +182,48 @@ export function LoanFinder({ onLoad, loading, autoFocus = true, label = 'Find lo
   const [q, setQ] = useState('');
   const [list, setList] = useState(null);
   const input = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [miss, setMiss] = useState(false);
+  const lastLoaded = useRef(null);
+  // Auto = loads as you type, Manual = only Enter / scan. Remembered on this computer.
+  const [auto, setAuto] = useState(() => { try { return localStorage.getItem('gf.finderAuto') !== '0'; } catch { return true; } });
+  const toggleAuto = (v) => { setAuto(v); try { localStorage.setItem('gf.finderAuto', v ? '1' : '0'); } catch { /* private window */ } input.current?.focus(); };
   useEffect(() => { if (autoFocus) input.current?.focus(); }, [autoFocus]);
-  const find = async () => {
+  // quiet = typed (auto) lookup: no "not found" toast, never re-loads the loan already shown
+  const find = async (quiet = false) => {
     const v = q.trim();
     if (!v) return;
+    setBusy(true);
     try {
       const r = await api.get('/loans/find', { q: v, by });
-      if (!r.data.length) toast.error('No loan found');
-      else if (r.data.length === 1) { onLoad(r.data[0].id); setList(null); } else setList(r.data);
-    } catch (e) { toast.error(e.message); }
+      setMiss(!r.data.length);
+      if (!r.data.length) { if (!quiet) toast.error('No loan found'); setList(null); }
+      else if (r.data.length === 1) {
+        if (!quiet || lastLoaded.current !== r.data[0].id) { lastLoaded.current = r.data[0].id; onLoad(r.data[0].id); }
+        setList(null);
+      } else setList(r.data);
+    } catch (e) { if (!quiet) toast.error(e.message); } finally { setBusy(false); }
   };
+  // auto fetch: looks the number up once typing pauses (Enter still loads at once)
+  useEffect(() => {
+    setMiss(false);
+    if (!q.trim()) { setList(null); return undefined; }
+    if (!auto) return undefined;
+    const t = setTimeout(() => find(true), 550);
+    return () => clearTimeout(t);
+  }, [q, by, auto]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Panel title={`${label} · ${by === 'loan' ? 'Loan no' : 'Bill book no'}`}>
+    <Panel title={`${label} · ${by === 'loan' ? 'Loan no' : 'Bill book no'}`}
+      actions={(
+        <div className="flex overflow-hidden rounded-md border border-ink-200 text-[10px] font-bold tracking-wider normal-case dark:border-ink-700" title="Auto = loads as you type · Manual = press Enter">
+          {[[true, 'Auto'], [false, 'Manual']].map(([v, t]) => (
+            <button key={t} type="button" onClick={() => toggleAuto(v)}
+              className={clsx('flex items-center gap-1 px-2 py-0.5 uppercase transition', auto === v ? 'bg-emerald-600 text-white' : 'text-ink-500 hover:bg-ink-50 dark:hover:bg-ink-800')}>
+              {auto === v && v && <span className="size-1.5 animate-pulse rounded-full bg-white" />}{t}
+            </button>
+          ))}
+        </div>
+      )}>
       <div className="mb-2 grid grid-cols-2">
         {[['loan', 'Loan No'], ['bill', 'Bill Book No (F3)']].map(([k, l]) => (
           <button key={k} type="button" onClick={() => { setBy(k); input.current?.focus(); }}
@@ -181,8 +233,10 @@ export function LoanFinder({ onLoad, loading, autoFocus = true, label = 'Find lo
           </button>
         ))}
       </div>
-      <Input ref={input} data-finder prefix={<ScanLine className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && find()} className="!h-10 text-base font-bold" placeholder="Type or scan" />
-      <p className="mt-1 text-[11px] text-ink-400">Enter = load · barcode scan works</p>
+      <Input ref={input} data-finder prefix={<ScanLine className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && find()} className={clsx('!h-10 text-base font-bold', miss && '!border-rose-300')} placeholder="Type or scan" />
+      <p className={clsx('mt-1 text-[11px]', miss ? 'text-rose-600' : 'text-ink-400')}>
+        {busy ? 'Looking up…' : miss ? `No loan "${q.trim()}" in this branch` : auto ? 'Loads as you type · Enter · barcode scan works' : 'Press Enter to load · barcode scan works'}
+      </p>
       {loading && <Spinner className="py-2" />}
       {list && (
         <div className="mt-2 space-y-1">

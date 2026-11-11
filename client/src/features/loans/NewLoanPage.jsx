@@ -5,7 +5,7 @@ import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, 
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Drawer, ConfirmDrawer, Field, Input, Select, Spinner, Avatar, Badge, DataTable } from '@/components/ui';
+import { Button, Drawer, ConfirmDrawer, Field, Input, Select, Spinner, Avatar, Badge } from '@/components/ui';
 import { LoanEstimate } from '@/features/print/LoanEstimate';
 import { CustomerFormDrawer } from '@/features/customers/CustomerFormDrawer';
 import { useLookups, useSettings, useFetch, useList } from '@/hooks/useApi';
@@ -170,16 +170,62 @@ function BillBookDrawer({ open, first, initial, onClose, onOk }) {
 function MarkOldDrawer({ open, onClose }) {
   const list = useList('/loans', { status: 'OPEN', entry_type: 'NEW', pageSize: 200 }, { enabled: open });
   const [sel, setSel] = useState([]);
+  const [q, setQ] = useState('');
   const qc = useQueryClient();
+  useEffect(() => { if (open) { setSel([]); setQ(''); } }, [open]);
+  const all = list.data?.data || [];
+  const term = q.trim().toLowerCase();
+  const rows = term ? all.filter((l) => `${l.bill_no} ${l.manual_bill_no || ''} ${l.customer_name} ${l.customer_phone || ''}`.toLowerCase().includes(term)) : all;
+  const allOn = rows.length > 0 && rows.every((l) => sel.includes(l.id));
+  const toggle = (id) => setSel((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+  const toggleAll = () => setSel((x) => (allOn ? x.filter((id) => !rows.some((l) => l.id === id)) : [...new Set([...x, ...rows.map((l) => l.id)])]));
+  const picked = all.filter((l) => sel.includes(l.id));
   const run = async () => {
     try { const r = await api.post('/loans/mark-old', { ids: sel }); toast.success(`${r.data.marked.length} loans marked as old (opening)`); setSel([]); qc.invalidateQueries({ queryKey: ['/loans'] }); onClose(); } catch (e) { toast.error(e.message); }
   };
   return (
     <Drawer open={open} onClose={onClose} size="xl" icon={ListChecks} title="Mark old loans" subtitle="Turn loans typed as NEW into opening entries - removes them from today's cash. Only loans without receipts."
-      footer={<Button variant="gold" disabled={!sel.length} onClick={run}>Mark {sel.length || ''} as old</Button>}>
-      <DataTable dense selectable selected={sel} onSelect={setSel} rows={list.data?.data} loading={list.isLoading} columns={[
-        { key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'principal', label: 'Amount', type: 'money' },
-      ]} />
+      bodyClassName="flex !px-4 !py-3 !overflow-hidden"
+      footer={<>
+        <p className="mr-auto text-[12px] text-ink-500">{picked.length ? <><b className="text-navy-900 dark:text-white">{picked.length}</b> selected · ₹{amount(picked.reduce((t, l) => t + n(l.principal), 0))}</> : 'Tick the loans that are really old paper loans'}</p>
+        <Button variant="soft-danger" onClick={onClose}>Cancel (Esc)</Button>
+        <Button variant="gold" disabled={!sel.length} onClick={run}>Mark {sel.length || ''} as old</Button>
+      </>}>
+      <div className="flex min-h-0 w-full flex-col gap-2">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex-1"><Input prefix={<Search className="size-3.5" />} className="!h-8 text-[13px]" placeholder="Search loan no, bill book, customer or mobile…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <span className="text-[11px] whitespace-nowrap text-ink-500">{rows.length} of {all.length} loans</span>
+        </div>
+        {/* rows scroll, header stays */}
+        <div className="min-h-0 flex-1 overflow-auto rounded-md border border-ink-200 dark:border-ink-800">
+          <table className="w-full text-[13px]">
+            <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase">
+              <tr>
+                <th className="w-10 px-3 py-1.5"><input type="checkbox" className="size-3.5 accent-emerald-600" checked={allOn} onChange={toggleAll} aria-label="Select all" /></th>
+                <th className="px-2 text-left font-semibold">Loan</th><th className="px-2 text-left font-semibold">Bill book</th><th className="px-2 text-left font-semibold">Date</th>
+                <th className="px-2 text-left font-semibold">Customer</th><th className="px-2 text-right font-semibold">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+              {list.isLoading && <tr><td colSpan={6} className="py-10 text-center text-ink-400">Loading…</td></tr>}
+              {!list.isLoading && !rows.length && <tr><td colSpan={6} className="py-10 text-center text-[12px] text-ink-400">{all.length ? 'No loan matches the search' : 'No new loans without receipts'}</td></tr>}
+              {rows.map((l) => {
+                const on = sel.includes(l.id);
+                return (
+                  <tr key={l.id} onClick={() => toggle(l.id)} className={clsx('cursor-pointer', on ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+                    <td className={clsx('border-l-2 px-3 py-1', on ? 'border-emerald-600' : 'border-transparent')}><input type="checkbox" className="size-3.5 accent-emerald-600" checked={on} onChange={() => toggle(l.id)} onClick={(e) => e.stopPropagation()} /></td>
+                    <td className="num px-2 font-bold">{l.bill_no}</td>
+                    <td className="num px-2 text-ink-500">{l.manual_bill_no || '-'}</td>
+                    <td className="num px-2">{date(l.loan_date)}</td>
+                    <td className="max-w-64 truncate px-2 font-medium">{l.customer_name}</td>
+                    <td className="num px-2 text-right font-semibold">{amount(l.principal)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </Drawer>
   );
 }
