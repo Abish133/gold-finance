@@ -67,7 +67,7 @@ export default function ReLoanPage() {
         discount: f.discount, add_items: extra.map(({ key, metal, ...i }) => i), item_photo: photo, payments, rate_per_gram: goldRate, silver_rate: silverRate, rate_basis: 100, approval: ap,
       }));
       setPayOpen(false);
-      toast.success(`Re-loan saved as #${r.data.loan.bill_no}`);
+      toast.success(`Re-loan saved as #${r.data.loan.bill_no}`, { duration: 8000, action: { label: 'Print', onClick: () => printLoan(r.data) } });
       qc.invalidateQueries({ queryKey: ['/loans'] });
       if (settings?.PRINT_AFTER_LOAN !== '0') printLoan(r.data);
       setSp({ loan: r.data.loan.id });

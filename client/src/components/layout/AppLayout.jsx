@@ -11,6 +11,7 @@ import { useHotkey } from '@/hooks/useUtils';
 import { Button, Drawer, Spinner, Field, Input, Badge } from '@/components/ui';
 import { GlobalSearch } from './GlobalSearch';
 import { amount, setWorkDate, today } from '@/lib/format';
+import { addRecentScreen, recentScreens } from '@/lib/recent';
 import { appZoom, isDarkMode, loadAppearance, saveAppearance, syncAppearance } from '@/lib/appearance';
 
 /* light / dark lives in the Appearance settings (also "follow Windows") - the header button switches it */
@@ -58,6 +59,11 @@ function MenuBar({ onAction, onExit }) {
   /* the menu that owns the page you are on gets the underline */
   const hasPath = (i) => (i.path && i.path.split('?')[0] === location.pathname) || i.items?.some(hasPath);
   const current = menus.find((m) => m.items.some(hasPath))?.key;
+  /* the screen you are on: breadcrumb "Loans › Release" + the Recent list */
+  const flatItems = (items) => items.flatMap((i) => (i.section ? [] : i.items ? i.items : [i]));
+  const curMenu = menus.find((m) => m.key === current);
+  const curItem = curMenu && (flatItems(curMenu.items).find((i) => i.path === location.pathname + location.search) || flatItems(curMenu.items).find(hasPath));
+  useEffect(() => { if (curItem?.path) addRecentScreen({ path: curItem.path, label: curItem.label, menu: curMenu.label }); }, [curItem?.path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <nav ref={bar} className="navy-gradient no-print relative z-30 flex h-10 items-stretch gap-1 px-2 text-[13px] text-white/70 sm:px-3">
@@ -85,6 +91,11 @@ function MenuBar({ onAction, onExit }) {
         );
       })}
       <span className="flex-1" />
+      {curItem && (
+        <span className="mr-2 hidden min-w-0 items-center gap-1.5 truncate text-[12px] text-white/50 lg:flex" title="You are here">
+          {curMenu.label}<ChevronRight className="size-3 shrink-0 opacity-60" /><b className="truncate font-semibold text-white/90">{curItem.label}</b>
+        </span>
+      )}
       <div className="py-1.5">
         <button type="button" onClick={onExit} className="flex h-full items-center gap-1.5 rounded-md px-2.5 font-semibold transition hover:bg-rose-600 hover:text-white">
           <Power className="size-4" />Exit
@@ -150,6 +161,7 @@ function MenuBar({ onAction, onExit }) {
 function MobileMenu({ menus, current, hasPath, onChoose, onClose }) {
   const [openKey, setOpenKey] = useState(current || menus[0]?.key);
   const [q, setQ] = useState('');
+  const [recent] = useState(() => recentScreens().slice(0, 4));
   const term = q.trim().toLowerCase();
   const flat = (items) => items.flatMap((i) => (i.section ? [] : i.items ? i.items : [i]));
   const hits = term ? menus.flatMap((m) => flat(m.items).filter((i) => `${i.label} ${i.hint || ''}`.toLowerCase().includes(term)).map((i) => ({ ...i, menu: m.label }))) : [];
@@ -175,6 +187,12 @@ function MobileMenu({ menus, current, hasPath, onChoose, onClose }) {
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a screen…" className="h-9 w-full rounded-md border border-ink-200 bg-white pr-2 pl-8 text-[14px] outline-none focus:border-navy-400 dark:border-ink-700 dark:bg-ink-900" /></div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {!term && recent.length > 0 && (
+            <div className="mb-1 border-b border-ink-100 pb-2 dark:border-ink-800">
+              <p className="px-3 pt-1 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase">Recent</p>
+              {recent.map((r) => { const it = flat(menus.flatMap((m) => m.items)).find((x) => x.path === r.path); return it ? <Item key={r.path} i={it} sub={r.menu} /> : null; })}
+            </div>
+          )}
           {term ? (hits.length ? hits.map((i) => <Item key={`${i.menu}-${i.label}`} i={i} sub={i.menu} />) : <p className="p-4 text-center text-[13px] text-ink-400">No screen named "{q}"</p>)
             : menus.map((m) => {
               const isOpen = openKey === m.key;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import {
-  Plus, Check, User, CalendarCheck, Coins, Receipt, BarChart3, Printer, UserPlus, Pencil, Tag, BookOpen, ArrowUpCircle, RefreshCcw, CalendarDays,
+  Plus, Check, User, CalendarCheck, Coins, Receipt, BarChart3, Printer, UserPlus, Pencil, Tag, BookOpen, ArrowUpCircle, RefreshCcw, CalendarDays, ChevronRight,
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
@@ -40,8 +40,13 @@ const Chip = ({ tone, children }) => (
 );
 
 /** One cell of the figures strip; a thin coloured bar on the left marks what it is. */
-const Kpi = ({ tone, label, value, hint, valueClass }) => (
-  <div className="relative border-ink-200 px-3 py-2 pl-4 not-last:border-b sm:not-last:border-b-0 sm:odd:border-r xl:not-last:border-r dark:border-ink-800">
+const Kpi = ({ tone, label, value, hint, valueClass, to }) => {
+  const navigate = useNavigate();
+  return (
+  <div role={to ? 'link' : undefined} tabIndex={to ? 0 : undefined} onClick={to ? () => navigate(to) : undefined} onKeyDown={to ? (e) => e.key === 'Enter' && navigate(to) : undefined}
+    title={to ? 'Open the details' : undefined}
+    className={clsx('group relative border-ink-200 px-3 py-2 pl-4 not-last:border-b sm:not-last:border-b-0 sm:odd:border-r xl:not-last:border-r dark:border-ink-800', to && 'cursor-pointer transition hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+    {to && <ChevronRight aria-hidden className="absolute top-2 right-2 size-3.5 text-ink-300 opacity-0 transition group-hover:opacity-100" />}
     <span aria-hidden className={clsx('absolute inset-y-2 left-0 w-0.5 rounded-r-sm', tone)} />
     <p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{label}</p>
     <div className="flex items-baseline gap-2">
@@ -49,7 +54,8 @@ const Kpi = ({ tone, label, value, hint, valueClass }) => (
       <span className="truncate text-[11px] text-ink-500">{hint}</span>
     </div>
   </div>
-);
+  );
+};
 
 /** Bordered box with a 36px header; the body scrolls when given the scroll classes. */
 const Panel = ({ title, count, head, className, bodyClass, children }) => (
@@ -146,10 +152,10 @@ export default function DashboardPage() {
 
       {/* four figures in one strip */}
       <div className="grid shrink-0 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-2 xl:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
-        {on('HOME_TILE_LOANS') && <Kpi tone="bg-navy-900 dark:bg-white" label="Loans today" value={data.today.loans.cnt} hint={`₹${amount(n(data.today.loans.principal) + n(t.TOPUP?.principal))} · ${grams(data.today.loans.net_wt)}`} />}
-        {on('HOME_TILE_RELEASES') && <Kpi tone="bg-emerald-600" label="Releases today" value={n(t.RELEASE?.cnt) + n(t.AUCTION?.cnt)} hint={`₹${amount(n(t.RELEASE?.principal) + n(t.AUCTION?.principal))}`} />}
-        {on('HOME_TILE_INTEREST') && <Kpi tone="bg-amber-500" label="Interest today" value={`₹${amount(interestToday)}`} hint="advance + release + part payment" />}
-        {on('HOME_TILE_AUCTION') && <Kpi tone="bg-rose-600" label="Due for auction" value={n(status?.unsettled_12m)} hint={`over 12 months · ${n(data.overdue.cnt)} past due`} valueClass={n(status?.unsettled_12m) ? 'text-rose-600' : undefined} />}
+        {on('HOME_TILE_LOANS') && <Kpi tone="bg-navy-900 dark:bg-white" to="/accounts/day-report" label="Loans today" value={data.today.loans.cnt} hint={`₹${amount(n(data.today.loans.principal) + n(t.TOPUP?.principal))} · ${grams(data.today.loans.net_wt)}`} />}
+        {on('HOME_TILE_RELEASES') && <Kpi tone="bg-emerald-600" to="/accounts/day-report" label="Releases today" value={n(t.RELEASE?.cnt) + n(t.AUCTION?.cnt)} hint={`₹${amount(n(t.RELEASE?.principal) + n(t.AUCTION?.principal))}`} />}
+        {on('HOME_TILE_INTEREST') && <Kpi tone="bg-amber-500" to="/accounts/day-report" label="Interest today" value={`₹${amount(interestToday)}`} hint="advance + release + part payment" />}
+        {on('HOME_TILE_AUCTION') && <Kpi tone="bg-rose-600" to="/auction" label="Due for auction" value={n(status?.unsettled_12m)} hint={`over 12 months · ${n(data.overdue.cnt)} past due`} valueClass={n(status?.unsettled_12m) ? 'text-rose-600' : undefined} />}
       </div>
 
       <div className="grid gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_380px]">

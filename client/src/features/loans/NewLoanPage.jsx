@@ -19,6 +19,7 @@ import { money, amount, n, round2, today, weight, date } from '@/lib/format';
 import { whatsappAfterSave } from '@/lib/whatsapp';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate } from './desk';
 import { NeedBranch } from '@/components/common/NeedBranch';
+import { addRecentRecord } from '@/lib/recent';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
 
@@ -320,7 +321,12 @@ export default function NewLoanPage({ mode = 'NEW' }) {
     onSuccess: (r) => {
       setStep(null);
       ['/loans', '/loans/next-number', '/customers', '/dashboard', '/dashboard/status'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
-      toast.success(`Loan details saved · Loan No ${r.data.loan.bill_no}${r.data.loan.manual_bill_no ? ` · Bill Book No ${r.data.loan.manual_bill_no}` : ''}`);
+      toast.success(`Loan details saved · Loan No ${r.data.loan.bill_no}${r.data.loan.manual_bill_no ? ` · Bill Book No ${r.data.loan.manual_bill_no}` : ''}`, {
+        duration: 8000,
+        action: { label: 'Print', onClick: () => printLoan(r.data) },
+        cancel: { label: 'Open loan', onClick: () => navigate(`/loans/counter?loan=${r.data.loan.id}`) },
+      });
+      addRecentRecord({ type: 'loan', id: r.data.loan.id, label: `#${r.data.loan.bill_no} · ${r.data.customer?.name || r.data.loan.customer_name || 'New loan'}`, sub: 'New loan', path: `/loans/counter?loan=${r.data.loan.id}` });
       reset();
       setDone(r.data);
       if (settings?.PRINT_AFTER_LOAN !== '0') printLoan(r.data);

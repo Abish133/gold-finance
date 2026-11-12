@@ -75,8 +75,11 @@ export function usePrinter() {
 
   const printerUi = (
     <Drawer open={!!preview} onClose={() => setPreview(null)} size="xl" icon={Eye} title={preview?.title} subtitle="Print preview (A4)" bodyClassName="bg-ink-200/60 dark:bg-ink-950"
-      footer={<><Button variant="outline" onClick={() => setPreview(null)}>Close</Button><Button variant="gold" icon={Printer} loading={busy} onClick={doPrint}>Print</Button></>}>
-      <div className="mx-auto w-fit bg-white p-[8mm] shadow-xl">{preview?.element}</div>
+      footer={<><Button variant="soft-danger" onClick={() => setPreview(null)}>Close</Button><Button variant="gold" icon={Printer} loading={busy} onClick={doPrint}>Print</Button></>}>
+      <div className="mx-auto w-fit">
+        <p className="mb-1 flex items-center justify-between text-[10px] font-bold tracking-wider text-ink-500 uppercase"><span>Paper</span><span>dashed line = paper edge</span></p>
+        <div className="bg-white p-[8mm] text-black outline-1 outline-offset-0 outline-ink-400 outline-dashed">{preview?.element}</div>
+      </div>
     </Drawer>
   );
 

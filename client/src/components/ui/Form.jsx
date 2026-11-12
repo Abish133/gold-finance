@@ -4,10 +4,10 @@ import clsx from 'clsx';
 
 export function Field({ label, error, hint, required, children, className }) {
   return (
-    <label className={clsx('block', className)}>
-      {label && <span className="label">{label}{required && <span className="text-rose-500"> *</span>}</span>}
+    <label className={clsx('block', error && 'field-error', className)}>
+      {label && <span className="label">{label}{required && <span aria-hidden className="ml-1 inline-block size-1.5 -translate-y-px rounded-full bg-rose-500 align-middle" title="Required" />}</span>}
       {children}
-      {error ? <span className="mt-1 block text-xs font-medium text-rose-600">{error}</span> : hint ? <span className="mt-1 block text-xs text-ink-400">{hint}</span> : null}
+      {error ? <span role="alert" className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-rose-600"><span aria-hidden className="grid size-3 shrink-0 place-items-center rounded-full bg-rose-600 text-[8px] font-bold text-white">!</span>{error}</span> : hint ? <span className="mt-1 block text-[11px] text-ink-400">{hint}</span> : null}
     </label>
   );
 }

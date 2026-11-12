@@ -11,6 +11,7 @@ import { FormFields } from '@/components/form/FormFields';
 import { api } from '@/lib/api';
 import { useDebounce } from '@/hooks/useUtils';
 import { useFetch } from '@/hooks/useApi';
+import { addRecentRecord } from '@/lib/recent';
 
 export const ID_PROOFS = ['Aadhaar Card', 'PAN Card', 'Voter ID', 'Driving Licence', 'Ration Card', 'Passport', 'Other', 'None'];
 
@@ -85,6 +86,7 @@ export function CustomerFormDrawer({ open, onClose, customer, onSaved }) {
     onSuccess: (c) => {
       qc.invalidateQueries({ queryKey: ['/customers'] });
       toast.success(customer?.id ? 'Customer updated' : `Customer #${c.customer_no} created`);
+      addRecentRecord({ type: 'customer', id: c.id, label: c.name, sub: `#${c.customer_no}${c.phone ? ` · ${c.phone}` : ''}`, path: `/customers?view=${c.id}` });
       onSaved?.(c);
       onClose();
     },

@@ -63,10 +63,14 @@ export default function ReleasePage() {
         released_by_other: other.enabled ? other : null, payments, approval: ap,
       }));
       setPay(false);
-      toast.success(`Released · Release no ${r.data.loan.loan.release_no}`);
+      const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1);
+      toast.success(`Released · Release no ${r.data.loan.loan.release_no}`, {
+        duration: 8000,
+        action: last ? { label: 'Print receipt', onClick: () => printTxn(r.data.loan, last) } : undefined,
+        cancel: { label: 'Open loan', onClick: () => navigate(`/loans/counter?loan=${r.data.loan.loan.id}`) },
+      });
       ['/loans', '/dashboard', '/dashboard/status', '/loans/next-number'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       refresh();
-      const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1);
       if (last && settings?.PRINT_AFTER_RELEASE !== '0') printTxn(r.data.loan, last);
       whatsappAfterSave(settings, 'RELEASE', r.data.loan, last);
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }

@@ -12,18 +12,25 @@ const TONES = {
 
 export function Badge({ tone = 'gray', children, className, dot }) {
   return (
-    <span className={clsx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap', TONES[tone], className)}>
+    <span className={clsx('inline-flex items-center gap-1.5 rounded-sm px-1.5 py-px text-[11px] font-semibold whitespace-nowrap', TONES[tone], className)}>
       {dot && <span className="size-1.5 rounded-full bg-current" />}
       {children}
     </span>
   );
 }
 
+/* one colour per status across the app: open = blue, released / done = green, overdue / failed = red, auction = violet, void = grey struck */
 const STATUS_TONE = {
-  OPEN: 'green', ACTIVE: 'green', CLOSED: 'gray', RENEWED: 'blue', AUCTIONED: 'violet', CANCELLED: 'red', BLOCKED: 'red', LEFT: 'gray',
-  PENDING: 'gold', SENT: 'green', FAILED: 'red', SKIPPED: 'gray',
+  OPEN: 'blue', ACTIVE: 'green', CLOSED: 'green', RELEASED: 'green', RENEWED: 'blue', AUCTIONED: 'violet', AUCTION: 'violet', IN_BANK: 'violet', PLEDGED: 'violet',
+  OVERDUE: 'red', CANCELLED: 'gray', VOID: 'gray', BLOCKED: 'red', LEFT: 'gray', INACTIVE: 'gray',
+  PENDING: 'gold', SENT: 'green', FAILED: 'red', SKIPPED: 'gray', PAID: 'green', DUE: 'gold',
 };
-export const StatusBadge = ({ status }) => <Badge tone={STATUS_TONE[status] || 'gray'} dot>{status ? status.charAt(0) + status.slice(1).toLowerCase() : '—'}</Badge>;
+const STATUS_TEXT = { IN_BANK: 'In bank' };
+export const StatusBadge = ({ status }) => {
+  const s = String(status || '').toUpperCase();
+  const struck = s === 'VOID' || s === 'CANCELLED';
+  return <Badge tone={STATUS_TONE[s] || 'gray'} dot className={struck ? 'line-through decoration-1' : undefined}>{status ? (STATUS_TEXT[s] || s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ')) : '—'}</Badge>;
+};
 
 export function Card({ title, subtitle, actions, children, className, bodyClassName, icon: Icon }) {
   return (

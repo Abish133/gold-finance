@@ -16,6 +16,7 @@ import { money, date, grams, n, round2, today } from '@/lib/format';
 import { EditLoanDrawer } from './EditLoanDrawer';
 import { Panel, useAutoMode, AutoManualSwitch } from './desk';
 import { ImagePreview } from '@/components/common/ImagePreview';
+import { addRecentRecord } from '@/lib/recent';
 
 function LoanFinder({ onFound }) {
   const [q, setQ] = useState('');
@@ -192,6 +193,8 @@ export default function LoanCounterPage() {
   const { can } = useAuth();
   const qc = useQueryClient();
   const { data: full, isLoading } = useFetch(loanId ? `/loans/${loanId}` : null);
+  // remember it for Ctrl+K "Recently opened"
+  useEffect(() => { const l = full?.loan; if (l?.id) addRecentRecord({ type: 'loan', id: l.id, label: `#${l.bill_no} · ${l.customer_name || ''}`, sub: `${l.status || ''}`, path: `/loans/counter?loan=${l.id}` }); }, [full?.loan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const { printLoan, printTxn, busy, printerUi } = usePrinter();
   const [tab, setTab] = useState(params.get('tab') || 'INTEREST');
   useEffect(() => { if (params.get('tab')) setTab(params.get('tab')); }, [params]);

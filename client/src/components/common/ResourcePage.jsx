@@ -33,6 +33,11 @@ export function ResourcePage({
   const save = useSaveResource(endpoint, { onDone: (r) => { setEditing(null); onSaved?.(r); } });
   const del = useDeleteResource(endpoint, { onDone: () => setDeleting(null) });
   const form = useForm({ defaultValues: defaults });
+  const dirty = !!editing && form.formState.isDirty;
+  const [askDiscard, setAskDiscard] = useState(false);
+  useEffect(() => { setAskDiscard(false); }, [editing]);
+  // closing with unsaved changes asks once: the Cancel button turns into "Discard changes"
+  const closeEditor = () => { if (dirty && !askDiscard) { setAskDiscard(true); return; } setAskDiscard(false); setEditing(null); };
 
   useEffect(() => {
     if (editing) form.reset({ ...defaults, ...(editing.id ? fromRecord(editing) : {}) });
@@ -89,18 +94,22 @@ export function ResourcePage({
         onPage={(page) => set({ page })}
         onPageSize={(pageSize) => set({ pageSize })}
         onRowClick={can(screen, 'edit') ? (r) => setEditing(r) : undefined}
+        highlight={state.search}
       />
 
       <Drawer
         open={!!editing}
-        onClose={() => setEditing(null)}
+        onClose={closeEditor}
         title={editing?.id ? `Edit ${singular || title.replace(/s$/, '')}` : `New ${singular || title.replace(/s$/, '')}`}
         icon={icon}
         size={drawerSize}
         bodyClassName="!px-4 !py-3"
         footer={(
           <>
-            <Button variant="soft-danger" onClick={() => setEditing(null)}>Cancel (Esc)</Button>
+            {dirty && !askDiscard && <span className="mr-auto flex items-center gap-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300"><span className="size-1.5 animate-pulse rounded-full bg-amber-500" />Unsaved changes</span>}
+            {askDiscard && <span className="mr-auto text-[12px] font-semibold text-rose-700 dark:text-rose-300">Close without saving?</span>}
+            {askDiscard && <Button variant="outline" onClick={() => setAskDiscard(false)}>Keep editing</Button>}
+            <Button variant="soft-danger" onClick={closeEditor}>{askDiscard ? 'Discard changes' : 'Cancel (Esc)'}</Button>
             <Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate({ id: editing?.id, ...toPayload(v) }))}>Save</Button>
           </>
         )}

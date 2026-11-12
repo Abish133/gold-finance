@@ -108,8 +108,14 @@ export function ConfirmDrawer({ open, onClose, onConfirm, title = 'Are you sure?
         </>
       )}
     >
-      {message && <p className="text-sm leading-relaxed text-ink-600 dark:text-ink-300">{message}</p>}
-      {children}
+      <div className={clsx('mb-3 flex items-start gap-2.5 rounded-md border px-3 py-2.5', tone === 'danger' ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200')}>
+        <span aria-hidden className={clsx('mt-px grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white', tone === 'danger' ? 'bg-rose-600' : 'bg-amber-500')}>!</span>
+        <div className="min-w-0 text-[13px] leading-relaxed">
+          <p className="font-bold">{tone === 'danger' ? 'Please check before you confirm' : 'Please confirm'}</p>
+          {message && <p className="mt-0.5 opacity-90">{message}</p>}
+        </div>
+      </div>
+      {children && <div className="rounded-md border border-ink-200 p-3 text-[13px] dark:border-ink-700 [&_b]:text-navy-900 dark:[&_b]:text-white">{children}</div>}
     </Drawer>
   );
 }

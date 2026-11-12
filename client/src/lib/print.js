@@ -15,6 +15,9 @@ export const printElement = (element, { title = 'Print' } = {}) =>
     doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head><body><div id="p"></div></body></html>`);
     doc.close();
     document.querySelectorAll('style, link[rel="stylesheet"]').forEach((n) => doc.head.appendChild(n.cloneNode(true)));
+    // same font and colours as the app (Appearance) - but never the screen text-size zoom
+    const vars = document.documentElement.style;
+    for (let i = 0; i < vars.length; i++) { const k = vars[i]; if (k.startsWith('--') && k !== '--app-zoom') doc.documentElement.style.setProperty(k, vars.getPropertyValue(k)); }
     const root = createRoot(doc.getElementById('p'));
     flushSync(() => root.render(element));
 
