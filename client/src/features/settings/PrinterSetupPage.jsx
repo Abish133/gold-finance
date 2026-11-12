@@ -10,6 +10,7 @@ import { printElement } from '@/lib/print';
 import { ExitButton, useKeys } from '@/features/loans/desk';
 import PrintSettingsPage from './PrintSettingsPage';
 import LabelDesigner from './LabelDesigner';
+import { PageActions } from '@/components/common/PageActions';
 
 const DOCS = [
   ['LOAN_RECEIPT', 'Loan receipt', 'New loan, re-loan, old loan, duplicate bill'],
@@ -67,7 +68,7 @@ export default function PrinterSetupPage() {
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]"><Button variant="outline" icon={Printer} onClick={test}>Test print</Button><ExitButton /></div>
+          <PageActions><Button variant="outline" icon={Printer} onClick={test}>Test print</Button><ExitButton /></PageActions>
         </>
       )}
     </div>

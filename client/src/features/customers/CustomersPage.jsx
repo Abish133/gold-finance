@@ -14,6 +14,7 @@ import { ExitButton, useKeys, CustomerLedgerDrawer } from '@/features/loans/desk
 import { CustomerFormDrawer } from './CustomerFormDrawer';
 import { CustomerDetailDrawer } from './CustomerDetailDrawer';
 import { MergeCustomersPanel } from './MergeCustomersPage';
+import { PageActions } from '@/components/common/PageActions';
 
 const address = (r) => [[r.door_no, r.street, r.area, r.city].filter(Boolean).join(', '), r.pincode].filter(Boolean).join(' - ');   // desktop: 5-43, Main Road, Kappiyarai, Nagercoil - 629157
 
@@ -97,7 +98,7 @@ export default function CustomersPage() {
           onRowClick={(r) => setSelected(r)} onRowDoubleClick={(r) => { setSelected(r); setParams({ view: r.id }); }} rowClassName={(r) => (selected?.id === r.id ? '!bg-emerald-50 dark:!bg-emerald-950/30' : '')} />
         <MergeCustomersPanel open={merging} selected={selected} />
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         {can('customers', 'add') && !isAllBranches && <Button variant="outline" icon={Plus} onClick={() => setEditing({})}>New Customer (Ctrl+N)</Button>}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" icon={FileDown} onClick={pdf}>PDF (Ctrl+P)</Button>
@@ -106,8 +107,8 @@ export default function CustomersPage() {
           <Button variant="outline" icon={BookUser} disabled={!selected} onClick={() => setLedger(selected.id)}>Open Ledger (Enter)</Button>
           <ExitButton />
         </div>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F3 = search · click = select · double-click = details · Enter = customer ledger · Ctrl+N = new customer · F5 = refresh · Ctrl+E = Excel · Esc = exit · Last updated {date(new Date())}</p>
+      </PageActions>
+      <PageActions keys={`F3 = search · click = select · double-click = details · Enter = customer ledger · Ctrl+N = new customer · F5 = refresh · Ctrl+E = Excel · Esc = exit · Last updated ${date(new Date())}`} />
 
       <CustomerDetailDrawer id={viewId} onClose={() => setParams({})} onEdit={(c) => setEditing(c)} />
       <CustomerFormDrawer open={!!editing} customer={editing?.id ? editing : null} onClose={() => setEditing(null)} />

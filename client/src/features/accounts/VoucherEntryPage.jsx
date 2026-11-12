@@ -13,6 +13,7 @@ import { printTable } from '@/lib/printTable';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from '@/features/loans/desk';
 import { VoucherDrawer } from './VouchersPage';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Voucher Entry (desktop: frmVoucherEntry) - money received (Jama) or paid (Nave) other than loans. */
 export default function VoucherEntryPage() {
@@ -160,13 +161,13 @@ export default function VoucherEntryPage() {
               </table>
             </div>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+          <PageActions>
             <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => edit(sel)}>Edit (F3)</Button>
             <Button variant="soft-danger" icon={Trash2} disabled={!sel || !can('acc_voucher', 'delete')} onClick={() => setDel(sel)}>Delete (Del)</Button>
             <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
             <Button variant="outline" icon={BookOpen} onClick={() => navigate('/accounts/ledger')}>Account Ledger</Button>
             <ExitButton />
-          </div>
+          </PageActions>
         </div>
       </div>
       <VoucherDrawer open={journal} onClose={() => { setJournal(false); list.refetch(); }} />

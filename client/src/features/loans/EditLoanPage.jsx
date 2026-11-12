@@ -11,6 +11,7 @@ import { useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { amount, n, round2 } from '@/lib/format';
 import { Panel, ExitButton, useKeys, ItemEntry, ItemsTable, CustomerCard, ItemPhotoPanel, useLoan, computeItem, INTEREST_TYPES, loanCustomer, fineRate, Line, GoldButton, useAutoMode, AutoManualSwitch } from './desk';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Edit Pledged Record (desktop: frmPledgeBookEdit) - customer, date, bill book no, amount, interest and items. */
 export default function EditLoanPage() {
@@ -153,11 +154,11 @@ export default function EditLoanPage() {
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900">
+      <PageActions keys="Enter = find loan · F4 = change customer · Ins = add item · double-click item = edit · F2 / Ctrl+S = save all · Ctrl+Z = cancel changes · Esc = exit">
         <Button variant="soft-danger" icon={Undo2} onClick={reset}>Cancel Changes (Ctrl+Z)</Button>
-        <p className="hidden min-w-0 flex-1 truncate px-2 text-[11px] text-ink-400 2xl:block">Enter = find loan · F4 = change customer · Ins = add item · double-click item = edit · F2 / Ctrl+S = save all · Ctrl+Z = cancel changes · Esc = exit</p>
+        
         <div className="ml-auto"><ExitButton /></div>
-      </div>
+      </PageActions>
       <Drawer open={changeCust} onClose={() => setChangeCust(false)} size="md" icon={UserCog} title="Change customer" footer={<Button icon={Plus} onClick={() => setChangeCust(false)}>Done</Button>}>
         <CustomerPicker value={null} onChange={(c) => { if (c) { setCustomer(c); setChangeCust(false); } }} />
       </Drawer>

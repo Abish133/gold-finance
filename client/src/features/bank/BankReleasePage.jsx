@@ -13,6 +13,7 @@ import { printTable } from '@/lib/printTable';
 import { amount, date, n, round2, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { NeedBranch } from '@/components/common/NeedBranch';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Bank Release (desktop): repay a bank loan - the pledged loans come back in hand. */
 export default function BankReleasePage() {
@@ -159,14 +160,13 @@ export default function BankReleasePage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="Type bank loan no = suggestions · Enter = select / amount paid · F2 = release · F5 = refresh · F9 = print releases of the day · Esc = exit">
         <Button variant="outline" icon={RefreshCw} onClick={() => { open.refetch(); releasedToday.refetch(); }}>Refresh (F5)</Button>
         <span className="flex-1" />
         {can('bank_pledge', 'edit') && <Button variant="gold" icon={Unlock} loading={saving} disabled={!bp} onClick={() => release()}>Release from Bank (F2)</Button>}
         <Button variant="outline" icon={Printer} onClick={printReleases}>Print Releases (F9)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Type bank loan no = suggestions · Enter = select / amount paid · F2 = release · F5 = refresh · F9 = print releases of the day · Esc = exit</p>
+      </PageActions>
       {confirm}
     </div>
   );

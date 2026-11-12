@@ -7,6 +7,7 @@ import { printTable } from '@/lib/printTable';
 import { date } from '@/lib/format';
 import { ExitButton } from '@/features/loans/desk';
 import { NeedBranch } from '@/components/common/NeedBranch';
+import { PageActions } from '@/components/common/PageActions';
 
 const ALL_OK = <p className="flex h-full min-h-16 items-center justify-center gap-1.5 text-[12px] font-semibold text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="size-4" />None - all in order</p>;
 /** [5,6,7,9] -> [[5,7],[9,9]] - runs of consecutive numbers; anything not a number stays on its own */
@@ -124,11 +125,11 @@ export default function BillBookCheckPage() {
         </Box>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         <Button variant="outline" icon={RefreshCw} loading={isFetching} onClick={() => refetch()}>Check again</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print</Button>
         <div className="ml-auto"><ExitButton /></div>
-      </div>
+      </PageActions>
     </div>
   );
 }

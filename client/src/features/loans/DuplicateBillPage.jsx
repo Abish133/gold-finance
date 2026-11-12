@@ -9,6 +9,7 @@ import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, today } from '@/lib/format';
 import { useKeys } from './desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const QUICK = { Today: [0, 0], Yesterday: [1, 1], Week: [6, 0], Month: [29, 0] };
 const STATUS = { OPEN: 'Open', CLOSED: 'Released', RENEWED: 'Released', AUCTIONED: 'Auctioned', CANCELLED: 'Cancelled' };
@@ -102,15 +103,14 @@ export default function DuplicateBillPage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="Enter = find / next · Space / click = tick · Ctrl+A = all · Ctrl+U = clear · F5 = refresh · F10 = Print · Esc = close">
         <span className="rounded-md bg-emerald-50 px-3 py-1 text-[12px] font-bold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{sel.length} receipt(s) will be printed</span>
         <span className="hidden text-[12px] text-ink-500 lg:inline">{rows.length ? 'Tick the loans and press F10.' : 'Search loans to reprint the receipt.'}</span>
         <span className="ml-auto hidden text-[11px] text-ink-400 xl:inline">{[settings?.DUP_PREVIEW !== '0' ? 'Preview' : 'Straight to printer', settings?.DUP_MARK !== '0' ? 'DUPLICATE mark' : 'no DUPLICATE mark', `${Number(settings?.DUP_COPIES) || 1} cop${Number(settings?.DUP_COPIES) > 1 ? 'ies' : 'y'}`].join(' · ')}</span>
         <Button variant="outline" icon={RefreshCw} onClick={search}>Refresh (F5)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
         <Button variant="gold" icon={Eye} loading={busy} disabled={!sel.length} onClick={print}>Preview &amp; Print (F10)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Enter = find / next · Space / click = tick · Ctrl+A = all · Ctrl+U = clear · F5 = refresh · F10 = Print · Esc = close</p>
+      </PageActions>
       {printerUi}
     </div>
   );

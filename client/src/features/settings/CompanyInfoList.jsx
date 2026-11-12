@@ -9,6 +9,7 @@ import { printTable } from '@/lib/printTable';
 import { date, n } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { CompanyForm } from './CompanyPage';
+import { PageActions } from '@/components/common/PageActions';
 
 export function CompanyInfoList() {
   const navigate = useNavigate();
@@ -57,15 +58,14 @@ export function CompanyInfoList() {
           </tbody>
         </table>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="F2 / Enter = edit company · F4 = receipt header · F9 = print · Esc = exit">
         <Button variant="outline" icon={Pencil} onClick={() => setEdit(true)}>Edit Company (F2)</Button>
         <Button variant="outline" icon={FileText} onClick={() => navigate('/settings/printer')}>Receipt Header (F4)</Button>
         <Button variant="outline" icon={Building} onClick={() => navigate('/settings/branches')}>Branches</Button>
         <span className="flex-1" />
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
         <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F2 / Enter = edit company · F4 = receipt header · F9 = print · Esc = exit</p>
+      </PageActions>
       <Drawer open={edit} onClose={() => setEdit(false)} size="xl" icon={Building} title="Edit Company" subtitle="Printed on every bill, receipt and notice" bodyClassName="flex !px-4 !py-3 lg:!overflow-hidden"><CompanyForm embedded /></Drawer>
     </div>
   );

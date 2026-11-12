@@ -12,6 +12,7 @@ import { Stickers } from '@/features/print/Sticker';
 import { api } from '@/lib/api';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys, GoldButton } from './desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const QUICK = { Today: [0, 0], Yesterday: [1, 1], Week: [6, 0], Month: [29, 0] };
 
@@ -136,7 +137,7 @@ export default function StickersPage() {
           </div>
         </div>
       </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Enter = search / next · F3 = filter · click = preview · Ctrl+A = all · Ctrl+U = clear · Ctrl+R = refresh · F10 = Print · Esc = close</p>
+      <PageActions keys={`Enter = search / next · F3 = filter · click = preview · Ctrl+A = all · Ctrl+U = clear · Ctrl+R = refresh · F10 = Print · Esc = close`} />
     </div>
   );
 }

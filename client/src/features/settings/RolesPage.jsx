@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { MENUS } from '@/config/navigation';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const ACTIONS = ['view', 'add', 'edit', 'delete', 'print', 'export'];
 const allOn = () => Object.fromEntries(ACTIONS.map((a) => [a, true]));
@@ -203,15 +204,14 @@ export default function RolesPage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="F2 = save · Ctrl+N = new role · tick a menu = all its actions, then click an action chip to switch it off · F6 = user accounts · F9 = print · Esc = exit">
         <Button variant="soft-danger" icon={Trash2} disabled={ro || isNew || !sel} onClick={() => setDel(true)}>Delete Role (Del)</Button>
         <span className="flex-1" />
         <Button variant="outline" icon={Users} onClick={() => navigate('/settings/users')}>User Accounts (F6)</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
         <Button variant="gold" icon={Save} loading={saving} disabled={ro} onClick={save}>Save (F2)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F2 = save · Ctrl+N = new role · tick a menu = all its actions, then click an action chip to switch it off · F6 = user accounts · F9 = print · Esc = exit</p>
+      </PageActions>
       <ConfirmDrawer open={del} onClose={() => setDel(false)} onConfirm={remove} title={`Delete role ${sel?.name}?`} message="Users of this role must be given another role first." confirmText="Delete" />
     </div>
   );

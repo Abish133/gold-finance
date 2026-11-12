@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { amount, date, n, round2, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { NeedBranch } from '@/components/common/NeedBranch';
+import { PageActions } from '@/components/common/PageActions';
 
 const blank = () => ({ bank_account_id: '', pledge_no: '', pledge_date: today(), amount: '', interest_rate: '', rate_monthly: '', charges: '', min_days: '', received_mode: 'BANK' });
 
@@ -147,13 +148,13 @@ export default function BankLoanPage() {
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         <Button variant="soft-danger" icon={Plus} onClick={() => { setF(blank()); setSel([]); setCur(null); }}>New (Ctrl+N)</Button>
         <Button variant="soft-danger" icon={Trash2} disabled={!cur} onClick={remove}>Remove Loan (Del)</Button>
         <span className="flex-1" />
         <Button variant="gold" icon={Save} loading={saving} onClick={() => save()}>Save Bank Loan (F2)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
+      </PageActions>
       <Drawer open={pick} onClose={() => setPick(false)} size="xl" icon={ListChecks} title="Pick Loans for Bank" subtitle={`${loans.length - sel.length} loans in hand (not released, not in a bank)`}
         footer={<>
           <Button variant="outline" icon={CheckSquare} onClick={() => setPickSel([...new Set([...pickSel, ...pickRows.map((l) => l.id)])])}>Tick All</Button>

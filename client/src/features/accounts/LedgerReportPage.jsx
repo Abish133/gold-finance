@@ -10,6 +10,7 @@ import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, date, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const fyStart = () => (dayjs().month() >= 3 ? dayjs().month(3).date(1) : dayjs().subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 export const NATURE_TONE = { ASSET: 'green', LIABILITY: 'red', INCOME: 'blue', EXPENSE: 'gold', EQUITY: 'violet' };
@@ -100,13 +101,13 @@ export default function LedgerReportPage() {
               </table>
             </div>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+          <PageActions>
             <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F6)</Button>
             <Button variant="outline" icon={FileDown} disabled={!data} onClick={doPrint}>PDF (Ctrl+P)</Button>
             <Button variant="outline" icon={FileSpreadsheet} disabled={!data} onClick={() => exportCsv('ledger', cols, entries)}>Excel (Ctrl+E)</Button>
             <Button variant="outline" icon={Printer} disabled={!data} onClick={doPrint}>Print (F9)</Button>
             <ExitButton />
-          </div>
+          </PageActions>
         </div>
       </div>
     </div>

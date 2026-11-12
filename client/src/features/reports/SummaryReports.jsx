@@ -11,17 +11,18 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, compact, date, n, weight, today } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { Seg, Tile, Tiles, SideLine, SideHead } from './ReportScreen';
+import { PageActions } from '@/components/common/PageActions';
 
 const Buttons = ({ onShow, preview, excel }) => {
   const navigate = useNavigate();
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+    <PageActions>
       <Button variant="outline" icon={RefreshCw} onClick={onShow}>Refresh (F6)</Button>
       <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
       <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
       <Button variant="outline" icon={FileSpreadsheet} onClick={excel}>Excel (Ctrl+E)</Button>
       <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-    </div>
+    </PageActions>
   );
 };
 
@@ -90,7 +91,7 @@ export function LoanReleaseSummaryPage() {
         </div>
       </div>
       <Buttons onShow={() => refetch()} preview={preview} excel={() => exportCsv('loan-release-summary', cols, rows)} />
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F5 = show · F6 = refresh · double-click a month = day-wise · Backspace = back to months · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      <PageActions keys={`F5 = show · F6 = refresh · double-click a month = day-wise · Backspace = back to months · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit`} />
     </div>
   );
 }
@@ -180,14 +181,13 @@ export function ComparisonReportPage() {
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="F5 = show · F6 = refresh · Ctrl+1..3 = compare mode · F9 = print · F10 = Excel · Esc = exit">
         <Button variant="outline" icon={Printer} onClick={preview}>Print (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('comparison', cols, table)}>Excel (F10)</Button>
         <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F6)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F5 = show · F6 = refresh · Ctrl+1..3 = compare mode · F9 = print · F10 = Excel · Esc = exit</p>
+      </PageActions>
     </div>
   );
 }

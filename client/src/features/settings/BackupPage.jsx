@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const parse = (d) => { try { return typeof d === 'string' ? JSON.parse(d) : d || {}; } catch { return {}; } };
 const day = () => new Date().toISOString().slice(0, 10);
@@ -134,8 +135,7 @@ export default function BackupPage() {
           </>)}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]"><Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button></div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F2 = take backup now · Esc = exit</p>
+      <PageActions keys="F2 = take backup now · Esc = exit"><Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button></PageActions>
     </div>
   );
 }

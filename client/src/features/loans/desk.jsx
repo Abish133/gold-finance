@@ -16,6 +16,7 @@ import { ImagePreview } from '@/components/common/ImagePreview';
 import { useFetch, useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { money, amount, date, weight, n, round2, round3, inWords } from '@/lib/format';
+import { PageActions } from '@/components/common/PageActions';
 
 /* ------------------------------------------------------------------ layout */
 export function DeskScreen({ title, subtitle, tiles = [], left, center, right, footerLeft, footerRight, hints = [], headerExtra, cols = 'xl:grid-cols-[360px_1fr_380px]' }) {
@@ -44,15 +45,8 @@ export function DeskScreen({ title, subtitle, tiles = [], left, center, right, f
         <div className="desk-col min-w-0">{center}</div>
         {right && <div className="desk-col">{right}</div>}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900">
-        {footerLeft}
-        {hints.length > 0 && (
-          <p className="hidden min-w-0 flex-1 truncate px-2 text-[11px] text-ink-400 2xl:block">
-            {hints.map(([k, l]) => <span key={k} className="mr-3 whitespace-nowrap"><kbd className="rounded-sm bg-ink-100 px-1 font-semibold text-ink-600 dark:bg-ink-800 dark:text-ink-300">{k}</kbd> {l}</span>)}
-          </p>
-        )}
-        <div className="ml-auto flex flex-wrap gap-2">{footerRight}</div>
-      </div>
+      {/* actions sit in the header bar above; shortcuts under its "Keys" button */}
+      <PageActions keys={hints}>{footerLeft}{footerRight}</PageActions>
     </div>
   );
 }

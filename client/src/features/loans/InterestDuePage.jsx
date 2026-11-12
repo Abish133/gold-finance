@@ -10,6 +10,7 @@ import { printTable } from '@/lib/printTable';
 import { amount, date, n, today } from '@/lib/format';
 import { ExitButton, Line, useKeys, useAutoMode, AutoManualSwitch } from './desk';
 import QuoteCalculator from './InterestCalculatorPage';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'customer_name', label: 'Customer' },
@@ -193,7 +194,7 @@ export default function InterestDuePage() {
             </section>
           </div>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+          <PageActions>
             <p className="hidden min-w-0 flex-1 truncate px-1 text-[11px] text-ink-400 2xl:block">Rows in red are over {overdueMonths} months · click = breakdown · double-click = open loan</p>
             <span className="flex-1 2xl:hidden" />
             <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (Ctrl+R)</Button>
@@ -201,7 +202,7 @@ export default function InterestDuePage() {
             <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
             <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('interest-due', cols, rows)}>Excel (Ctrl+E)</Button>
             <ExitButton />
-          </div>
+          </PageActions>
         </>
       )}
     </div>

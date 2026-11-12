@@ -11,6 +11,7 @@ import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { LoanDetailsDrawer } from '@/features/loans/LoanDetailsDrawer';
 import { api } from '@/lib/api';
+import { PageActions } from '@/components/common/PageActions';
 
 const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const RESULT = { PROFIT: ['Profit', 'bg-emerald-100 text-emerald-800'], RISK: ['At risk', 'bg-amber-100 text-amber-800'], LOSS: ['Loss', 'bg-rose-100 text-rose-700'] };
@@ -103,7 +104,7 @@ export default function StockAnalysisPage() {
           </tbody>
         </table>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="F5 = load · F3 = search · Enter / double-click = loan details · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit">
         <Button variant="outline" icon={FileText} disabled={!sel} onClick={() => open(sel)}>Loan Details (Enter)</Button>
         <span className="flex-1" />
         <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (Ctrl+R)</Button>
@@ -111,8 +112,7 @@ export default function StockAnalysisPage() {
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('stock-analysis', cols, rows)}>Excel (Ctrl+E)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F5 = load · F3 = search · Enter / double-click = loan details · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      </PageActions>
       <LoanDetailsDrawer full={details} onClose={() => setDetails(null)} />
     </div>
   );

@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { ExitButton, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Every setting with a short code (like the desktop System Control). */
 export const SETTING_GROUPS = [
@@ -198,10 +199,10 @@ export default function SystemSettingsPage() {
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         <Button variant="outline" icon={Undo2} onClick={() => setV(data || {})}>Undo All Changes {changed.length ? `(${changed.length})` : ''}</Button>
         <div className="ml-auto flex gap-2"><Button variant="outline" icon={Printer} onClick={print}>Print Settings (F9)</Button><Button variant="gold" icon={Save} onClick={save}>Save Changes (F2)</Button><ExitButton /></div>
-      </div>
+      </PageActions>
     </div>
   );
 }

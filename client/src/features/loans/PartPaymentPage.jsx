@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { amount, money, date, n, round2, today, weight } from '@/lib/format';
 import { whatsappAfterSave } from '@/lib/whatsapp';
 import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer, Chip, GoldButton } from './desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const MODES = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK', 'Bank / NEFT'], ['CARD', 'Card'], ['CHEQUE', 'Cheque']];
 
@@ -255,7 +256,7 @@ export default function PartPaymentPage() {
         </Panel>
         </div>
       </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Enter = load · F2 Interest · F3 Part amount · + / − months · F4 Add payment · F5 Refresh · F10 Save · Esc Close</p>
+      <PageActions keys={`Enter = load · F2 Interest · F3 Part amount · + / − months · F4 Add payment · F5 Refresh · F10 Save · Esc Close`} />
       <CustomerLedgerDrawer customerId={ledger ? l?.customer_id : null} onClose={() => setLedger(false)} />
       {approval.ui}
       {printerUi}

@@ -13,6 +13,7 @@ import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, n, today, round2 } from '@/lib/format';
 import { ExitButton, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Metal Rate Update (desktop: frmRateMaster) - today's board rate per purity. */
 export default function RateBoardPage() {
@@ -117,14 +118,13 @@ export default function RateBoardPage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px] justify-end">
+      <PageActions keys="Enter = next rate · F5 = copy previous · F2 = save · F9 = print rate card · Esc = exit">
         <Button variant="outline" icon={FileDown} onClick={card}>Rate Card PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={Printer} onClick={card}>Print Rate Card (F9)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('rate-history', [{ key: 'rate_date', label: 'Date', type: 'date' }, { key: 'top_rate', label: 'Rate' }], data?.history || [])}>History Excel</Button>
         <Button variant="gold" icon={Save} className="!px-5" onClick={save}>Save Today's Rate (F2)</Button>
         <ExitButton />
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Enter = next rate · F5 = copy previous · F2 = save · F9 = print rate card · Esc = exit</p>
+      </PageActions>
     </div>
   );
 }

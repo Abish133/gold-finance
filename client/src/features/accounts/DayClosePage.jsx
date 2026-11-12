@@ -14,6 +14,7 @@ import { amount, date, n, today } from '@/lib/format';
 import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Day Close (desktop): closed days with cash, re-open the last closed day (with a reason) and close again. */
 export default function DayClosePage() {
@@ -124,14 +125,14 @@ export default function DayClosePage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="F3 Reopen day (admin) · F2 Close again · F5 Day details · double-click a day = Day Report · Esc Exit">
         <Button variant="outline" icon={FileText} onClick={details}>Day Details (F5)</Button>
-        <p className="hidden min-w-0 flex-1 truncate px-2 text-[11px] text-ink-400 2xl:block">F3 Reopen day (admin) · F2 Close again · F5 Day details · double-click a day = Day Report · Esc Exit</p>
+        
         <span className="flex-1 2xl:hidden" />
         <Button variant="outline" icon={FileDown} onClick={pdf}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('day-close', cols, printRows)}>Excel (Ctrl+E)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
+      </PageActions>
       <ConfirmDrawer open={ask} onClose={() => setAsk(false)} onConfirm={reopen} loading={busy} confirmText="Yes, re-open" title={sel ? `Re-open ${date(sel.date)}?` : 'Re-open day?'}
         message="Entries on this day will be allowed again. Correct them and close the day again from Day End." />
     </div>

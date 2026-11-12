@@ -14,6 +14,7 @@ import { printTable } from '@/lib/printTable';
 import { amount, date, n, weight, today } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { AuctionReleaseTab } from './AuctionReleaseTab';
+import { PageActions } from '@/components/common/PageActions';
 
 const COLS = [
   { key: 'bill_no', label: 'Loan No' }, { key: 'auction_date', label: 'Auctioned', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'item_summary', label: 'Items' },
@@ -122,10 +123,10 @@ export default function AuctionReleasePage() {
           </div>
         </>
       )}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
-        <p className="hidden min-w-0 flex-1 truncate px-1 text-[11px] text-ink-400 2xl:block">F3 = scan / type loan no · Space = tick selected rows · Ctrl+A = tick all · Ctrl+N = tick with notice · Ctrl+D = untick · F10 = mark / save sale · Ctrl+R = remove sale · Ctrl+E = Excel · Esc = exit</p>
+      <PageActions keys="F3 = scan / type loan no · Space = tick selected rows · Ctrl+A = tick all · Ctrl+N = tick with notice · Ctrl+D = untick · F10 = mark / save sale · Ctrl+R = remove sale · Ctrl+E = Excel · Esc = exit">
+        
         <div className="ml-auto"><Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button></div>
-      </div>
+      </PageActions>
       <p className="hidden">F3 = scan / type loan no · Space = tick selected rows · Ctrl+A = tick all · Ctrl+N = tick with notice · Ctrl+D = untick · F10 = mark / save sale · Ctrl+R = remove sale · Ctrl+E = Excel · Esc = exit</p>
       <ConfirmDrawer open={!!ask} onClose={() => setAsk(null)} title={ask?.title} message={ask?.message} confirmText="Yes" tone={ask?.danger ? 'danger' : 'primary'} onConfirm={() => ask?.go()} />
     </div>

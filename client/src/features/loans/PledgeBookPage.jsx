@@ -15,6 +15,7 @@ import { printElement } from '@/lib/print';
 import { PhotoReport, FormD } from '@/features/print/LoanEstimate';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from './desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const QUICK = { today: () => [today(), today()], month: () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], year: () => [fyStart(), today()], all: () => ['', ''] };
@@ -107,8 +108,8 @@ export default function PledgeBookPage() {
         sort={page.sort} order={page.order} onSort={(sort, order) => setPage({ ...page, sort, order })} onPage={(p) => setPage({ ...page, page: p })} onPageSize={(s) => setPage({ ...page, pageSize: s, page: 1 })}
         onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}
         totals={rows.length ? { gross_wt: rows.reduce((s, r) => s + n(r.gross_wt), 0), net_wt: rows.reduce((s, r) => s + n(r.net_wt), 0), loan_amount: rows.reduce((s, r) => s + n(r.loan_amount), 0), market_value: rows.reduce((s, r) => s + n(r.market_value), 0) } : undefined} />
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
-        <p className="hidden min-w-0 flex-1 truncate px-1 text-[11px] text-ink-400 2xl:block">F5 = load · F3 = search · click = loan details · Ctrl+R = refresh · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      <PageActions keys="F5 = load · F3 = search · click = loan details · Ctrl+R = refresh · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit">
+        
         <span className="flex-1 2xl:hidden" />
         <Button variant="outline" icon={RefreshCw} onClick={() => list.refetch()}>Refresh (Ctrl+R)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
@@ -117,7 +118,7 @@ export default function PledgeBookPage() {
         <Button variant="outline" icon={Image} onClick={photos}>Photo Report</Button>
         <Button variant="outline" icon={ScrollText} onClick={formD}>Form D (TN)</Button>
         <ExitButton />
-      </div>
+      </PageActions>
     </div>
   );
 }

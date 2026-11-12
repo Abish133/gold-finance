@@ -9,6 +9,7 @@ import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 export const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 export const QUICK = {
@@ -126,15 +127,15 @@ export function ReportScreen({ title, subtitle, dateLabel = 'From', filters, f, 
         </div>
         {side && <div className="flex flex-col overflow-y-auto rounded-md border border-ink-200 bg-white p-3 text-[12px] xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">{side}</div>}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
-        <p className="hidden min-w-0 flex-1 truncate px-1 text-[11px] text-ink-400 2xl:block">F5 = show · F6 = refresh · F3 = search · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      <PageActions keys="F5 = show · F6 = refresh · F3 = search · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit">
+        
         <span className="flex-1 2xl:hidden" />
         <Button variant="outline" icon={RefreshCw} onClick={onShow}>Refresh (F6)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={excel}>Excel (Ctrl+E)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
+      </PageActions>
     </div>
   );
 }

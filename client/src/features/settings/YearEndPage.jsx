@@ -13,6 +13,7 @@ import { printTable } from '@/lib/printTable';
 import { amount, compact, n } from '@/lib/format';
 import { ExitButton, useKeys } from '@/features/loans/desk';
 import { useNavigate } from 'react-router';
+import { PageActions } from '@/components/common/PageActions';
 
 const STEPS = [['Checks', 'Year over, Day End, other computers'], ['Backup', 'Separate Year End backup file'], ['Accounts', 'Closing of every account, profit'], ['Pending loans', 'Loans pending go to the new year'], ['Close year', 'Lock the year, new financial year'], ['Reports', 'Print accounts and pending loans']];
 const TAG = (c) => (c.ok ? ['OK', 'bg-emerald-100 text-emerald-800'] : c.warn ? ['WARNING', 'bg-amber-100 text-amber-800'] : ['STOP', 'bg-rose-100 text-rose-800']);
@@ -84,7 +85,7 @@ export default function YearEndPage() {
             { key: 's', label: 'Status', render: (r) => (r.is_current ? <Badge tone="green">Current</Badge> : r.is_closed ? <Badge>Closed</Badge> : <Badge tone="gold">Open</Badge>) }]} />}
         </div>
       </div>
-      <div className={clsx('card flex flex-wrap justify-end gap-2 px-3 py-2')}>
+      <PageActions>
         {[['Own pledge book', '0'], ['Bank pledge book', '1']].map(([t, bank]) => (
           <Button key={t} variant="outline" icon={Printer} onClick={async () => { const r = await api.get('/loans', { from: fy?.start_date, to: fy?.end_date, bank, pageSize: 200, sort: 'loan_no', order: 'asc' });
             printTable({ title: `${t} ${fy?.name}`, company, rows: r.data, totals: { principal: r.summary?.principal, net_wt: r.summary?.net_wt },
@@ -93,7 +94,7 @@ export default function YearEndPage() {
         <Button variant="outline" icon={Printer} onClick={() => printTable({ title: 'Pending loans carried to new year', company, rows: pending.data?.data || [], columns: [{ key: 'bill_no', label: 'Loan' }, { key: 'loan_date', label: 'Date', type: 'date' }, { key: 'customer_name', label: 'Customer' }, { key: 'net_wt', label: 'Net', type: 'weight' }, { key: 'current_principal', label: 'Outstanding', type: 'money' }] })}>Print Pending Loans</Button>
         <Button variant="outline" icon={Printer} onClick={printYear}>Print Year End (F9)</Button>
         <ExitButton />
-      </div>
+      </PageActions>
       <ConfirmDrawer open={confirm} onClose={() => setConfirm(false)} title={`Close ${fy?.name} and start ${next}?`} confirmText="Run year end" tone="primary"
         message="The current year is closed and the next financial year starts. Open loans carry forward automatically; profit & loss restarts. Take a backup first."
         onConfirm={async () => { try { const r = await api.post('/admin/financial-years/year-end'); toast.success(`Year ${r.data.name} started`); qc.invalidateQueries({ queryKey: ['/admin/financial-years'] }); refetch(); setConfirm(false); } catch (e) { toast.error(e.message); } }}

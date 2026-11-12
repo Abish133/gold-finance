@@ -12,6 +12,7 @@ import { date } from '@/lib/format';
 import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export default function UsersPage() {
           </tbody>
         </table>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="Ctrl+N = new user · F2 / double-click = edit · Del = delete user · F6 = roles and permissions · F9 = print · Esc = exit">
         {can('s_users', 'add') && <Button variant="outline" icon={Plus} onClick={() => setEdit({})}>New User (Ctrl+N)</Button>}
         {can('s_users', 'edit') && <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => setEdit(sel)}>Edit User (F2)</Button>}
         {can('s_users', 'delete') && <Button variant="soft-danger" icon={Trash2} disabled={!sel || sel.id === me.id} onClick={() => setDel(sel)}>Delete User (Del)</Button>}
@@ -99,8 +100,7 @@ export default function UsersPage() {
         <Button variant="outline" icon={Shield} onClick={() => navigate('/settings/roles')}>Roles &amp; Permissions (F6)</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Ctrl+N = new user · F2 / double-click = edit · Del = delete user · F6 = roles and permissions · F9 = print · Esc = exit</p>
+      </PageActions>
       <ConfirmDrawer open={!!del} onClose={() => setDel(null)} onConfirm={remove} title={`Delete user ${del?.username}?`} message="The user cannot log in any more. Entries made by the user stay in the books." confirmText="Delete" />
       <Drawer open={!!edit} onClose={() => setEdit(null)} icon={KeyRound} size="lg" bodyClassName="dense !px-4 !py-3" title={edit?.id ? `Edit ${edit.full_name}` : 'New user'}
         footer={<><Button variant="soft-danger" onClick={() => setEdit(null)}>Cancel (Esc)</Button><Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate({ ...v, id: edit.id, branch_ids: branches }))}>Save</Button></>}>

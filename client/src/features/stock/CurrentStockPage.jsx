@@ -8,6 +8,7 @@ import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { ExitButton, Line, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'age_months', label: 'Age', render: (r) => `${r.age_months} m`, print: (r) => `${r.age_months} m` },
@@ -102,13 +103,13 @@ export default function CurrentStockPage() {
           <div className="navy-gradient mt-auto flex items-baseline justify-between rounded-md px-3 py-2 text-white"><span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Outstanding</span><span className="num text-lg font-extrabold">{amount(s.out)}</span></div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F6)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('current-stock', cols, rows)}>Excel (Ctrl+E)</Button>
         <ExitButton />
-      </div>
+      </PageActions>
     </div>
   );
 }

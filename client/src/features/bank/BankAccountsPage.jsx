@@ -12,6 +12,7 @@ import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { amount, n } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const USED = { PLEDGE: 'Potali', OPERATING: 'Online money', BOTH: 'Both' };
 const cols = [{ key: 'code', label: 'Code' }, { key: 'bank_name', label: 'Bank Name' }, { key: 'bank_branch', label: 'Branch' }, { key: 'account_no', label: 'A/c No' }, { key: 'used', label: 'Used For' }, { key: 'open_count', label: 'Open', type: 'number' }, { key: 'outstanding', label: 'Outstanding', type: 'money' }];
@@ -74,7 +75,7 @@ export default function BankAccountsPage() {
           </tbody>
         </table>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="Ctrl+N = new bank · F2 / double-click = edit · Del = delete · F6 = bank pledge book · F9 = print · Esc = exit">
         {can('bank_accounts', 'add') && !isAllBranches && <Button variant="outline" icon={Plus} onClick={() => setEdit({ used_for: 'BOTH', is_active: 1 })}>New Bank (Ctrl+N)</Button>}
         {can('bank_accounts', 'edit') && <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => setEdit(sel)}>Edit (F2)</Button>}
         {can('bank_accounts', 'delete') && <Button variant="soft-danger" icon={Trash2} disabled={!sel} onClick={() => setDel(true)}>Delete (Del)</Button>}
@@ -84,8 +85,7 @@ export default function BankAccountsPage() {
         <Button variant="outline" icon={BookOpen} onClick={() => navigate('/bank/book')}>Bank Pledge Book (F6)</Button>
         <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Ctrl+N = new bank · F2 / double-click = edit · Del = delete · F6 = bank pledge book · F9 = print · Esc = exit</p>
+      </PageActions>
       <Drawer open={!!edit} onClose={() => setEdit(null)} size="md" icon={Building2} title={edit?.id ? `Edit bank · ${edit.bank_name}` : 'New bank'} subtitle="A ledger is created automatically for each bank account" footer={<Button variant="gold" onClick={save}>Save (F2)</Button>}>
         {edit && (
           <div className="grid grid-cols-2 gap-3">

@@ -14,6 +14,7 @@ import { exportCsv } from '@/lib/exporters';
 import { NoticeLetters } from '@/features/print/NoticeLetter';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'bill_no', label: 'Loan No' }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'age', label: 'Age' }, { key: 'customer_name', label: 'Customer' },
@@ -202,7 +203,7 @@ export default function AuctionPage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="F5 = show · Space or click = tick / untick loan · Ctrl+A = tick all · Ctrl+D = untick all · F9 = auction list · Ctrl+W = WhatsApp / SMS · Ctrl+E = Excel · F2 = clear · Esc = exit">
         <Button variant="outline" icon={CheckSquare} onClick={() => setSel(rows.map((r) => r.id))}>Select All (Ctrl+A)</Button>
         <Button variant="outline" icon={Eraser} onClick={() => setSel([])}>Clear All (Ctrl+D)</Button>
         <p className="mx-1 hidden text-[11px] text-ink-500 lg:block">Only ticked loans are printed. Released loans are never shown.</p>
@@ -211,8 +212,7 @@ export default function AuctionPage() {
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auction-list', cols, rows)}>Excel (Ctrl+E)</Button>
         <Button variant="soft-danger" icon={Eraser} onClick={clear}>Clear (F2)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">F5 = show · Space or click = tick / untick loan · Ctrl+A = tick all · Ctrl+D = untick all · F9 = auction list · Ctrl+W = WhatsApp / SMS · Ctrl+E = Excel · F2 = clear · Esc = exit</p>
+      </PageActions>
     </div>
   );
 }

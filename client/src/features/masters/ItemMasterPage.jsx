@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { ExitButton, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Item Master (desktop: frmItemCategoryList) - loan item categories and item names. */
 export default function ItemMasterPage() {
@@ -94,7 +95,7 @@ export default function ItemMasterPage() {
           </div>
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         <Button variant="soft-danger" icon={Trash2} disabled={!it.id || it.used_in_loans > 0} onClick={() => setDel(it)}>Delete (Del)</Button>
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
@@ -102,7 +103,7 @@ export default function ItemMasterPage() {
           <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('items', cols, rows)}>Excel (F10)</Button>
           <ExitButton />
         </div>
-      </div>
+      </PageActions>
       <ConfirmDrawer open={!!del} onClose={() => setDel(null)} title={`Delete ${del?.name}?`} onConfirm={async () => { try { await api.del(`/masters/items/${del.id}`); toast.success('Deleted'); setDel(null); setIt({ name: '', local_name: '', description: '' }); refresh(); } catch (e) { toast.error(e.message); } }} />
     </div>
   );

@@ -9,6 +9,7 @@ import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, date, n, weight, today } from '@/lib/format';
 import { ExitButton, Line, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'auction_date', label: 'Auctioned', type: 'date' },
@@ -89,13 +90,13 @@ export default function AuctionReportPage() {
           </>)}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F6)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auction-report', cols, rows)}>Excel (Ctrl+E)</Button>
         <ExitButton />
-      </div>
+      </PageActions>
     </div>
   );
 }

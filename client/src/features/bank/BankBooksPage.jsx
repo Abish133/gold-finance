@@ -9,6 +9,7 @@ import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const QUICK = { Today: () => [today(), today()], 'This Month': () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], 'A/c Year': () => [fyStart(), today()], 'All Years': () => ['', ''] };
@@ -149,7 +150,7 @@ export default function BankBooksPage({ mode = 'book' }) {
         </div>
       )}
       <Grid cols={cols} rows={rows} sel={sel} setSel={setSel} onOpen={(r) => r.id && setView(r.id)} />
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions>
         {!(mode === 'reports' && tab === 'month') && <Button variant="outline" icon={FileText} disabled={!sel?.id} onClick={() => setView(sel.id)}>Bank Loan Details (Enter)</Button>}
         <span className="flex-1" />
         <Button variant="outline" icon={RefreshCw} onClick={() => { list.refetch?.(); months.refetch?.(); }}>Refresh</Button>
@@ -157,8 +158,8 @@ export default function BankBooksPage({ mode = 'book' }) {
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv(title, cols, rows)}>Excel</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">{mode === 'reports' ? 'Ctrl+1 / 2 / 3 = report · ' : ''}F5 = load · Enter / double-click = bank loan details · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      </PageActions>
+      <PageActions keys={`${mode === 'reports' ? 'Ctrl+1 / 2 / 3 = report · ' : ''}F5 = load · Enter / double-click = bank loan details · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit`} />
       <Drawer open={!!view} onClose={() => setView(null)} size="lg" title={detail.data ? `Bank loan ${detail.data.pledge_no}` : 'Bank loan'} subtitle={detail.data && `${detail.data.bank_name} · ${date(detail.data.pledge_date)} · ${detail.data.status === 'OPEN' ? 'at bank' : `released ${date(detail.data.release_date)}`}`}>
         {detail.data && (
           <div className="space-y-3 text-sm">

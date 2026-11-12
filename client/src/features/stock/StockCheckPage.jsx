@@ -14,6 +14,7 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { LoanDetailsDrawer } from '@/features/loans/LoanDetailsDrawer';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'sno', label: 'S.No' }, { key: 'bill_no', label: 'Loan No' }, { key: 'manual_bill_no', label: 'Bill Book No' }, { key: 'loan_date', label: 'Pledge Date', type: 'date' },
@@ -189,7 +190,7 @@ export default function StockCheckPage() {
           </tr></tfoot>
         </table>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+      <PageActions keys="Enter = check loan · F3 = scan box · F4 = search · double-click = loan details · Del = un-check · F6 = mark missing · F7 = correction release · F8 = print preview · F9 = old loan entry · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit">
         {can('stock', 'delete') && <Button variant="soft-danger" icon={Plus} onClick={() => setAsk(true)}>New Check (Ctrl+N)</Button>}
         <Button variant="outline" icon={Undo2} disabled={!sel?.checked_at} onClick={uncheck}>Un-check (Del)</Button>
         <span className="flex-1" />
@@ -198,8 +199,7 @@ export default function StockCheckPage() {
         <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('stock-check', cols, rows)}>Excel (Ctrl+E)</Button>
         <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="hidden shrink-0 truncate px-1 text-[11px] text-ink-400 2xl:block">Enter = check loan · F3 = scan box · F4 = search · double-click = loan details · Del = un-check · F6 = mark missing · F7 = correction release · F8 = print preview · F9 = old loan entry · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      </PageActions>
       <ConfirmDrawer open={!!ask} onClose={() => setAsk(null)} onConfirm={newCheck} title="Start a new stock check?" confirmText="Start new check"
         message={`All ${checked.length + missing.length} scans of ${date(d)} will be cleared and the check starts again.`} />
       <Drawer open={!!note} onClose={() => setNote(null)} title={`Correction note · Loan #${note?.bill_no}`} icon={StickyNote} size="sm" footer={<Button variant="gold" onClick={saveNote}>Save note</Button>}>

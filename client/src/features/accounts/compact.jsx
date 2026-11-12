@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { PageActions } from '@/components/common/PageActions';
 
 /* Shared compact building blocks for the accounts screens (fit-screen, no page scroll). */
 
@@ -60,14 +61,9 @@ export function Bar({ className, children }) {
   return <div className={clsx('flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900', className)}>{children}</div>;
 }
 
-/** Bottom action strip. */
+/** Page actions: shown in the dark header bar; the hint text becomes the "Keys" list. */
 export function Actions({ hint, children }) {
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
-      {hint && <p className="hidden min-w-0 flex-1 truncate text-[11px] text-ink-400 lg:block" title={hint}>{hint}</p>}
-      <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>
-    </div>
-  );
+  return <PageActions keys={hint}>{children}</PageActions>;
 }
 
 const COLS = { 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-4', 5: 'sm:grid-cols-5' };
