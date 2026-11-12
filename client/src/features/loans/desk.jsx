@@ -155,6 +155,10 @@ export function useKeys(map, deps = []) {
   useEffect(() => {
     const h = (e) => {
       if (document.querySelector('[data-drawer]')) return; // drawers handle their own keys
+      // a plain character (+, -, letters) typed in a box belongs to the box, not to a shortcut
+      const t = e.target;
+      const typing = t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+      if (typing && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) return;
       const k = `${e.ctrlKey || e.metaKey ? 'ctrl+' : ''}${e.key.toLowerCase()}`;
       const fn = ref.current[k];
       if (fn) { e.preventDefault(); e.stopPropagation(); fn(e); }
@@ -795,12 +799,12 @@ export function PaymentsGrid({ transactions = [], loan, advanceMode = 'at loan',
   return (
     <div className={clsx('overflow-auto rounded-md border border-ink-200 dark:border-ink-800', className)}>
       <table className="w-full text-[13px]">
-        <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="px-3 py-1.5 text-left font-semibold">Date</th><th className="px-3 text-left font-semibold">Type</th><th className="px-3 text-right font-semibold">Months</th><th className="px-3 text-right font-semibold">Amount</th><th className="px-3 text-left font-semibold">Mode</th></tr></thead>
+        <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="px-3 py-1.5 text-left font-semibold">Date</th><th className="px-3 text-left font-semibold">Type</th><th className="px-3 text-right font-semibold">Period</th><th className="px-3 text-right font-semibold">Amount</th><th className="px-3 text-left font-semibold">Mode</th></tr></thead>
         <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
           {!rows.length && <tr><td colSpan={5} className="py-6 text-center text-[12px] text-ink-400">No payments yet</td></tr>}
           {rows.map((t) => (
-            <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}</td>
-              <td className="num px-3 text-right">{amount(t.total_amount)}</td><td className="px-3">{(t.payments || []).map((p) => (p.amount ? <span key={p.id || p.mode} className="mr-1 rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-700">{PAY_WORD[p.mode] || p.mode} ₹{amount(p.amount).replace('.00', '')}</span> : p.mode))}</td></tr>
+            <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.interest_days) ? `${n(t.interest_days)} day${n(t.interest_days) > 1 ? 's' : ''}` : n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}{n(t.interest_rate_used) > 0 && <span className="block text-[10px] text-amber-700 dark:text-amber-300">at {n(t.interest_rate_used)}%</span>}</td>
+              <td className="num px-3 text-right">{amount(t.total_amount)}{t.txn_type === 'PART_PAYMENT' && n(t.interest_amount) > 0 && <span className="block text-[10px] text-ink-500">Int {amount(t.interest_amount).replace('.00', '')} + Part {amount(Math.abs(n(t.principal_amount))).replace('.00', '')}</span>}</td><td className="px-3">{(t.payments || []).map((p) => (p.amount ? <span key={p.id || p.mode} className="mr-1 rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-700">{PAY_WORD[p.mode] || p.mode} ₹{amount(p.amount).replace('.00', '')}</span> : p.mode))}</td></tr>
           ))}
         </tbody>
       </table>

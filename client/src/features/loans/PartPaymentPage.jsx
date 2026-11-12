@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import { Button, Field, Input, Select } from '@/components/ui';
 import { useFetch } from '@/hooks/useApi';
 import { useLookups } from '@/hooks/useApi';
+import { useAuth } from '@/context/AuthContext';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, money, date, n, round2, today, weight } from '@/lib/format';
@@ -30,6 +31,9 @@ export default function PartPaymentPage() {
   const { data: settings } = useFetch('/admin/settings');
   const { printTxn, printerUi } = usePrinter();
   const approval = useApproval();
+  const { can, isAllBranches, setBranch, user } = useAuth();
+  const canInt = can('loan_interest', 'add');
+  const canPart = can('loan_part_payment', 'add');
   const [q, setQ] = useState('');
   // interest is charged by whole months, by days (7, 15 …) or as a typed amount; part amount can go on the same receipt
   const [mode, setMode] = useState('MONTHS');
@@ -45,7 +49,7 @@ export default function PartPaymentPage() {
   const l = full?.loan;
   const c = full?.calc;
 
-  const reset = () => { setMode('MONTHS'); setMonths(0); setDays(''); setIntAmt(''); setPartAmt(''); setRateText(''); setLines([]); };
+  const reset = () => { setMode('MONTHS'); setMonths(0); setDays(''); setIntAmt(''); setPartAmt(''); setRateText(''); setLines([]); setPay({ mode: 'CASH', amount: '', reference: '', bank_account_id: '' }); };
   useEffect(reset, [loanId]);
   // desktop: opens with all due months ready to pay
   useEffect(() => { if (c) { setMonths(Math.max(0, (c.monthsDue || 0) - (c.monthsPaid || 0))); setRateText(String(round2(c.rateType === 'MONTHLY' ? n(c.rate) : n(c.rate) / 12))); } }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -66,16 +70,25 @@ export default function PartPaymentPage() {
   const paidMonths = c?.monthsPaid || 0;
   const dueMonths = Math.max(0, (c?.monthsDue || 0) - paidMonths);
   // interest already paid, as whole months + the days left over (when earlier interest was taken by days)
-  const leftDays = sysPerDay > 0 && c ? Math.max(0, Math.round((n(c.interestPaid) - paidMonths * sysMonthly) / sysPerDay)) : 0;
+  // part of a month already paid (earlier interest by days / amount): counted when paying by months, so nothing is charged twice
+  const credit = c ? round2(Math.max(0, n(c.interestPaid) - paidMonths * sysMonthly)) : 0;
+  // days that part covers: from the last receipt's paid-up date (exact even when a typed rate was used), else by amount
+  const lastUpto = (full?.transactions || []).filter((t) => !t.is_void && n(t.interest_amount) > 0 && t.interest_upto).map((t) => dayjs(t.interest_upto)).sort((a, b) => a - b).at(-1);
+  const monthsEnd = l ? dayjs(l.loan_date).add(paidMonths, 'month') : null;
+  const leftDays = credit <= 0 ? 0 : lastUpto && monthsEnd && lastUpto.isAfter(monthsEnd) ? lastUpto.diff(monthsEnd, 'day') : sysPerDay > 0 ? Math.round(credit / sysPerDay) : 0;
   const paidBase = l ? dayjs(l.loan_date).add(paidMonths, 'month').add(leftDays, 'day') : null;
   const dayCount = Math.max(0, Math.floor(n(days)));
-  const interest = mode === 'MONTHS' ? round2(months * monthly) : mode === 'DAYS' ? Math.round(perDay * dayCount) : round2(Math.max(0, n(intAmt)));
-  const part = round2(Math.max(0, n(partAmt)));
+  const monthsCredit = mode === 'MONTHS' && months > 0 ? Math.min(credit, round2(months * monthly)) : 0;
+  const interest = !canInt ? 0 : mode === 'MONTHS' ? round2(months * monthly - monthsCredit) : mode === 'DAYS' ? Math.round(perDay * dayCount) : round2(Math.max(0, n(intAmt)));
+  const part = canPart ? round2(Math.max(0, n(partAmt))) : 0;
+  // why this loan cannot take an entry here (closed loan, All Branches selected)
+  const loanBranchName = l ? (user?.branches || []).find((b) => String(b.id) === String(l.branch_id))?.name || l.branch_name : '';
+  const blocked = !l ? null : l.status !== 'OPEN' ? `This loan is ${String(l.status).toLowerCase()} - nothing can be received on it.` : isAllBranches ? `You are viewing All Branches. Switch to ${loanBranchName || 'the loan\'s branch'} to receive on this loan.` : null;
   const total = round2(interest + part);
   const received = round2(lines.reduce((s, x) => s + n(x.amount), 0));
   const balance = round2(total - received);
-  const paidUpTo = !paidBase || interest <= 0 ? null
-    : (mode === 'MONTHS' ? paidBase.add(months, 'month') : paidBase.add(mode === 'DAYS' ? dayCount : (sysPerDay > 0 ? Math.round(interest / sysPerDay) : 0), 'day')).format('YYYY-MM-DD');
+  const paidUpTo = !paidBase || (interest <= 0 && !(mode === 'MONTHS' && months > 0)) ? null
+    : (mode === 'MONTHS' ? dayjs(l.loan_date).add(paidMonths + months, 'month') : paidBase.add(mode === 'DAYS' ? dayCount : (sysPerDay > 0 ? Math.round(interest / sysPerDay) : 0), 'day')).format('YYYY-MM-DD');
   const daysTooFew = mode === 'DAYS' && dayCount > 0 && minDays > 0 && dayCount < minDays;
   const strip = useMemo(() => Array.from({ length: Math.max(12, paidMonths + months + 1, c?.monthsDue || 0) }, (_, i) => {
     const m = i + 1;
@@ -98,7 +111,8 @@ export default function PartPaymentPage() {
     setLines([...lines, { ...pay, amount: a }]); setPay({ ...pay, amount: '', reference: '' });
   };
   const save = async (print) => {
-    if (!l || total <= 0) return toast.error('Enter interest (months / days / amount) or a part amount');
+    if (blocked) return toast.error(blocked);
+    if (!l || total <= 0) return toast.error(canInt && canPart ? 'Enter interest (months / days / amount) or a part amount' : canInt ? 'Enter the interest' : 'Enter the part amount');
     if (daysTooFew) return toast.error(`Interest must be charged for at least ${minDays} days`);
     if (c && part >= c.principalOutstanding) return toast.error('Part amount is the full outstanding or more - use Release');
     const payments = lines.length ? lines : [{ mode: 'CASH', amount: total }];
@@ -124,7 +138,7 @@ export default function PartPaymentPage() {
   };
   const MODES_INT = ['MONTHS', 'DAYS', 'AMOUNT'];
   useKeys({
-    f2: () => setMode((m) => MODES_INT[(MODES_INT.indexOf(m) + 1) % MODES_INT.length]), f3: () => document.getElementById('part-amount')?.focus(),
+    f2: () => canInt && setMode((m) => MODES_INT[(MODES_INT.indexOf(m) + 1) % MODES_INT.length]), f3: () => document.getElementById('part-amount')?.focus(),
     '+': () => mode === 'MONTHS' && setMonths((m) => m + 1), '-': () => mode === 'MONTHS' && setMonths((m) => Math.max(0, m - 1)),
     f4: addLine, f5: () => { setSp({}); setQ(''); }, f10: () => save(true), escape: () => navigate('/'),
   }, [l, months, mode, days, intAmt, partAmt, rateText, lines, pay, total]);
@@ -219,19 +233,27 @@ export default function PartPaymentPage() {
 
         <div className="desk-col">
         <Panel title="Receive" bodyClassName="flex flex-col gap-2 p-3">
+          {blocked && (
+            <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[12px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              <span className="flex-1">{blocked}</span>
+              {l?.status === 'OPEN' && isAllBranches && <Button size="sm" variant="outline" onClick={() => { setBranch(l.branch_id); setSp({ loan: l.id }); }}>Switch to {loanBranchName || 'branch'}</Button>}
+            </div>
+          )}
           {/* ---------- interest: by months, days or a typed amount, at the loan rate or a typed rate */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">Interest</span>
             {c?.interestDue > 0 && <span className="truncate text-[11px] text-amber-700 dark:text-amber-300">due {money(c.interestDue)}</span>}
             <span className="flex-1" />
-            <div className="grid shrink-0 grid-cols-3" role="tablist" aria-label="Charge interest by" title="F2 changes">
+            {canInt && <div className="grid shrink-0 grid-cols-3" role="tablist" aria-label="Charge interest by" title="F2 changes">
               {[['MONTHS', 'Months'], ['DAYS', 'Days'], ['AMOUNT', 'Amount']].map(([k, t]) => (
                 <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
                   className={clsx('-ml-px h-7 border px-2.5 text-[12px] font-bold first:ml-0 first:rounded-l-md last:rounded-r-md',
                     mode === k ? 'relative z-10 border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>{t}</button>
               ))}
-            </div>
+            </div>}
           </div>
+          {!canInt && <p className="rounded-md bg-ink-50 px-2.5 py-1.5 text-[12px] text-ink-500 dark:bg-ink-800">You can take the part amount only - your role cannot receive interest.</p>}
+          {canInt && <>
           {/* one row: count (months / days) or amount + rate % per month */}
           <div className={clsx('grid gap-2', mode === 'AMOUNT' ? 'grid-cols-1' : 'grid-cols-[1fr_108px]')}>
             {mode === 'MONTHS' && (
@@ -290,17 +312,20 @@ export default function PartPaymentPage() {
             </p>
           )}
           <div className="rounded-md border border-ink-200 px-2.5 py-0.5 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">
-            <Line label={mode === 'AMOUNT' ? 'Interest' : mode === 'DAYS' ? `${dayCount} days × ₹${amount(perDay)} a day` : `${months} × ₹${amount(monthly)} a month`} value={amount(interest)} bold />
+            {monthsCredit > 0 && <Line label={`${months} × ₹${amount(monthly)} a month`} value={amount(round2(months * monthly))} tone="text-ink-500" />}
+            {monthsCredit > 0 && <Line label={`Less part of a month already paid (${leftDays} days)`} value={`− ${amount(monthsCredit)}`} tone="text-ink-500" />}
+            <Line label={monthsCredit > 0 ? 'Interest now' : mode === 'AMOUNT' ? 'Interest' : mode === 'DAYS' ? `${dayCount} days × ₹${amount(perDay)} a day` : `${months} × ₹${amount(monthly)} a month`} value={amount(interest)} bold />
             <Line label="Paid up to (after save)" value={paidUpTo ? date(paidUpTo) : '-'} tone="text-ink-500" />
           </div>
+          </>}
 
           {/* ---------- part amount: optional, on the same receipt */}
           <div className="mt-0.5 grid grid-cols-[1fr_140px] items-center gap-2">
             <div className="min-w-0 leading-tight">
               <p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">Part amount <span className="font-normal normal-case text-ink-400">· F3</span></p>
-              <p className="truncate text-[11px] text-ink-500">{part > 0 && c ? <>Outstanding {money(c.principalOutstanding)} → <b className="text-navy-900 dark:text-white">{money(Math.max(0, c.principalOutstanding - part))}</b></> : 'optional · same receipt'}</p>
+              <p className="truncate text-[11px] text-ink-500">{!canPart ? 'your role cannot take part amounts' : part > 0 && c ? <>Outstanding {money(c.principalOutstanding)} → <b className="text-navy-900 dark:text-white">{money(Math.max(0, c.principalOutstanding - part))}</b></> : 'optional · same receipt'}</p>
             </div>
-            <Input id="part-amount" type="number" min="0" aria-label="Part amount received" className="!h-9 text-right text-[15px] font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} placeholder="0" />
+            <Input id="part-amount" type="number" min="0" aria-label="Part amount received" disabled={!canPart} className="!h-9 text-right text-[15px] font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} placeholder="0" />
           </div>
           <div className="navy-gradient rounded-md px-3 py-2 text-white">
             <div className="flex items-baseline justify-between">
@@ -315,7 +340,9 @@ export default function PartPaymentPage() {
             <Field label="Reference / UTR"><Input value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} /></Field>
             <Button className="h-9" onClick={addLine}>Add</Button>
           </div>
-          {pay.mode !== 'CASH' && <Select value={pay.bank_account_id} onChange={(e) => setPay({ ...pay, bank_account_id: e.target.value })} placeholder="Bank account" options={banks} />}
+          {pay.mode !== 'CASH' && (banks.length
+            ? <Select value={pay.bank_account_id} onChange={(e) => setPay({ ...pay, bank_account_id: e.target.value })} placeholder="Bank account" aria-label="Bank account" options={banks} />
+            : <p className="rounded-md bg-amber-50 px-2.5 py-1.5 text-[12px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">No bank account in this branch. Add one in <b>Bank → Bank Accounts</b> to take {MODES.find(([v]) => v === pay.mode)?.[1]} payments.</p>)}
           <div className="overflow-hidden rounded-md border border-ink-200 dark:border-ink-800">
             <table className="w-full text-[13px]"><thead className="bg-ink-50 text-[10px] tracking-wider text-ink-500 uppercase dark:bg-ink-800"><tr><th className="px-3 py-1 text-left font-semibold">Mode</th><th className="px-3 text-right font-semibold">Amount</th><th className="px-3 text-left font-semibold">Reference</th><th /></tr></thead>
               <tbody>{lines.map((x, i) => <tr key={i}><td className="px-3 py-1">{x.mode}</td><td className="num px-3 text-right">{amount(x.amount)}</td><td className="px-3">{x.reference}</td><td><button type="button" onClick={() => setLines(lines.filter((_, k) => k !== i))}><Trash2 className="size-4 text-rose-500" /></button></td></tr>)}
@@ -323,10 +350,10 @@ export default function PartPaymentPage() {
           </div>
           <div className="flex items-center justify-between text-[13px] font-bold"><span>Balance</span><span className={clsx('num', lines.length && balance !== 0 ? 'text-rose-600' : 'text-emerald-600')}>{money(lines.length ? balance : 0)} {(!lines.length || balance === 0) && '✓'}</span></div>
           <div className="mt-auto space-y-1.5 pt-1">
-            <GoldButton icon={Printer} loading={saving} onClick={() => save(true)}>Save &amp; Print Receipt (F10)</GoldButton>
+            <GoldButton icon={Printer} loading={saving} disabled={!!blocked} onClick={() => save(true)}>Save &amp; Print Receipt (F10)</GoldButton>
             <div className="grid grid-cols-3 gap-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[12px]">
               <Button variant="outline" icon={RefreshCw} onClick={() => { setSp({}); setQ(''); }}>Refresh (F5)</Button>
-              <Button variant="outline" icon={Save} loading={saving} onClick={() => save(false)}>Save only</Button>
+              <Button variant="outline" icon={Save} loading={saving} disabled={!!blocked} onClick={() => save(false)}>Save only</Button>
               <Button variant="soft-danger" icon={X} onClick={() => navigate('/')}>Close (Esc)</Button>
             </div>
           </div>

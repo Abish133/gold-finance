@@ -21,7 +21,7 @@ const ACTIONS = [
   { label: 'Release', set: 'HOME_BTN_RELEASE', hint: 'Close / settle a loan', icon: Check, color: 'text-emerald-600', path: '/loans/release', screen: 'loan_release', hot: 'F2' },
   { label: 'Customers', set: 'HOME_BTN_CUSTOMERS', hint: 'Search / edit customers', icon: User, color: 'text-navy-600', path: '/customers', screen: 'customers', hot: 'F3' },
   { label: 'Day End', set: 'HOME_BTN_DAY_END', hint: 'Check cash and close the day', icon: CalendarCheck, color: 'text-navy-600', path: '/accounts/day-close', screen: 'day_close', hot: 'F4' },
-  { label: 'Part Payment', set: 'HOME_BTN_PART_PAYMENT', hint: 'Interest / part amount', icon: Coins, color: 'text-gold-600', path: '/loans/part-payment', screen: 'loan_interest', hot: 'F5' },
+  { label: 'Part Payment', set: 'HOME_BTN_PART_PAYMENT', hint: 'Interest / part amount', icon: Coins, color: 'text-gold-600', path: '/loans/part-payment', screen: ['loan_interest', 'loan_part_payment'], hot: 'F5' },
   { label: 'Voucher Entry', set: 'HOME_BTN_VOUCHER', hint: 'Rent, salary, bills', icon: Receipt, color: 'text-rose-700', path: '/accounts/vouchers', screen: 'acc_voucher', hot: 'F6' },
   { label: 'Day Report', set: 'HOME_BTN_DAY_REPORT', hint: 'Today at a glance', icon: BarChart3, color: 'text-teal-600', path: '/accounts/day-report', screen: 'acc_cashbook', hot: 'F7' },
   { label: 'Duplicate Bill', set: 'HOME_BTN_DUPLICATE', hint: 'Reprint a receipt', icon: Printer, color: 'text-ink-600', path: '/loans/duplicate', screen: 'loan_print', hot: 'F8' },

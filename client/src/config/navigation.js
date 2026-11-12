@@ -16,7 +16,7 @@ export const MENUS = [
     items: [
       { label: 'New Loan', hint: 'Give a new loan', path: '/loans/new', icon: FilePlus2, screen: 'loan_new', hot: 'F1' },
       { label: 'Release Loan', hint: 'Close / settle a loan', path: '/loans/release', icon: Unlock, screen: 'loan_release', hot: 'F2' },
-      { label: 'Part Payment', hint: 'Interest or part amount', path: '/loans/part-payment', icon: Wallet, screen: 'loan_interest', hot: 'F5' },
+      { label: 'Part Payment', hint: 'Interest or part amount', path: '/loans/part-payment', icon: Wallet, screen: ['loan_interest', 'loan_part_payment'], hot: 'F5' },
       { label: 'Top-up Loan', hint: 'Extra amount on same loan', path: '/loans/topup', icon: ArrowUpCircle, screen: 'loan_topup' },
       { label: 'Re-loan', hint: 'Release old, new loan in one step', path: '/loans/reloan', icon: RefreshCcw, screen: 'loan_renewal' },
       { label: 'Interest Calculator', hint: 'Interest due on open loans / quote', path: '/loans/calculator', icon: Calculator, screen: 'interest_calculator' },

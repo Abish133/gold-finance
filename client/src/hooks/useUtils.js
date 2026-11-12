@@ -18,6 +18,8 @@ export function useHotkey(combo, handler, deps = []) {
     const onKey = (e) => {
       const modOk = !mod || (mod === 'ctrl' && (e.ctrlKey || e.metaKey)) || (mod === 'alt' && e.altKey) || (mod === 'shift' && e.shiftKey);
       if (!modOk || e.key.toLowerCase() !== key) return;
+      // the screen already used this key (e.g. F2 / F3 on Part Payment) - don't also jump to another screen
+      if (e.defaultPrevented) return;
       // function keys belong to the open drawer (e.g. F2 = save in a form), not to the global shortcuts
       if (!mod && document.querySelector('[data-drawer]')) return;
       e.preventDefault(); ref.current(e);

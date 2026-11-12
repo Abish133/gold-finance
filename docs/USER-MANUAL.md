@@ -491,6 +491,12 @@ Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
 - Interest receipts are taken off at release (*Interest already paid*).
 - **F5** on this screen clears it for the next customer.
 - The receipt shows *Interest Months* (with from–to dates) or *Interest Days* (with the paid-up date), the *Interest Rate* when one was typed, interest received, part amount received, outstanding after it, and the payment modes.
+- Paying **by months after an earlier payment by days / amount**: the part of the month already paid is taken off (*Less part of a month already paid*), so nothing is charged twice. *All due* always equals the interest due.
+- **Payment history** shows the period (months or days), the typed rate, and *Int + Part* when both were taken on one receipt.
+- **Who can do what**: a role with only *Interest Receipt* takes interest only (part amount box is locked); a role with only *Part Payment* takes the part amount only. The screen opens for either.
+- A **closed** loan, or **All Branches** selected, cannot take an entry - the panel says why (with a *Switch to branch* button) and Save is locked.
+- UPI / Bank / Card / Cheque need a bank account of the branch; if there is none the panel says so (add it in **Bank → Bank Accounts**).
+- **+ / −** change the months only when you are not typing in a box (a "-" in a UTR number is typed normally).
 
 ---
 

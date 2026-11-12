@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import dayjs from 'dayjs';
 import { query, queryOne } from '#config/db.js';
-import { permit, permitAny } from '#middleware/auth.js';
+import { permit, permitAny, can } from '#middleware/auth.js';
 import { requireBranch } from '#middleware/branch.js';
 import { upload, publicPath } from '#middleware/upload.js';
 import { ApiError } from '#utils/ApiError.js';
@@ -188,6 +188,8 @@ router.post('/:id/interest', permit('loan_interest', 'add'), requireBranch, asyn
 });
 
 router.post('/:id/part-payment', permit('loan_part_payment', 'add'), requireBranch, async (req, res) => {
+  // interest taken on the same receipt needs the Interest Receipt permission too
+  if (num(req.body?.interest_amount) > 0 && !can(req.user, 'loan_interest', 'add')) throw ApiError.forbidden('You are not allowed to receive interest - take the part amount only');
   const t = await svc.partPayment(req, req.params.id, req.body);
   res.status(201).json({ data: { transaction: t, loan: await svc.getLoanFull(req, req.params.id) } });
 });
