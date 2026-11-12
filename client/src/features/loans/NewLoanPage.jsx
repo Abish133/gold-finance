@@ -5,7 +5,7 @@ import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, 
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Drawer, ConfirmDrawer, Field, Input, Select, Spinner, Avatar, Badge } from '@/components/ui';
+import { Button, Drawer, ConfirmDrawer, Field, Input, Select, Spinner, Avatar, Badge, Modal } from '@/components/ui';
 import { LoanEstimate } from '@/features/print/LoanEstimate';
 import { CustomerFormDrawer } from '@/features/customers/CustomerFormDrawer';
 import { useLookups, useSettings, useFetch, useList } from '@/hooks/useApi';
@@ -156,14 +156,14 @@ function BillBookDrawer({ open, first, initial, onClose, onOk }) {
   useEffect(() => { if (!open || !dno) return setChk(null); api.get('/loans/bill-book-free', { no: dno }).then((r) => setChk(r.data)).catch(() => setChk(null)); }, [dno, open]);
   const ok = () => { if (!no.trim()) return toast.error('Enter bill book number'); if (chk && !chk.free) return toast.error(`Already used on loan ${chk.used_by}`); onOk(no.trim()); };
   return (
-    <Drawer open={open} onClose={onClose} size="sm" icon={BookOpen} title="Manual Bill Book No" subtitle={first ? 'First loan - enter the starting number of your paper bill book' : 'Paper bill book number for this loan'}
+    <Modal open={open} onClose={onClose} size="sm" icon={BookOpen} title="Manual Bill Book No" subtitle={first ? 'First loan - enter the starting number of your paper bill book' : 'Paper bill book number for this loan'}
       footer={<><Button variant="soft-danger" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" onClick={ok}>OK (Enter)</Button></>}>
       <Field label={first ? 'Bill book starting no.' : 'Bill book no.'}>
         <Input autoFocus className="h-14 bg-gold-50 text-center text-2xl font-bold" value={no} onChange={(e) => setNo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ok()} />
       </Field>
       {chk && <p className={clsx('mt-2 text-sm font-semibold', chk.free ? 'text-emerald-700' : 'text-rose-600')}>{chk.free ? 'Free - can be used' : `Already used on loan ${chk.used_by}`}</p>}
       {first && <p className="mt-1 text-xs text-ink-500">No bill book number used yet. Next loans continue from this number automatically.</p>}
-    </Drawer>
+    </Modal>
   );
 }
 

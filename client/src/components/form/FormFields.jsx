@@ -2,6 +2,7 @@ import { Controller } from 'react-hook-form';
 import clsx from 'clsx';
 import { Field, Input, Select, Textarea, Switch } from '@/components/ui';
 import { useList } from '@/hooks/useApi';
+import { PasswordHelp } from '@/components/common/PasswordHelp';
 
 /** Select whose options come from an API list endpoint ({ all: 1 }). */
 export function AsyncSelect({ endpoint, params, labelKey = 'name', valueKey = 'id', format, ...props }) {
@@ -55,6 +56,14 @@ export function FormFields({ fields, form, cols = 2, dense = false, className })
             break;
           default:
             input = <Input type={f.type || 'text'} step={f.step} suffix={f.suffix} prefix={f.prefix ?? ico} maxLength={f.maxLength} {...register(f.name, rules)} placeholder={f.placeholder} autoComplete="off" />;
+        }
+        if (f.suggest) {
+          return (
+            <div key={f.name} className={span}>
+              <Field label={f.label} required={f.required} error={err} hint={f.hint}>{input}</Field>
+              <PasswordHelp value={values[f.name]} onUse={(p) => form.setValue(f.name, p, { shouldDirty: true, shouldValidate: true })} />
+            </div>
+          );
         }
         return <Field key={f.name} label={f.label} required={f.required} error={err} hint={f.hint} className={span}>{input}</Field>;
       })}

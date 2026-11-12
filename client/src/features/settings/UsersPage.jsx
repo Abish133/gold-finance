@@ -106,7 +106,7 @@ export default function UsersPage() {
         footer={<><Button variant="soft-danger" onClick={() => setEdit(null)}>Cancel (Esc)</Button><Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate({ ...v, id: edit.id, branch_ids: branches }))}>Save</Button></>}>
         <FormFields dense form={form} fields={[
           { name: 'full_name', label: 'Full name', required: true }, { name: 'username', label: 'Username', required: true },
-          { name: 'password', label: edit?.id ? 'New password (leave blank to keep)' : 'Password', type: 'password', required: !edit?.id },
+          { name: 'password', label: edit?.id ? 'New password (leave blank to keep)' : 'Password', type: 'password', suggest: true, required: !edit?.id },
           { name: 'role_id', label: 'Role', type: 'select', required: true, options: (roles.data?.data || []).filter((r) => r.is_active).map((r) => ({ value: r.id, label: r.name })) },
           { name: 'phone', label: 'Mobile' }, { name: 'email', label: 'Email' },
           { name: 'is_active', label: 'Active', type: 'switch' },

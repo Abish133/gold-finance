@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { ScanLine, LogOut, Plus, Search, ChevronDown, Hash, Scale, MinusCircle, Weight, MessageSquare, Gem, Coins, IndianRupee, Tag, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
-import { Avatar, Badge, Button, Drawer, Field, Input, Select, Spinner, StatusBadge, DataTable } from '@/components/ui';
+import { Avatar, Badge, Button, Drawer, Field, Input, Select, Spinner, StatusBadge, DataTable, Modal } from '@/components/ui';
 import { compressImage } from '@/components/ui/ImageCapture';
 import { PhotoBox } from '@/components/common/PhotoBox';
 import { ImagePreview } from '@/components/common/ImagePreview';
@@ -600,9 +600,9 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
         <Field label="Value"><Input prefix={<IndianRupee className="size-3.5" />} readOnly value={c.value ? amount(c.value) : ''} className="bg-ink-50" /></Field>
         <Button onClick={add} className="h-10">{editing ? 'Update item' : 'Add item'}</Button>
       </div>
-      <Drawer open={newName !== null} onClose={() => setNewName(null)} size="sm" title="New item name" footer={<Button variant="gold" onClick={saveNew}>Save item</Button>}>
+      <Modal open={newName !== null} onClose={() => setNewName(null)} size="sm" title="New item name" footer={<Button variant="gold" onClick={saveNew}>Save item</Button>}>
         <Field label="Item name"><Input prefix={<Tag className="size-3.5" />} autoFocus value={newName || ''} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNew()} /></Field>
-      </Drawer>
+      </Modal>
     </div>
   );
 }
@@ -699,14 +699,14 @@ export function useApproval() {
     p.fn(cred).then((r) => { setPending(null); p.resolve(r); }).catch((e) => toast.error(e.message));
   };
   const ui = (
-    <Drawer open={!!pending} onClose={() => { pending?.reject(new Error('Approval cancelled')); setPending(null); }} size="sm" icon={ShieldCheck} title="Admin approval" subtitle={pending?.message}
+    <Modal tone="amber" open={!!pending} onClose={() => { pending?.reject(new Error('Approval cancelled')); setPending(null); }} size="sm" icon={ShieldCheck} title="Admin approval" subtitle={pending?.message}
       footer={<Button variant="gold" onClick={approve}>Approve</Button>}>
       <div className="space-y-3">
         <p className="text-sm text-ink-600">Ask the manager / admin to enter their login to approve.</p>
         <Field label="Approver username"><Input autoFocus value={cred.username} onChange={(e) => setCred({ ...cred, username: e.target.value })} /></Field>
         <Field label="Password"><Input type="password" value={cred.password} onChange={(e) => setCred({ ...cred, password: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && approve()} /></Field>
       </div>
-    </Drawer>
+    </Modal>
   );
   return { run, ui };
 }

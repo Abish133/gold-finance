@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { ResourcePage } from '@/components/common/ResourcePage';
-import { Avatar, Button, DataTable, Drawer, Field, Input, Segmented, Select, Tabs } from '@/components/ui';
+import { Avatar, Button, DataTable, Drawer, Field, Input, Segmented, Select, Tabs, Modal } from '@/components/ui';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
 import { DetailsSheet } from '@/features/print/LoanEstimate';
 import { useFetch, useList, useCompany } from '@/hooks/useApi';
@@ -120,14 +120,14 @@ export default function EmployeesPage() {
         ]}
       />
       <EmployeeFile emp={file} onClose={() => setFile(null)} company={company} canEdit={can('employees', 'edit')} />
-      <Drawer open={!!login} onClose={() => setLogin(null)} size="sm" icon={KeyRound} title={`Create login · ${login?.name}`} footer={<Button variant="gold" onClick={createLogin}>Create login (F6)</Button>}>
+      <Modal open={!!login} onClose={() => setLogin(null)} size="md" icon={KeyRound} title={`Create login · ${login?.name}`} footer={<Button variant="gold" onClick={createLogin}>Create login (F6)</Button>}>
         <div className="space-y-3">
           <Field label="Username"><Input value={cred.username} onChange={(e) => setCred({ ...cred, username: e.target.value })} /></Field>
           <Field label="Password" hint="Minimum 6 characters"><Input type="password" value={cred.password} onChange={(e) => setCred({ ...cred, password: e.target.value })} /></Field>
           <Field label="Role"><Select value={cred.role_id} onChange={(e) => setCred({ ...cred, role_id: e.target.value })} placeholder="Select role" options={(roles.data?.data || []).filter((r) => r.is_active && !r.is_system).map((r) => ({ value: r.id, label: r.name }))} /></Field>
           <p className="text-xs text-ink-500">The login gets access to the employee's branch. Change branches later in Settings → Users.</p>
         </div>
-      </Drawer>
+      </Modal>
     </div>
   );
 }

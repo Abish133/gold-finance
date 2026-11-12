@@ -5,7 +5,7 @@ import { Plus, Undo2, Unlock, RefreshCw, Printer, FileDown, FileSpreadsheet, Log
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, ConfirmDrawer, Drawer, Field, Input, Textarea } from '@/components/ui';
+import { Button, ConfirmDrawer, Field, Input, Textarea, Modal } from '@/components/ui';
 import { useFetch, useCompany } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -202,9 +202,9 @@ export default function StockCheckPage() {
       </PageActions>
       <ConfirmDrawer open={!!ask} onClose={() => setAsk(null)} onConfirm={newCheck} title="Start a new stock check?" confirmText="Start new check"
         message={`All ${checked.length + missing.length} scans of ${date(d)} will be cleared and the check starts again.`} />
-      <Drawer open={!!note} onClose={() => setNote(null)} title={`Correction note · Loan #${note?.bill_no}`} icon={StickyNote} size="sm" footer={<Button variant="gold" onClick={saveNote}>Save note</Button>}>
+      <Modal open={!!note} onClose={() => setNote(null)} title={`Correction note · Loan #${note?.bill_no}`} icon={StickyNote} size="md" footer={<Button variant="gold" onClick={saveNote}>Save note</Button>}>
         {note && <Field label="What was found / corrected" hint="e.g. seal broken - repacked, item count differs"><Textarea rows={4} value={note.remarks} onChange={(e) => setNote({ ...note, remarks: e.target.value })} /></Field>}
-      </Drawer>
+      </Modal>
       <LoanDetailsDrawer full={details} onClose={() => setDetails(null)} />
     </div>
   );

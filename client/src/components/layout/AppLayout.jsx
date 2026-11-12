@@ -8,11 +8,12 @@ import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch, useAction, useCompany } from '@/hooks/useApi';
 import { useHotkey } from '@/hooks/useUtils';
-import { Button, Drawer, Spinner, Field, Input, Badge } from '@/components/ui';
+import { Button, Drawer, Spinner, Field, Input, Badge, Modal } from '@/components/ui';
 import { GlobalSearch } from './GlobalSearch';
 import { amount, setWorkDate, today } from '@/lib/format';
 import { addRecentScreen, recentScreens } from '@/lib/recent';
 import { appZoom, isDarkMode, loadAppearance, saveAppearance, syncAppearance } from '@/lib/appearance';
+import { PasswordHelp } from '@/components/common/PasswordHelp';
 
 /* light / dark lives in the Appearance settings (also "follow Windows") - the header button switches it */
 const useTheme = () => {
@@ -503,21 +504,27 @@ function ProfileDrawer({ open, onClose }) {
   const form = useForm();
   const change = useAction({ url: '/auth/change-password', success: 'Password changed' });
   return (
-    <Drawer open={open} onClose={onClose} title={user.full_name} subtitle={`@${user.username} · ${user.role_name}`} icon={KeyRound} size="sm"
+    <Modal open={open} onClose={onClose} title={user.full_name} subtitle={`@${user.username} · ${user.role_name}`} icon={KeyRound} size="md"
       footer={<Button variant="danger" icon={LogOut} onClick={logout}>Sign out</Button>}>
-      <form className="space-y-4" onSubmit={form.handleSubmit((v) => change.mutate({ body: v }, { onSuccess: () => form.reset() }))}>
-        <h4 className="text-sm font-semibold">Change password</h4>
-        <Field label="Current password"><Input type="password" {...form.register('currentPassword', { required: true })} /></Field>
-        <Field label="New password" hint="Minimum 6 characters"><Input type="password" {...form.register('newPassword', { required: true, minLength: 6 })} /></Field>
-        <Button type="submit" loading={change.isPending}>Update password</Button>
+      <form className="space-y-3" onSubmit={form.handleSubmit((v) => change.mutate({ body: { currentPassword: v.currentPassword, newPassword: v.newPassword } }, { onSuccess: () => form.reset() }))}>
+        <h4 className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">Change password</h4>
+        <Field label="Current password" error={form.formState.errors.currentPassword && 'Enter your current password'}><Input type="password" autoComplete="current-password" {...form.register('currentPassword', { required: true })} /></Field>
+        <div>
+          <Field label="New password" error={form.formState.errors.newPassword && 'At least 6 characters'}><Input type="password" autoComplete="new-password" {...form.register('newPassword', { required: true, minLength: 6 })} /></Field>
+          <PasswordHelp value={form.watch('newPassword')} onUse={(p) => { form.setValue('newPassword', p, { shouldDirty: true, shouldValidate: true }); form.setValue('confirmPassword', p, { shouldValidate: true }); }} />
+        </div>
+        <Field label="Confirm new password" error={form.formState.errors.confirmPassword?.message}>
+          <Input type="password" autoComplete="new-password" {...form.register('confirmPassword', { required: 'Type the new password again', validate: (v) => v === form.getValues('newPassword') || 'Does not match the new password' })} />
+        </Field>
+        <Button type="submit" variant="gold" className="w-full" loading={change.isPending}>Update password</Button>
       </form>
-    </Drawer>
+    </Modal>
   );
 }
 
 function ShortcutsDrawer({ open, onClose }) {
   return (
-    <Drawer open={open} onClose={onClose} title="Keyboard shortcuts" icon={Keyboard} size="sm">
+    <Modal open={open} onClose={onClose} title="Keyboard shortcuts" icon={Keyboard} size="md">
       <div className="overflow-hidden rounded-md border border-ink-200 dark:border-ink-800">
         {[...HOTKEYS.map((h) => [h.key, h.label]), ['Ctrl + K', 'Search loans & customers'], ['Esc', 'Close drawer / menu']].map(([k, l]) => (
           <div key={k} className="flex items-center gap-3 border-b border-ink-100 px-3 py-1.5 text-[13px] last:border-0 dark:border-ink-800">
@@ -525,14 +532,14 @@ function ShortcutsDrawer({ open, onClose }) {
           </div>
         ))}
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 
 function AboutDrawer({ open, onClose }) {
   const { data: company } = useCompany();
   return (
-    <Drawer open={open} onClose={onClose} title="About" icon={Info} size="sm">
+    <Modal open={open} onClose={onClose} title="About" icon={Info} size="sm">
       <div className="flex items-center gap-3 rounded-md border border-ink-200 p-3 dark:border-ink-800">
         <span className="grid size-12 shrink-0 place-items-center rounded-md bg-navy-900 text-xl font-bold text-white dark:bg-white dark:text-navy-900">{(company?.name || 'G').replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</span>
         <div className="min-w-0"><p className="truncate text-lg font-bold text-navy-900 dark:text-white">{company?.name || 'Gold Finance'}</p><p className="text-[12px] text-ink-500">A complete pawn broker solution</p></div>
@@ -542,7 +549,7 @@ function AboutDrawer({ open, onClose }) {
           <div key={k} className="flex justify-between gap-3 border-b border-ink-100 px-3 py-1.5 last:border-0 dark:border-ink-800"><span className="text-ink-500">{k}</span><b className="text-right">{v}</b></div>
         ))}
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 
@@ -578,10 +585,10 @@ export function AppLayout() {
       <ProfileDrawer open={panel === 'profile'} onClose={() => setPanel(null)} />
       <ShortcutsDrawer open={panel === 'shortcuts'} onClose={() => setPanel(null)} />
       <AboutDrawer open={panel === 'about'} onClose={() => setPanel(null)} />
-      <Drawer open={panel === 'exit'} onClose={() => setPanel(null)} title="Exit" icon={Power} size="sm"
+      <Modal tone="red" open={panel === 'exit'} onClose={() => setPanel(null)} title="Exit" icon={Power} size="sm"
         footer={<><Button variant="outline" onClick={() => setPanel(null)}>Stay</Button><Button variant="danger" icon={LogOut} onClick={logout}>Sign out</Button></>}>
         <p className="text-sm text-ink-600 dark:text-ink-300">Sign out of this computer? Unsaved entries on the open screen will be lost.</p>
-      </Drawer>
+      </Modal>
     </div>
   );
 }

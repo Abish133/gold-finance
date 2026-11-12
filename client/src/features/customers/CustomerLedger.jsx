@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, FileDown, ArrowLeft, Search, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
-import { Button, Drawer, Field, Input, Spinner, Textarea } from '@/components/ui';
+import { Button, Drawer, Field, Input, Spinner, Textarea, Modal } from '@/components/ui';
 import { ImagePreview } from '@/components/common/ImagePreview';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
 import { CustomerFormDrawer } from '@/features/customers/CustomerFormDrawer';
@@ -186,10 +186,10 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
       )}
       <CustomerFormDrawer open={panel === 'edit'} customer={c} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); refetch(); }} />
       <Drawer open={panel === 'docs'} onClose={() => setPanel(null)} size="lg" icon={FolderOpen} title={`Documents · ${c?.name || ''}`}>{c && <DocumentsPanel owner="customer" id={c.id} canEdit={can('customers', 'edit')} />}</Drawer>
-      <Drawer open={panel === 'block'} onClose={() => setPanel(null)} size="sm" icon={Ban} title={c?.status === 'BLOCKED' ? 'Unblock customer' : 'Block customer'}
+      <Modal tone="red" open={panel === 'block'} onClose={() => setPanel(null)} size="sm" icon={Ban} title={c?.status === 'BLOCKED' ? 'Unblock customer' : 'Block customer'}
         footer={<Button variant={c?.status === 'BLOCKED' ? 'primary' : 'danger'} onClick={block}>{c?.status === 'BLOCKED' ? 'Unblock' : 'Block'}</Button>}>
         {c?.status !== 'BLOCKED' ? <Field label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></Field> : <p className="text-sm">New loans will be allowed again for {c?.name}.</p>}
-      </Drawer>
+      </Modal>
     </Drawer>
   );
 }

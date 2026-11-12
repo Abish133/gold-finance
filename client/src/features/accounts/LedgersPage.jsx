@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, BookOpen, RefreshCw, FileDown, FileSpreadsheet, Printer, Lock, Scale, Layers, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
-import { Badge, Button, ConfirmDrawer, Drawer, Field, Input, Select, Switch } from '@/components/ui';
+import { Badge, Button, ConfirmDrawer, Field, Input, Select, Switch, Modal } from '@/components/ui';
 import { useFetch, useCompany } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -112,7 +112,7 @@ export default function LedgersPage() {
           </Actions>
         </div>
       </div>
-      <Drawer open={!!edit} onClose={() => setEdit(null)} size="sm" icon={Scale} title={edit?.id ? `Edit A/c ${edit.id}` : 'New account'} footer={<Button variant="gold" onClick={save}>Save</Button>}>
+      <Modal open={!!edit} onClose={() => setEdit(null)} size="md" icon={Scale} title={edit?.id ? `Edit A/c ${edit.id}` : 'New account'} footer={<Button variant="gold" onClick={save}>Save</Button>}>
         {edit && (
           <div className="dense space-y-2.5">
             <Field label="A/c name"><Input autoFocus disabled={edit.is_system} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
@@ -127,7 +127,7 @@ export default function LedgersPage() {
             <Switch checked={edit.is_active} onChange={(v) => setEdit({ ...edit, is_active: v })} label="Active" />
           </div>
         )}
-      </Drawer>
+      </Modal>
       <ConfirmDrawer open={!!del} onClose={() => setDel(null)} title={`Delete ${del?.name}?`} message="Accounts used in vouchers cannot be deleted - make them inactive instead."
         onConfirm={async () => { try { await api.del(`/accounts/ledgers/${del.id}`); toast.success('Deleted'); setDel(null); setSel(null); refetch(); } catch (e) { toast.error(e.message); } }} />
     </div>

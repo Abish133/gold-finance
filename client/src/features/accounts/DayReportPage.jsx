@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router';
 import { Search, RefreshCw, FileDown, FileSpreadsheet, Coins, CalendarCheck, Printer, Check, X } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, Checkbox, ConfirmDrawer, Drawer, Input } from '@/components/ui';
+import { Button, Checkbox, ConfirmDrawer, Input, Modal } from '@/components/ui';
 import { useFetch, useCompany, useLookups } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -159,10 +159,10 @@ export default function DayReportPage({ mode = 'report' }) {
         title={t?.counted != null && Math.abs(n(t.countDiff)) < 0.01 ? 'Everything is OK.' : 'Close the day?'}
         message={`Close ${dayjs(q.to).format('DD/MM/YYYY')} and move to ${dayjs(nextDay).format('DD/MM/YYYY')}?`} />
       <CashCountDrawer open={count} onClose={() => { setCount(false); refetch(); }} date={q.to} />
-      <Drawer open={check} onClose={() => setCheck(false)} size="sm" icon={CalendarCheck} title={`Day End check failed for ${dayjs(q.to).format('DD/MM/YYYY')}`}
+      <Modal tone="amber" open={check} onClose={() => setCheck(false)} size="lg" icon={CalendarCheck} title={`Day End check failed for ${dayjs(q.to).format('DD/MM/YYYY')}`}
         footer={<><Button variant="outline" onClick={() => setCheck(false)}>Go back (Esc)</Button><Button variant="outline" onClick={() => closeDay(true)}>Close the day anyway</Button><Button variant="gold" onClick={() => { setCheck(false); navigate('/accounts/day-report'); }}>Open Day Report</Button></>}>
         <ul className="list-disc space-y-1 pl-5 text-sm"><li>Cash has not been counted.</li></ul>
-      </Drawer>
+      </Modal>
     </div>
   );
 }
