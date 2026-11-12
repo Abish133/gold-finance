@@ -23,21 +23,38 @@ After many wrong passwords (20 within 15 minutes) sign-in is blocked for 15 minu
 
 | Part | What it shows |
 |---|---|
-| **Menu bar** (top, black) | Loan · Records · Auction · Bank · Accounts · Reports · Masters · Settings · Help · Exit - the same order as MyBook |
-| **Header** | Company name, A/c year, **Billing date**, **Gold rate**, **Silver rate**, **Branch**, your name |
-| **Search box** (Ctrl+K) | Type a loan no, customer name, mobile or scan a barcode - opens it straight away |
-| **Body** | The screen you opened. The home screen has the day's tiles and quick action buttons |
-| **Status bar** (bottom) | This month's loans, releases, open loans, loans unsettled for over 12 months |
+| **Menu bar** (top) | Loan · Records · Auction · Bank · Accounts · Reports · Masters · Settings · Help · Exit - the same order as MyBook. On the right it shows where you are, e.g. *Loans › Release* |
+| **Header** | Company name and A/c year · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
+| **Search box** (Ctrl+K) | Loan no, customer name, mobile, barcode - or a screen name like *release*. With nothing typed it shows your **recent screens** and **recently opened** loans / customers |
+| **Body** | The screen you opened. Its dark **title bar** holds the screen's buttons (e.g. **Save F2**) and **⌨ Keys** - all shortcuts of that screen |
+| **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · clock. Click a figure to open its screen |
 
 **Billing date** is the working day of the books. It moves to the next day only when you close the day (**Day End**). If it shows a date before today, the previous day is not closed yet.
 
 **Gold rate in red** = today's rate is not entered. New loans need today's rate.
 
-## 3. Slide-in panels (no popups)
+## 3. Panels and small boxes
 
-Forms open as a panel that slides in from the right (a "drawer").
+**Forms and details** open as a panel that slides in from the right (a "drawer").
+- Top right: **Full size** (the panel fills the screen - remembered for that panel) and **Close Esc**.
 - **Esc** closes it, **F2** saves it (on most forms), **Enter** moves to the next box.
-- Questions like "Save this?" also appear as a panel - press the button you want.
+- Changed something and pressed Cancel? The panel asks **Discard changes / Keep editing** first.
+
+**Short questions** (delete?, sign out?, change password, admin approval, bill book no …) open as a **small box in the middle**. Clicking outside does not close it - press a button or Esc.
+
+**After saving** a loan or release, the message at the top right has buttons - **Print** and **Open loan** - for 8 seconds.
+
+## 3a. Tables
+- **Row buttons** at the end of a row (✏ edit, 🗑 delete, 📖 ledger …) do the same as the toolbar buttons, for that row.
+- The **columns icon** in the table header hides / shows columns (remembered on this computer).
+- Words you type in a search box are **marked yellow** in the table.
+- Wide tables: the first column stays in place when you scroll sideways.
+
+## 3b. First sign-in of the day
+A **Morning briefing** box opens: yesterday's loans, releases, interest and cash; interest built up on open loans; and a **Needs attention today** list (rate not entered, overdue loans, loans close to their gold value, failed SMS, old backup, cash count not tallied). Click a line to go there, or **Start the day**.
+
+## 3c. Phone and tablet
+On a narrow screen the menu becomes a **☰ Menu** button (with search and recent screens), tables turn into cards and nothing scrolls sideways.
 
 ## 4. Keyboard - the most used keys
 
@@ -52,7 +69,7 @@ Forms open as a panel that slides in from the right (a "drawer").
 | F7 | Day Report |
 | F8 | Duplicate Bill |
 | F9 | Sticker / Print |
-| Ctrl+K | Search anything |
+| Ctrl+K | Search anything - loans, customers, screens |
 | Esc | Close / go back |
 
 **Help → Keyboard Shortcuts** lists every key.

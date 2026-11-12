@@ -8,7 +8,9 @@ screens: s_users, s_system, s_print, s_company, s_audit
 **Settings → Users & Roles → Users** (User Accounts)
 - Search, Show *All / Active / Inactive*, Role filter; tiles Users / Active / Inactive / Roles.
 - **New User (Ctrl+N)**: full name, username, password (eye shows it), role, mobile, e-mail, Active, **Branch access** (tick each branch). **Edit User (F2)** - leave the password blank to keep it. **Delete User (Del)**. **Roles & Permissions (F6)**, **Print (F9)**.
-- A user who forgot the password: edit → type a new one → Save.
+- A user who forgot the password: edit → type a new one → Save. **Suggest** fills a strong, easy-to-type password (shown so you can note it); the bar shows Weak / Fair / Good / Strong.
+- **Row buttons** ✏ / 🗑 at the end of each user row (you cannot delete yourself).
+- **Your own password**: click your name (top right) → **Change password** - current password, new password (with **Suggest**), confirm.
 - Three wrong passwords lock that user name for 30 seconds (System Control → Other).
 
 **Settings → Users & Roles → Roles & Permissions**
@@ -65,4 +67,15 @@ Search (F3), Save Changes (F2), Print settings (F9).
 - **Audit Trail** - every save, edit, delete, backup, restore … with user, time and details. Filter by user, action, date.
 
 # Appearance
-Background image of the home screen, light / dark theme (moon icon in the header).
+**Settings → Appearance** - the look of the app. Changes apply at once.
+- **Accent colour** - 40 colours in groups (default **Gold Finance** = the sign-in page colours) or **Your own colour** (picker or a code like #1E3A8A). A light colour shows a warning - white text may be hard to read.
+- **Font** - 16 Windows fonts (*Nirmala UI* is best with Tamil). **Text size** - Compact to Huge (everything gets bigger).
+- **Look & feel** - Theme (Light / Dark / Follow Windows), Main buttons (Theme / Gold / Accent colour), Table rows (Compact / Normal / Comfortable), Zebra rows, Corners, Text weight, Selection colour, Totals colour, Number grouping (1,25,000 or 125,000), Money sign (₹ / Rs. / none).
+- **Keep my look on my login** - your look follows you to any counter you sign in on (off = this computer only).
+- **Save as shop default** (admin) - new users and computers start with this look; **Use shop default**, **Remove shop default**, **Reset**.
+
+# System Health
+**Settings → System Health** (admin) - refreshes every minute.
+- **Day End checklist** for the selected branch: today's rate, cash count, packet stickers for new loans, failed SMS, backup in the last 24 hours, last Day End - green *Done* / amber *To do*; click a line to go there.
+- **Server** (running for, memory), **Backups** (last backup), **SMS / WhatsApp** (sent, waiting, failed - 7 days), **Database** (tables, rows, size).
+- **User activity** - each user's actions, sign-ins, deletes / voids, screens used and last seen (30 days).

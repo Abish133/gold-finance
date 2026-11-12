@@ -32,6 +32,10 @@ Example: Mr Ravi Kumar S/o Mani Kumar, 5-43 Main Road, Kappiyarai 629157, mobile
 ## Customer ledger
 Open a customer → **Ledger** - all loans, interest paid, due today. **WhatsApp (Ctrl+W)** opens WhatsApp with the customer's loan details typed in.
 
+**Loan status link** (in the ledger, when switched on - chapter *SMS and WhatsApp*): **Make a link** → **Copy link** or **Send on WhatsApp**. The customer opens it on the phone and sees only their open loans - balance, interest due today, amount to close, settle-before date, last payments. No address, photo, ID or other customers; view only. The box lists the links working now (made by, works till, opened N times) - **Cancel** stops one at once.
+
+**Row buttons** in the customer list: 👁 details · 📒 ledger · ✏ edit.
+
 ## Other
 - **Blocked customers** - block a customer who should not get new loans.
 - **Merge customers** - two records of the same person → one.

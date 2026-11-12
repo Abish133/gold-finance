@@ -10,6 +10,7 @@ Step by step guide to every menu, with examples. The same manual is inside the a
 - [Welcome - how this app works](#welcome)
 - [First-time setup (owner)](#first-time-setup)
 - [Daily routine](#daily-routine)
+- [What's new - quick tour](#what-s-new)
 
 **Loan**
 
@@ -40,6 +41,7 @@ Step by step guide to every menu, with examples. The same manual is inside the a
 **Reports**
 
 - [Reports](#reports)
+- [Business Analytics and Advisory](#business-analytics)
 
 **Masters**
 
@@ -77,21 +79,38 @@ After many wrong passwords (20 within 15 minutes) sign-in is blocked for 15 minu
 
 | Part | What it shows |
 |---|---|
-| **Menu bar** (top, black) | Loan · Records · Auction · Bank · Accounts · Reports · Masters · Settings · Help · Exit - the same order as MyBook |
-| **Header** | Company name, A/c year, **Billing date**, **Gold rate**, **Silver rate**, **Branch**, your name |
-| **Search box** (Ctrl+K) | Type a loan no, customer name, mobile or scan a barcode - opens it straight away |
-| **Body** | The screen you opened. The home screen has the day's tiles and quick action buttons |
-| **Status bar** (bottom) | This month's loans, releases, open loans, loans unsettled for over 12 months |
+| **Menu bar** (top) | Loan · Records · Auction · Bank · Accounts · Reports · Masters · Settings · Help · Exit - the same order as MyBook. On the right it shows where you are, e.g. *Loans › Release* |
+| **Header** | Company name and A/c year · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
+| **Search box** (Ctrl+K) | Loan no, customer name, mobile, barcode - or a screen name like *release*. With nothing typed it shows your **recent screens** and **recently opened** loans / customers |
+| **Body** | The screen you opened. Its dark **title bar** holds the screen's buttons (e.g. **Save F2**) and **⌨ Keys** - all shortcuts of that screen |
+| **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · clock. Click a figure to open its screen |
 
 **Billing date** is the working day of the books. It moves to the next day only when you close the day (**Day End**). If it shows a date before today, the previous day is not closed yet.
 
 **Gold rate in red** = today's rate is not entered. New loans need today's rate.
 
-## 3. Slide-in panels (no popups)
+## 3. Panels and small boxes
 
-Forms open as a panel that slides in from the right (a "drawer").
+**Forms and details** open as a panel that slides in from the right (a "drawer").
+- Top right: **Full size** (the panel fills the screen - remembered for that panel) and **Close Esc**.
 - **Esc** closes it, **F2** saves it (on most forms), **Enter** moves to the next box.
-- Questions like "Save this?" also appear as a panel - press the button you want.
+- Changed something and pressed Cancel? The panel asks **Discard changes / Keep editing** first.
+
+**Short questions** (delete?, sign out?, change password, admin approval, bill book no …) open as a **small box in the middle**. Clicking outside does not close it - press a button or Esc.
+
+**After saving** a loan or release, the message at the top right has buttons - **Print** and **Open loan** - for 8 seconds.
+
+## 3a. Tables
+- **Row buttons** at the end of a row (✏ edit, 🗑 delete, 📖 ledger …) do the same as the toolbar buttons, for that row.
+- The **columns icon** in the table header hides / shows columns (remembered on this computer).
+- Words you type in a search box are **marked yellow** in the table.
+- Wide tables: the first column stays in place when you scroll sideways.
+
+## 3b. First sign-in of the day
+A **Morning briefing** box opens: yesterday's loans, releases, interest and cash; interest built up on open loans; and a **Needs attention today** list (rate not entered, overdue loans, loans close to their gold value, failed SMS, old backup, cash count not tallied). Click a line to go there, or **Start the day**.
+
+## 3c. Phone and tablet
+On a narrow screen the menu becomes a **☰ Menu** button (with search and recent screens), tables turn into cards and nothing scrolls sideways.
 
 ## 4. Keyboard - the most used keys
 
@@ -106,7 +125,7 @@ Forms open as a panel that slides in from the right (a "drawer").
 | F7 | Day Report |
 | F8 | Duplicate Bill |
 | F9 | Sticker / Print |
-| Ctrl+K | Search anything |
+| Ctrl+K | Search anything - loans, customers, screens |
 | Esc | Close / go back |
 
 **Help → Keyboard Shortcuts** lists every key.
@@ -236,6 +255,47 @@ Rent, salary, electricity, tea … → **Accounts → Voucher Entry (F6)** → P
 
 ---
 
+# What's new
+
+A short tour of the newer parts of the app. Each line says where to find it; the chapters after this one explain the details.
+
+## Every screen
+| What | Where | What it does |
+|---|---|---|
+| **Morning briefing** | Opens by itself on your first sign-in of the day | Yesterday's figures, interest built up, and a "Needs attention today" list - click a line to go there |
+| **Buttons in the header** | The dark title bar of each screen | Save, Print, Exit … sit on the right of the title. The key is shown as a small badge, e.g. **Save F2** |
+| **Keys list** | **⌨ Keys** button in the title bar | Every keyboard shortcut of that screen |
+| **Row buttons** | End of each table row (Users, Customers, Account Master, Vouchers, Bank …) | ✏ Edit, 🗑 Delete, 📖 Ledger … for that row - same as the toolbar buttons |
+| **Columns** | Small columns icon in a table header | Hide / show columns - remembered on this computer |
+| **Search highlight** | Any list with a search box | The text you typed is marked in yellow |
+| **Search & jump (Ctrl+K)** | Search box in the header | Loans, customers, phone, barcode - and screen names; with nothing typed it shows **recent screens** and **recently opened** loans / customers |
+| **Bottom bar** | Bottom of the window | Today · this month · loan book · items needing attention - click any figure to open its screen |
+| **Drawers and popups** | Forms and questions | Side panels with **Full size** and **Close Esc** buttons; short questions as a small box in the middle |
+| **Phone / tablet** | Narrow screens | ☰ Menu button, tables become cards |
+
+## New screens
+| Screen | Menu | Chapter |
+|---|---|---|
+| **Business Analytics** | Reports → Business Analytics | *Business Analytics and Advisory* |
+| **Advisory** | Help → Advisory | *Business Analytics and Advisory* |
+| **System Health** | Settings → System Health | *Settings* |
+| **Appearance** | Settings → Appearance | *Settings* |
+
+## New helpers
+- **Item templates** on New Loan - save "Chain + 2 rings" once, use it again (chapter *New Loan*).
+- **Save messages with buttons** - after saving a loan / release the message has **Print** and **Open loan**.
+- **Unsaved changes** - a form you changed asks *Discard changes / Keep editing* before it closes.
+- **Password suggestion** - Change password and New User have a **Suggest** button and a strength bar.
+
+## Optional automations (off until switched on)
+In **SMS / WhatsApp → Auto SMS Rules → Automations** (chapter *SMS and WhatsApp*):
+- **Daily summary to the owner** by SMS.
+- **Birthday wishes** to customers with an open loan.
+- **Gold-rate watch** - a reminder when loans come close to the value of their gold.
+- **Customer loan-status link** - a view-only page the customer opens on their phone.
+
+---
+
 # New Loan (F1)
 
 **Loan → New Loan** - give money against gold / silver jewels and print the loan bill.
@@ -252,12 +312,13 @@ Before you start: today's rate must be entered (header gold rate not red).
    - Item (type a new name to add it to the list), Pcs, Gross Wt (g), Less Wt (stone / wax), Purity %.
    - Net Wt and Value are worked out: value = fine weight (net × purity) × today's 100% rate, rounded to the nearest ₹100.
    - **Add Item** (or Enter in the last box). The item goes into the list and the boxes clear for the next item. The × on a row removes it.
+   - **Item templates** - for jewels that often come together. Add the items once, then **Templates ▾ → Save these N items as a template** and give a name (e.g. *Chain + 2 rings*). Next time: **Templates ▾ →** pick it - the first item fills in and the cursor waits in *Gross Wt*; weigh, press Enter, and the next item fills in by itself (a green *Next: …* bar shows what is coming, **Stop** ends it). Templates keep item names, pcs, metal and purity - **never weights**. Every counter shares them; ✕ (on hover) removes one.
 4. **Loan amount** - type the amount. The **Loan to value** bar turns green / orange / red. Above the warning limit (85%) the app asks *"Loan is xx% of item value. Continue?"* before saving.
 5. **Interest % p.m.** (from the scheme, can be changed) and **Interest type** - *Compound* or *Flat*.
 6. **Doc. charges** (if any) and **Advance interest** - with advance on, the first month's interest is taken now (F6 switches advance on / off).
 7. **Item photo** - Camera, Browse (choose a file) or Old Photo (the customer's last photo).
 8. **Save Loan (F2)** → enter the bill book no (if you use paper bill books) → **Pay customer**: choose Cash / UPI / Card / Cheque and the amount → **Confirm**.
-9. The loan bill prints (two copies if set). The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
+9. The loan bill prints (two copies if set). The message *Loan details saved* has **Print** (print again) and **Open loan** (Loan Counter) buttons. The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
 
 ## Example
 Ravi Kumar S/o Mani Kumar brings a chain.
@@ -496,6 +557,10 @@ Example: Mr Ravi Kumar S/o Mani Kumar, 5-43 Main Road, Kappiyarai 629157, mobile
 ## Customer ledger
 Open a customer → **Ledger** - all loans, interest paid, due today. **WhatsApp (Ctrl+W)** opens WhatsApp with the customer's loan details typed in.
 
+**Loan status link** (in the ledger, when switched on - chapter *SMS and WhatsApp*): **Make a link** → **Copy link** or **Send on WhatsApp**. The customer opens it on the phone and sees only their open loans - balance, interest due today, amount to close, settle-before date, last payments. No address, photo, ID or other customers; view only. The box lists the links working now (made by, works till, opened N times) - **Cancel** stops one at once.
+
+**Row buttons** in the customer list: 👁 details · 📒 ledger · ✏ edit.
+
 ## Other
 - **Blocked customers** - block a customer who should not get new loans.
 - **Merge customers** - two records of the same person → one.
@@ -713,6 +778,53 @@ Double-click a month in the Summary to see that month day by day.
 
 ---
 
+# Business Analytics
+
+**Reports → Business Analytics** (also from the home screen → *Business overview* tab → *Open*).
+
+## Choose what to see
+1. **Period** - *This month, Last month, 3 months, 6 months, A/c year, 12 months*, or type **From** and **To**.
+2. **Show by** - *Auto, Day, Week, Month* (Auto picks days up to a month, weeks up to 4 months, months after that).
+3. **Metal** - *All, Gold, Silver, Mix*. Every chart follows it, including the rate charts.
+4. **Show** loads the figures again (the quick buttons load at once).
+
+## What it shows
+**Six headline figures** - loan amount given, recovered, interest collected, new loans, releases, average loan. Each shows the change against the **same number of days just before** (e.g. +12.5% vs before) - green when it is good for the business, red when not.
+
+**Charts** - each card has a **Chart / Table** switch to see the exact numbers:
+- *Loan amount given vs recovered* · *Interest collected* · *New loans vs releases* - per day / week / month.
+- *Open loans by age* (0-3, 3-6, 6-9, 9-12, over 12 months) - older loans need follow-up.
+- *Loan sizes given*, *Open loans by metal*, *Loan amount by scheme*, *by branch* (when you see more than one branch).
+
+**Loan book health** (as on the To date - the interest figures are estimates):
+- *Interest built up, not yet paid* · *Expected interest per month* · *Metal value today* (at today's rate) · *Loans close to their value* (loan + interest is 85% or more of the gold value).
+- *Average days to release*, *Released before due date*, *New* and *Returning customers*.
+
+**More**
+- *Gold rate* and *Silver rate* in the period (separate charts - their prices are too far apart for one).
+- *Busiest days of the week* · *Top areas*.
+- *Loans to watch* - loans using 75% or more of today's metal value; click to open the loan.
+- *Next 30 days* - loans reaching their settle date per day.
+- *Cash count differences* - excess / short per counted day.
+- *Best customers* - most interest paid and how many released on time.
+- *Branch league* - branches side by side (All Branches).
+- *Unusual activity* - loans far above the customer's usual, 3 or more loans for one customer in a day, deletes / voids by user, logins before 7 AM or after 10 PM (the last two only for users who may open the User Log).
+- *Top 10 customers* by outstanding - click to open the customer.
+
+## Excel with charts
+**Excel with charts** (in the title bar) saves one Excel file with sheets *Summary, Trend, Loan book, Insights, Plan & watch, Top customers*. Each table has its chart as a picture beside it.
+> Only charts showing as a chart are drawn; a card switched to *Table* goes in as numbers only.
+
+# Advisory
+
+**Help → Advisory** - what to act on today, in order of urgency.
+- **Health score** in the title bar: 100, minus 20 for each *Act now*, 10 for each *Soon*, 4 for each *Good to know*. 85+ Healthy, 60+ Needs attention, below that Act now.
+- **Act now** (money or work blocked today), **Soon** (this week), **Good to know**. Each point has an **Open** button to the right screen - e.g. *Enter today's gold rate*, *Day End pending*, *loans past due date*, *loans with little margin left*.
+- **Largest open exposures** - the top customers with their **share of the loan book**. A warning shows when one customer holds 20% or more.
+- **Look deeper** - Business Analytics, System Health, Interest Calculator.
+
+---
+
 # Gold / Silver Rate
 
 **Masters → Gold / Silver Rate** - enter every morning.
@@ -763,7 +875,9 @@ New loans pick the first scheme; the cashier can change the rate on the loan.
 **Settings → Users & Roles → Users** (User Accounts)
 - Search, Show *All / Active / Inactive*, Role filter; tiles Users / Active / Inactive / Roles.
 - **New User (Ctrl+N)**: full name, username, password (eye shows it), role, mobile, e-mail, Active, **Branch access** (tick each branch). **Edit User (F2)** - leave the password blank to keep it. **Delete User (Del)**. **Roles & Permissions (F6)**, **Print (F9)**.
-- A user who forgot the password: edit → type a new one → Save.
+- A user who forgot the password: edit → type a new one → Save. **Suggest** fills a strong, easy-to-type password (shown so you can note it); the bar shows Weak / Fair / Good / Strong.
+- **Row buttons** ✏ / 🗑 at the end of each user row (you cannot delete yourself).
+- **Your own password**: click your name (top right) → **Change password** - current password, new password (with **Suggest**), confirm.
 - Three wrong passwords lock that user name for 30 seconds (System Control → Other).
 
 **Settings → Users & Roles → Roles & Permissions**
@@ -820,7 +934,18 @@ Search (F3), Save Changes (F2), Print settings (F9).
 - **Audit Trail** - every save, edit, delete, backup, restore … with user, time and details. Filter by user, action, date.
 
 # Appearance
-Background image of the home screen, light / dark theme (moon icon in the header).
+**Settings → Appearance** - the look of the app. Changes apply at once.
+- **Accent colour** - 40 colours in groups (default **Gold Finance** = the sign-in page colours) or **Your own colour** (picker or a code like #1E3A8A). A light colour shows a warning - white text may be hard to read.
+- **Font** - 16 Windows fonts (*Nirmala UI* is best with Tamil). **Text size** - Compact to Huge (everything gets bigger).
+- **Look & feel** - Theme (Light / Dark / Follow Windows), Main buttons (Theme / Gold / Accent colour), Table rows (Compact / Normal / Comfortable), Zebra rows, Corners, Text weight, Selection colour, Totals colour, Number grouping (1,25,000 or 125,000), Money sign (₹ / Rs. / none).
+- **Keep my look on my login** - your look follows you to any counter you sign in on (off = this computer only).
+- **Save as shop default** (admin) - new users and computers start with this look; **Use shop default**, **Remove shop default**, **Reset**.
+
+# System Health
+**Settings → System Health** (admin) - refreshes every minute.
+- **Day End checklist** for the selected branch: today's rate, cash count, packet stickers for new loans, failed SMS, backup in the last 24 hours, last Day End - green *Done* / amber *To do*; click a line to go there.
+- **Server** (running for, memory), **Backups** (last backup), **SMS / WhatsApp** (sent, waiting, failed - 7 days), **Database** (tables, rows, size).
+- **User activity** - each user's actions, sign-ins, deletes / voids, screens used and last seen (30 days).
 
 ---
 
@@ -835,7 +960,7 @@ SMS is created on: **new loan**, **interest / part payment**, **release**, **due
    `https://api.provider.com/send?apikey=KEY&sender=ABCDEF&to={phone}&text={message}`
    Keep `{phone}` and `{message}` - the app fills them.
 3. **Settings → SMS Settings → Auto SMS Rules**: *Enable SMS* on, paste *Provider URL*, switch on the events you want → **Save settings**.
-4. **Templates** tab - make each message the same as the approved template, add the DLT template id. You can use `{name}` `{loan_no}` `{amount}` `{date}` `{weight}` `{due_date}`.
+4. **Templates** tab - every message the app sends is here (10): SMS *New loan, Interest / part payment, Loan closed, Due reminder / auction notice, Birthday wishes, Daily summary to owner* and WhatsApp *New loan, Loan released, Part payment, Interest received*. Make each SMS the same as the approved template and add the DLT template id. While editing, the hint under the text lists the `{words}` that message can use (e.g. `{name}` `{loan_no}` `{amount}` `{date}`). Switching a template **off** stops that message (WhatsApp then uses the built-in text).
 5. Optional - **Daily due reminders**: send every day after (10:00), interest not paid for (3) months, remind loans past settle-before date, do not repeat within (15) days. *Send Reminders Now* sends at once; the table shows who will get one.
 
 ### Check
@@ -843,6 +968,15 @@ Give a test loan to your own mobile → **Queue & Log** tab:
 - *SENT* - working.
 - *SKIPPED - Provider URL not set* - do step 3.
 - *FAILED* - read the error (wrong link / template mismatch), fix it, **Retry failed**.
+
+## Automations (each one is off until you switch it on)
+**Auto SMS Rules → Automations**, then **Save**:
+- **Daily summary to owner** - owner mobile(s) (comma between two), *Send the daily summary after* (e.g. 20:00). Once a day: loans, releases, interest, cash, open loans, overdue. The text is the *Daily summary to owner* template.
+- **Birthday wishes** - *Send birthday wishes after* (e.g. 09:00) - to customers with an open loan whose date of birth is today (fill the date of birth in the customer form). Text: *Birthday wishes* template.
+- **Remind when loans come close to their gold value** (gold-rate watch) - a reminder on the home screen / 🔔 when loan + interest reaches 85% or more of the gold value at today's rate.
+- **Customer loan-status link** and *works for (days)* (default 30) - lets staff make a view-only link for a customer (chapter *Records → Customers*). Off = every link stops at once.
+
+All of these need **Enable SMS** on (except the gold-rate watch and the customer link). Each is sent at most once a day. To test safely, leave *Provider URL* empty - the message appears in **Queue & Log** as *Skipped* and nothing is sent.
 
 ## WhatsApp - opened on your phone / computer
 No setup. Install WhatsApp or sign in to WhatsApp Web on the counter computer.

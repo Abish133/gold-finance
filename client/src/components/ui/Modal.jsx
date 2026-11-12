@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const SIZES = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-xl' };
 
@@ -25,7 +26,6 @@ export function Modal({ open, onClose, title, subtitle, icon: Icon, tone = 'ink'
     return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); clearTimeout(t); };
   }, [open]);
 
-  if (!open) return null;
   const toneCls = {
     ink: 'bg-ink-100 text-navy-800 dark:bg-ink-800 dark:text-white',
     green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
@@ -33,11 +33,16 @@ export function Modal({ open, onClose, title, subtitle, icon: Icon, tone = 'ink'
     amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
   }[tone];
 
+  // springs in and out (Framer Motion), on a softly blurred backdrop
   return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <div className="absolute inset-0 animate-fade-in bg-navy-950/35" onClick={closeOnOverlay ? onClose : undefined} />
-      <section ref={panel} role="dialog" aria-modal="true" data-drawer
-        className={clsx('relative flex max-h-[85vh] w-full animate-rise flex-col overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-700 dark:bg-ink-900', SIZES[size] || size)}>
+    <AnimatePresence>
+      {open && (
+    <div key="modal" className="fixed inset-0 z-50 grid place-items-center p-4">
+      <motion.div className="absolute inset-0 bg-navy-950/30 backdrop-blur-[3px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onClick={closeOnOverlay ? onClose : undefined} />
+      <motion.section ref={panel} role="dialog" aria-modal="true" data-drawer
+        initial={{ opacity: 0, scale: 0.94, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 6, transition: { duration: 0.14 } }}
+        transition={{ type: 'spring', stiffness: 520, damping: 34, mass: 0.7 }}
+        className={clsx('relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-lg bg-white ring-1 ring-black/10 dark:bg-ink-900 dark:ring-white/10', SIZES[size] || size)}>
         {(title || Icon) && (
           <header className="flex shrink-0 items-center gap-2.5 px-4 pt-3.5 pb-2 pr-10">
             {Icon && <span className={clsx('grid size-7 shrink-0 place-items-center rounded-md', toneCls)}><Icon className="size-4" /></span>}
@@ -55,8 +60,10 @@ export function Modal({ open, onClose, title, subtitle, icon: Icon, tone = 'ink'
         )}
         <div className={clsx('min-h-0 flex-1 overflow-y-auto text-[13px]', bodyClassName ?? 'px-4 py-2')}>{children}</div>
         {footer && <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 px-4 pt-2 pb-3.5 [&_button]:h-8 [&_button]:px-3 [&_button]:text-[12px]">{footer}</footer>}
-      </section>
-    </div>,
+      </motion.section>
+    </div>
+      )}
+    </AnimatePresence>,
     document.body,
   );
 }

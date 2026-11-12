@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { MotionConfig } from 'framer-motion';
 import { AuthProvider } from '@/context/AuthContext';
 import { router } from '@/router';
 import '@/styles/index.css';
@@ -26,6 +27,7 @@ applyAppearance(); // accent colour, font, text size chosen on the Appearance sc
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <MotionConfig reducedMotion="user">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RouterProvider router={router} />
@@ -33,5 +35,6 @@ createRoot(document.getElementById('root')).render(
       </AuthProvider>
       <Suspense fallback={null}><Devtools buttonPosition="bottom-left" /></Suspense>
     </QueryClientProvider>
+    </MotionConfig>
   </StrictMode>,
 );

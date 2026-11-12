@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
+import { motion } from 'framer-motion';
 import dayjs from 'dayjs';
 import { useForm } from 'react-hook-form';
 import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize, Menu as MenuIcon, X, CalendarDays, Coins } from 'lucide-react';
@@ -110,8 +111,8 @@ function MenuBar({ onAction, onExit }) {
         const btn = bar.current?.querySelector(`[data-menu="${open}"]`)?.getBoundingClientRect();
         const left = Math.max(4, Math.min(btn ? btn.left : 8, window.innerWidth / appZoom() - 330));
         return (
-          <div className="fixed z-40 mt-10 w-80 animate-drop overflow-hidden rounded-md border border-ink-200 bg-white text-ink-800 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100"
-            style={{ left: `${left}px`, marginTop: '42px' }}>
+          <motion.div key={open} className="fixed z-40 mt-10 w-80 overflow-hidden rounded-md border border-ink-200 bg-white text-ink-800 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100"
+            style={{ left: `${left}px`, marginTop: '42px' }} initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 600, damping: 38 }}>
             {/* fits under the menu bar; long menus (Settings) scroll instead of being cut off */}
             <ul className="overflow-y-auto overscroll-contain py-1" style={{ maxHeight: `calc(100vh / var(--app-zoom, 1) - ${Math.round((btn?.bottom || 40) + 16)}px)` }}>
               {m.items.map((i, k) => (i.section ? (
@@ -152,7 +153,7 @@ function MenuBar({ onAction, onExit }) {
                 </li>
               )))}
             </ul>
-          </div>
+          </motion.div>
         );
       })()}
     </nav>
@@ -180,7 +181,8 @@ function MobileMenu({ menus, current, hasPath, onChoose, onClose }) {
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 animate-fade-in bg-black/40" onClick={onClose} />
-      <div className="absolute inset-y-0 left-0 flex w-[min(340px,88vw)] flex-col bg-white text-ink-800 dark:bg-ink-900 dark:text-ink-100" style={{ animation: 'fade-in .15s ease-out' }}>
+      <motion.div className="absolute inset-y-0 left-0 flex w-[min(340px,88vw)] flex-col bg-white text-ink-800 dark:bg-ink-900 dark:text-ink-100"
+        initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
         <div className="navy-gradient flex h-11 shrink-0 items-center gap-2 px-3 text-white">
           <MenuIcon className="size-4" /><b className="flex-1 text-[14px]">Menu</b>
           <button type="button" onClick={onClose} aria-label="Close menu" className="grid size-8 place-items-center rounded-md hover:bg-white/15"><X className="size-5" /></button>
@@ -219,7 +221,7 @@ function MobileMenu({ menus, current, hasPath, onChoose, onClose }) {
               );
             })}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

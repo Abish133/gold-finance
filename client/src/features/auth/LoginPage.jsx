@@ -78,22 +78,22 @@ export default function LoginPage() {
       <section className="relative hidden h-full min-h-0 flex-col overflow-hidden bg-[#071d26] px-10 py-8 text-white lg:flex xl:px-14 xl:py-10 2xl:px-20">
         {/* Background decorations */}
 
-        <div className="pointer-events-none absolute -right-40 -top-40 size-[550px] rounded-full border border-[#d5ad60]/10" />
-        <div className="pointer-events-none absolute -right-24 -top-24 size-[400px] rounded-full border border-[#d5ad60]/15" />
-        <div className="pointer-events-none absolute -bottom-48 -left-40 size-[550px] rounded-full bg-[#c99d4d]/10 blur-[100px]" />
+        <div className="pointer-events-none absolute -right-40 -top-40 size-[550px] rounded-full border border-white/[0.06]" />
+        <div className="pointer-events-none absolute -right-24 -top-24 size-[400px] rounded-full border border-white/[0.08]" />
+        <div className="pointer-events-none absolute -bottom-48 -left-40 size-[550px] rounded-full bg-[#355d67]/25 blur-[100px]" />
         <div className="pointer-events-none absolute right-0 top-1/3 size-80 rounded-full bg-[#17424b]/40 blur-[100px]" />
 
         {/* Brand Logo */}
 
         <div className="relative z-10 flex shrink-0 items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-[#f4d58c] to-[#bd9144] shadow-lg shadow-[#d5ad60]/20">
+          <div className="grid size-12 place-items-center rounded-2xl bg-white">
             <Gem className="size-6 text-[#10252c]" />
           </div>
 
           <div>
             <h2 className="text-lg font-bold tracking-wide">GOLD FINANCE</h2>
 
-            <p className="text-[10px] font-semibold uppercase tracking-[3px] text-[#c5a66b]">
+            <p className="text-[10px] font-semibold uppercase tracking-[3px] text-white/55">
               Pawn Broking Suite
             </p>
           </div>
@@ -102,14 +102,14 @@ export default function LoginPage() {
         {/* Main Content */}
 
         <div className="relative z-10 my-auto min-h-0 w-full max-w-3xl py-6">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#d5ad60]/25 bg-[#d5ad60]/10 px-4 py-2 text-xs font-medium text-[#e8ca8e]">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-medium text-white/80">
             <Sparkles className="size-3.5" />
             Smart Financial Management
           </div>
 
           <h1 className="max-w-3xl text-4xl leading-[1.15] font-extrabold tracking-tight xl:text-5xl">
             Your entire gold loan business,
-            <span className="mt-2 block bg-gradient-to-r from-[#f4d58c] to-[#bd9144] bg-clip-text text-transparent">
+            <span className="mt-2 block text-[#9fbcc4]">
               under one roof.
             </span>
           </h1>
@@ -129,9 +129,9 @@ export default function LoginPage() {
               return (
                 <div
                   key={feature.title}
-                  className="group rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#d5ad60]/40 hover:bg-white/[0.08] xl:p-5"
+                  className="group rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08] xl:p-5"
                 >
-                  <div className="mb-3 grid size-10 place-items-center rounded-xl bg-[#d5ad60]/10 text-[#e3bd75] transition-colors group-hover:bg-[#d5ad60]/20">
+                  <div className="mb-3 grid size-10 place-items-center rounded-xl bg-white/[0.08] text-white/80 transition-colors group-hover:bg-white/[0.14]">
                     <Icon className="size-5" />
                   </div>
 
@@ -154,7 +154,7 @@ export default function LoginPage() {
           <span>© {new Date().getFullYear()} Gold Finance</span>
 
           <span className="flex items-center gap-2">
-            <ShieldCheck className="size-4 text-[#d5ad60]" />
+            <ShieldCheck className="size-4 text-white/60" />
             Secure Business Platform
           </span>
         </div>
@@ -168,8 +168,8 @@ export default function LoginPage() {
         {/* Mobile Branding */}
 
         <div className="absolute left-6 top-6 flex items-center gap-3 lg:hidden">
-          <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-[#f4d58c] to-[#bd9144]">
-            <Gem className="size-5 text-[#10252c]" />
+          <div className="grid size-11 place-items-center rounded-xl bg-[#10252c]">
+            <Gem className="size-5 text-white" />
           </div>
 
           <div>
@@ -188,11 +188,11 @@ export default function LoginPage() {
             {/* Welcome Header */}
 
             <div className="mb-10">
-              <div className="mb-6 grid size-14 place-items-center rounded-2xl bg-[#f7f0df] text-[#b18a43]">
+              <div className="mb-6 grid size-14 place-items-center rounded-2xl bg-[#e1ecef] text-[#26474f]">
                 <Lock className="size-6" />
               </div>
 
-              <p className="mb-3 text-xs font-bold uppercase tracking-[2px] text-[#b18a43]">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[2px] text-[#355d67]">
                 Welcome Back
               </p>
 
@@ -242,7 +242,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((previous) => !previous)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-[#b18a43]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-[#355d67]"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -254,15 +254,13 @@ export default function LoginPage() {
                 </div>
               </Field>
 
-              {/* Submit
-                  The gradient/text classes are applied directly so the button
-                  is gold even if the Button component has no "gold" variant. */}
+              {/* Submit - solid dark teal, the same colour as the left panel */}
 
               <Button
                 type="submit"
-                variant="gold"
+                variant="primary"
                 size="lg"
-                className="group h-12 w-full justify-center gap-3 rounded-xl border-0 bg-gradient-to-r from-[#f4d58c] to-[#bd9144] font-semibold text-[#10252c] shadow-lg shadow-[#c49b51]/20 transition-all hover:-translate-y-0.5 hover:brightness-105"
+                className="group h-12 w-full justify-center gap-3 rounded-xl border-0 !bg-none !bg-[#10252c] font-semibold !text-white transition-all hover:-translate-y-0.5 hover:!bg-[#17333b]"
                 loading={login.isPending}
               >
                 Sign In
@@ -276,7 +274,7 @@ export default function LoginPage() {
             {/* Security Information */}
 
             <div className="mt-8 flex items-start gap-3 rounded-xl bg-[#f8f8f5] p-4">
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#b18a43]" />
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#355d67]" />
 
               <div>
                 <p className="text-xs font-semibold text-[#10252c]">
