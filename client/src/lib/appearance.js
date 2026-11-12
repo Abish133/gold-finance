@@ -24,8 +24,13 @@ export const isLight = (hex) => { const [r, g, b] = hexRgb(hex).map((v) => { con
 const T = (key, label, str, group) => ({ key, label, group, c: str.split(' ') });
 const B = (key, label, hex, group) => ({ key, label, group, c: scaleFrom(hex) });
 
+/* main-button accent: the login page's gold, or the theme's own colour */
+export const GOLD_ACCENT = { bg: 'linear-gradient(90deg, #f4d58c, #bd9144)', fg: '#10252c', solid: '#d5ad60' };
+export const MAIN_BUTTONS = [['auto', 'Theme'], ['gold', 'Gold'], ['accent', 'Accent colour']];
+
 export const PALETTE_GROUPS = ['Classic', 'Blues', 'Greens', 'Warm', 'Purples & Pinks', 'Deep'];
 export const PALETTES = [
+  { ...T('brand', 'Gold Finance', '#f2f7f8 #e1ecef #c6d9de #9fbcc4 #6f97a2 #4b7782 #355d67 #26474f #17333b #10252c #071d26', 'Classic'), gold: true },
   T('charcoal', 'Charcoal', '#f4f4f5 #e4e4e7 #d4d4d8 #a1a1aa #71717a #52525b #3f3f46 #27272a #18181b #111111 #09090b', 'Classic'),
   T('slate', 'Slate', '#f8fafc #f1f5f9 #e2e8f0 #cbd5e1 #94a3b8 #64748b #475569 #334155 #1e293b #0f172a #020617', 'Classic'),
   T('stone', 'Stone', '#fafaf9 #f5f5f4 #e7e5e4 #d6d3d1 #a8a29e #78716c #57534e #44403c #292524 #1c1917 #0c0a09', 'Classic'),
@@ -108,8 +113,8 @@ export const CURRENCIES = [['₹', '₹ symbol'], ['Rs.', 'Rs.'], ['', 'No symbo
 
 const legacyMode = () => { try { return localStorage.getItem('gf.theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } };
 export const DEFAULT_APPEARANCE = {
-  palette: 'charcoal', custom: '#1e3a8a', font: 'segoe', size: 'normal', mode: 'light', density: 'normal', zebra: false,
-  corners: 'soft', weight: 'normal', highlight: 'emerald', totals: 'amber', grouping: 'indian', currency: '₹', syncLogin: true,
+  palette: 'brand', custom: '#10252c', font: 'segoe', size: 'normal', mode: 'light', density: 'normal', zebra: false,
+  corners: 'soft', weight: 'normal', mainBtn: 'auto', highlight: 'emerald', totals: 'amber', grouping: 'indian', currency: '₹', syncLogin: true,
 };
 
 export function loadAppearance() {
@@ -132,6 +137,10 @@ export function applyAppearance(a = loadAppearance()) {
   const pal = a.palette === 'custom' && isHex(a.custom) ? { c: scaleFrom(a.custom) } : (byKey(a.palette) || PALETTES[0]);
   setScale(root, 'navy', pal);
   [[400, 6], [500, 8], [600, 7], [700, 6], [800, 7], [900, 8]].forEach(([g, i]) => root.setProperty(`--color-gold-${g}`, pal.c[i]));
+  // main buttons (Save, Release, Sign in ...): gold like the login page, or the accent colour
+  const useGold = a.mainBtn === 'gold' || (a.mainBtn !== 'accent' && !!pal.gold);
+  if (useGold) { root.setProperty('--accent-bg', GOLD_ACCENT.bg); root.setProperty('--accent-fg', GOLD_ACCENT.fg); root.setProperty('--accent-solid', GOLD_ACCENT.solid); }
+  else ['--accent-bg', '--accent-fg', '--accent-solid'].forEach((k) => root.removeProperty(k));
   // highlight + totals colours (defaults keep the built-in emerald / amber)
   if (a.highlight && a.highlight !== 'emerald' && byKey(a.highlight)) setScale(root, 'emerald', byKey(a.highlight)); else clearScale(root, 'emerald');
   if (a.totals && a.totals !== 'amber' && byKey(a.totals)) setScale(root, 'amber', byKey(a.totals)); else clearScale(root, 'amber');
@@ -174,6 +183,15 @@ export async function syncAppearance() {
     if (chosen) saveAppearance({ ...DEFAULT_APPEARANCE, ...chosen, syncLogin: !!user || chosen.syncLogin !== false }, { remote: false });
     return r.data;
   } catch { return null; }
+}
+
+/** login screen: a computer that never chose a look shows the shop default (applied only, not saved) */
+export async function applyShopLookIfNew() {
+  try { if (localStorage.getItem(KEY)) return; } catch { return; }
+  try {
+    const r = await api.get('/auth/appearance/public');
+    if (r?.data) applyAppearance({ ...DEFAULT_APPEARANCE, mode: legacyMode(), ...r.data });
+  } catch { /* offline / not set - keep the built-in look */ }
 }
 
 export const saveShopDefault = (a) => api.put('/auth/appearance/default', { appearance: a });

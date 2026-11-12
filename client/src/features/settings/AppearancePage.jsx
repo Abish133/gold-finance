@@ -7,8 +7,9 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { amount, money } from '@/lib/format';
 import { ExitButton } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 import {
-  PALETTES, PALETTE_GROUPS, HIGHLIGHTS, TOTALS, FONTS, SIZES, MODES, DENSITIES, CORNERS, WEIGHTS, GROUPINGS, CURRENCIES,
+  PALETTES, PALETTE_GROUPS, MAIN_BUTTONS, HIGHLIGHTS, TOTALS, FONTS, SIZES, MODES, DENSITIES, CORNERS, WEIGHTS, GROUPINGS, CURRENCIES,
   DEFAULT_APPEARANCE, loadAppearance, saveAppearance, saveShopDefault, clearShopDefault, scaleFrom, isLight, isHex,
 } from '@/lib/appearance';
 
@@ -114,7 +115,7 @@ export default function AppearancePage() {
                       return (
                         <button key={p.key} type="button" onClick={() => set({ palette: p.key })} className={clsx('flex min-w-0 flex-col gap-1 rounded-md border p-1 text-left transition', pick(on))}>
                           <span className="flex h-5 overflow-hidden rounded-sm"><span className="flex-[3]" style={{ background: p.c[9] }} /><span className="flex-[2]" style={{ background: p.c[7] }} /><span className="flex-1" style={{ background: p.c[4] }} /><span className="flex-1" style={{ background: p.c[1] }} /></span>
-                          <span className="flex min-w-0 items-center gap-1 text-[11px] font-semibold">{on && <Dot />}<span className="truncate">{p.label}</span>{on && <Check className="ml-auto size-3 shrink-0 text-emerald-600" />}</span>
+                          <span className="flex min-w-0 items-center gap-1 text-[11px] font-semibold">{on && <Dot />}<span className="truncate">{p.label}</span>{p.key === DEFAULT_APPEARANCE.palette && <span className="shrink-0 rounded-sm bg-ink-100 px-1 text-[9px] font-bold text-ink-600 uppercase dark:bg-ink-800 dark:text-ink-300">default</span>}{on && <Check className="ml-auto size-3 shrink-0 text-emerald-600" />}</span>
                         </button>
                       );
                     })}
@@ -162,6 +163,7 @@ export default function AppearancePage() {
         <div className="flex flex-col gap-2 xl:min-h-0">
           <Panel icon={SlidersHorizontal} title="Look & feel" className="min-h-72 xl:min-h-0 xl:flex-1">
             <Row label="Theme" value={a.mode} options={MODES} onChange={(v) => set({ mode: v })} />
+            <Row label="Main buttons" hint="Save, Release, Sign in… - gold is the login page colour" value={a.mainBtn || 'auto'} options={MAIN_BUTTONS} onChange={(v) => set({ mainBtn: v })} />
             <Row label="Table rows" hint="row height in every table" value={a.density} options={DENSITIES} onChange={(v) => set({ density: v })} />
             <Row label="Zebra rows" hint="shade every other row" value={!!a.zebra} options={[[false, 'Off'], [true, 'On']]} onChange={(v) => set({ zebra: v })} />
             <Row label="Corners" value={a.corners} options={CORNERS.map(([k, l]) => [k, l])} onChange={(v) => set({ corners: v })} />
@@ -189,20 +191,19 @@ export default function AppearancePage() {
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
-        <button type="button" role="switch" aria-checked={a.syncLogin !== false} onClick={() => set({ syncLogin: a.syncLogin === false })}
+      {/* actions sit in the header bar, like every other screen */}
+      <PageActions>
+        <button type="button" role="switch" aria-checked={a.syncLogin !== false} title={a.syncLogin !== false ? 'On: your look follows you to any counter you sign in on' : 'Off: your look stays on this computer only'} onClick={() => set({ syncLogin: a.syncLogin === false })}
           className={clsx('flex items-center gap-2 rounded-md border px-2.5 font-semibold', a.syncLogin !== false ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200' : 'border-ink-200 text-ink-600 dark:border-ink-700 dark:text-ink-300')}>
           <span className={clsx('relative h-4 w-7 shrink-0 rounded-full', a.syncLogin !== false ? 'bg-emerald-600' : 'bg-ink-300 dark:bg-ink-600')}><span className={clsx('absolute top-0.5 size-3 rounded-full bg-white transition-all', a.syncLogin !== false ? 'left-3.5' : 'left-0.5')} /></span>
           <CloudUpload className="size-3.5" />Keep my look on my login
         </button>
-        <p className="hidden min-w-0 flex-1 truncate text-[11px] text-ink-400 lg:block">{a.syncLogin !== false ? 'Your look follows you to any counter you sign in on.' : 'Your look stays on this computer only.'}{shop ? ' · A shop default is set.' : ''}</p>
-        <span className="flex-1 lg:hidden" />
         {shop && <Button variant="outline" icon={Store} onClick={useShop}>Use shop default</Button>}
         {admin && <Button variant="outline" icon={Store} onClick={makeShop}>Save as shop default</Button>}
         {admin && shop && <Button variant="soft-danger" onClick={dropShop}>Remove shop default</Button>}
         <Button variant="soft-danger" icon={RotateCcw} onClick={reset}>Reset</Button>
         <ExitButton />
-      </div>
+      </PageActions>
     </div>
   );
 }

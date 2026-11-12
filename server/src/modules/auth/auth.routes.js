@@ -81,6 +81,11 @@ router.post('/change-password', authenticate,
 const parseJson = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
 const cleanLook = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v).slice(0, 2000) : null);
 
+// the shop's look for the login screen (no sign-in yet) - colours / font only, nothing private
+router.get('/appearance/public', async (_req, res) => {
+  const st = await getSettings(0);
+  res.json({ data: parseJson(st.APPEARANCE_DEFAULT) });
+});
 router.get('/appearance', authenticate, async (req, res) => {
   const row = await queryOne('SELECT appearance FROM users WHERE id = :id', { id: req.user.id });
   const st = await getSettings(0);

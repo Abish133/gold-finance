@@ -157,6 +157,11 @@
     .desk .dt-cards > tbody > tr { padding: 0.625rem 0.75rem; }
   }
 
+  /* ---------- main buttons: the theme's accent (gold for the Gold Finance theme, like the login page) */
+  .btn-accent { background: var(--accent-bg, var(--color-navy-900)); color: var(--accent-fg, #fff); border: 0; }
+  .btn-accent:not(:disabled):hover { filter: brightness(1.07); }
+  .dark .btn-accent { background: var(--accent-bg, #fff); color: var(--accent-fg, var(--color-navy-900)); }
+
   /* Page actions in the dark page header (were a bottom toolbar) */
   .page-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.375rem; margin-left: auto; }
   .page-actions > div:not(.relative) { display: contents; }
@@ -164,8 +169,10 @@
   /* notes that were in the bottom bar stay visible as light text */
   .page-actions p, .page-actions span[class*='text-ink-'] { color: rgb(255 255 255 / 0.65) !important; font-size: 11px; max-width: 28rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .page-actions button { height: 1.75rem !important; padding: 0 0.625rem !important; font-size: 12px !important; font-weight: 600; gap: 0.375rem; border-radius: var(--radius-md); white-space: nowrap; box-shadow: none !important; }
-  .page-actions button:not([class*='bg-navy-9']):not([class*='bg-navy-8']):not([class*='bg-rose-50']):not([class*='bg-rose-6']):not([class*='bg-emerald-6']) { background: rgb(255 255 255 / 0.1); color: #fff; border: 1px solid rgb(255 255 255 / 0.2); }
-  .page-actions button:not([class*='bg-navy-9']):not([class*='bg-navy-8']):not([class*='bg-rose-50']):not([class*='bg-rose-6']):not([class*='bg-emerald-6']):not(:disabled):hover, .page-actions .pa-open { background: rgb(255 255 255 / 0.2); }
+  .page-actions button.btn-accent { background: var(--accent-bg, #fff); color: var(--accent-fg, var(--color-navy-900)); border: 1px solid transparent; }
+  .page-actions button.btn-accent .pa-key { background: color-mix(in srgb, currentColor 14%, transparent); }
+  .page-actions button:not(.btn-accent):not([class*='bg-navy-9']):not([class*='bg-navy-8']):not([class*='bg-rose-50']):not([class*='bg-rose-6']):not([class*='bg-emerald-6']) { background: rgb(255 255 255 / 0.1); color: #fff; border: 1px solid rgb(255 255 255 / 0.2); }
+  .page-actions button:not(.btn-accent):not([class*='bg-navy-9']):not([class*='bg-navy-8']):not([class*='bg-rose-50']):not([class*='bg-rose-6']):not([class*='bg-emerald-6']):not(:disabled):hover, .page-actions .pa-open { background: rgb(255 255 255 / 0.2); }
   .page-actions button[class*='bg-navy-9'], .page-actions button[class*='bg-navy-8'] { background: #fff; color: var(--color-navy-900); border: 1px solid #fff; }
   .page-actions button[class*='bg-navy-9']:hover, .page-actions button[class*='bg-navy-8']:hover { background: var(--color-navy-50); }
   .page-actions button[class*='bg-rose-50'] { background: rgb(244 63 94 / 0.22); color: #ffe4e6; border: 1px solid rgb(253 164 175 / 0.45); }

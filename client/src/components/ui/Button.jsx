@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 const VARIANTS = {
   primary: 'bg-navy-800 text-white hover:bg-navy-700',
-  gold: 'bg-navy-900 text-white hover:bg-navy-800 dark:bg-white dark:text-navy-900 dark:hover:bg-ink-100',
+  gold: 'btn-accent',
   outline: 'border border-ink-300 bg-white text-navy-800 hover:bg-navy-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:bg-ink-800',
   ghost: 'text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800',
   danger: 'bg-rose-600 text-white hover:bg-rose-500',

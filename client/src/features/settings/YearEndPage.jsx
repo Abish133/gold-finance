@@ -56,7 +56,7 @@ export default function YearEndPage() {
             <li key={t} className="flex gap-3 rounded-md p-2"><span className="grid size-7 shrink-0 place-items-center rounded-md bg-navy-100 text-sm font-bold text-navy-800">{i + 1}</span><span><p className="font-semibold">{t}</p><p className="text-xs text-ink-500">{h}</p></span></li>
           ))}</ol>
           <div className="space-y-2 p-3 pt-0">
-            <Button variant="gold" className="h-10 w-full !bg-ink-900 !text-white" disabled={!user.is_super_admin || fy?.is_closed} onClick={() => setConfirm(true)}>Start Year End (Admin)</Button>
+            <Button variant="primary" className="h-10 w-full" disabled={!user.is_super_admin || fy?.is_closed} onClick={() => setConfirm(true)}>Start Year End (Admin)</Button>
             <Button variant="outline" className="w-full" icon={RefreshCw} onClick={() => refetch()}>Check Again (F5)</Button>
           </div>
         </div>

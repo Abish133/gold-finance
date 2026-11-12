@@ -123,7 +123,7 @@ export const ItemsSummary = ({ items = [], label = 'Total', valueKey = 'value' }
 ) : null);
 
 export const GoldButton = ({ children, ...p }) => (
-  <Button {...p} size="lg" className="h-11 w-full rounded-md border-0 !bg-ink-900 text-base !text-white hover:!bg-ink-700 disabled:!bg-ink-300 dark:!bg-white dark:!text-ink-900">{children}</Button>
+  <Button {...p} variant="gold" size="lg" className="h-11 w-full rounded-md text-base font-bold disabled:opacity-50">{children}</Button>
 );
 
 /* ------------------------------------------------------------------ auto / manual search */
