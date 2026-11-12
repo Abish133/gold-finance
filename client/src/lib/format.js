@@ -1,15 +1,24 @@
 import dayjs from 'dayjs';
 
-const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const inr0 = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-const num2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const compactFmt = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 2 });
+/* number style (Appearance screen): grouping 1,25,000 (Indian) or 125,000 (international) and the currency sign */
+let sym = '₹';
+let num2 = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let num0 = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+let compactFmt = new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 2 });
+export const setNumberStyle = ({ grouping = 'indian', currency = '₹' } = {}) => {
+  const loc = grouping === 'intl' ? 'en-US' : 'en-IN';
+  sym = currency ?? '₹';
+  num2 = new Intl.NumberFormat(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  num0 = new Intl.NumberFormat(loc, { maximumFractionDigits: 0 });
+  compactFmt = new Intl.NumberFormat(loc, { notation: 'compact', maximumFractionDigits: 2 });
+};
+const withSym = (txt, v) => { const neg = n(v) < 0; const body = neg ? txt.replace('-', '') : txt; const s = sym ? (sym === '₹' ? sym : `${sym} `) : ''; return `${neg ? '-' : ''}${s}${body}`; };
 
 export const n = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
-export const money = (v) => inr.format(n(v));
-export const money0 = (v) => inr0.format(n(v));
+export const money = (v) => withSym(num2.format(n(v)), v);
+export const money0 = (v) => withSym(num0.format(n(v)), v);
 export const amount = (v) => num2.format(n(v));
-export const compact = (v) => `₹${compactFmt.format(n(v))}`;
+export const compact = (v) => withSym(compactFmt.format(n(v)), v);
 export const weight = (v) => `${n(v).toFixed(3)}`;
 export const grams = (v) => `${n(v).toFixed(3)} g`;
 export const pct = (v) => `${n(v)}%`;

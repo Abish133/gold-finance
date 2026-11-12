@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { useForm } from 'react-hook-form';
-import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize } from 'lucide-react';
+import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize, Menu as MenuIcon, X } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch, useAction, useCompany } from '@/hooks/useApi';
@@ -11,14 +11,17 @@ import { useHotkey } from '@/hooks/useUtils';
 import { Button, Drawer, Spinner, Field, Input, Badge } from '@/components/ui';
 import { GlobalSearch } from './GlobalSearch';
 import { amount, setWorkDate, today } from '@/lib/format';
-import { appZoom } from '@/lib/appearance';
+import { appZoom, isDarkMode, loadAppearance, saveAppearance, syncAppearance } from '@/lib/appearance';
 
+/* light / dark lives in the Appearance settings (also "follow Windows") - the header button switches it */
 const useTheme = () => {
-  const [dark, setDark] = useState(() => localStorage.getItem('gf.theme') === 'dark');
+  const [dark, setDarkState] = useState(() => isDarkMode());
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('gf.theme', dark ? 'dark' : 'light');
-  }, [dark]);
+    const on = () => setDarkState(isDarkMode());
+    window.addEventListener('gf-appearance', on);
+    return () => window.removeEventListener('gf-appearance', on);
+  }, []);
+  const setDark = (v) => { const next = typeof v === 'function' ? v(isDarkMode()) : v; saveAppearance({ ...loadAppearance(), mode: next ? 'dark' : 'light' }); };
   return [dark, setDark];
 };
 
@@ -27,6 +30,7 @@ function MenuBar({ onAction, onExit }) {
   const { can } = useAuth();
   const [open, setOpen] = useState(null);
   const [sub, setSub] = useState(null);
+  const [mobile, setMobile] = useState(false);
   const bar = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,7 +39,7 @@ function MenuBar({ onAction, onExit }) {
     .map((m) => ({ ...m, items: m.items.filter((i, idx, arr) => !i.section || (arr[idx + 1] && !arr[idx + 1].section)) }))
     .filter((m) => m.items.some((i) => !i.section));
 
-  useEffect(() => { setOpen(null); setSub(null); }, [location]);
+  useEffect(() => { setOpen(null); setSub(null); setMobile(false); }, [location]);
   useEffect(() => setSub(null), [open]);
   useEffect(() => {
     if (!open) return undefined;
@@ -47,7 +51,7 @@ function MenuBar({ onAction, onExit }) {
   }, [open]);
 
   const choose = (i) => {
-    setOpen(null);
+    setOpen(null); setMobile(false);
     if (i.action) onAction(i.action); else navigate(i.path);
   };
 
@@ -56,12 +60,19 @@ function MenuBar({ onAction, onExit }) {
   const current = menus.find((m) => m.items.some(hasPath))?.key;
 
   return (
-    <nav ref={bar} className="navy-gradient no-print relative z-30 flex h-10 items-stretch gap-1 px-3 text-[13px] text-white/70">
+    <nav ref={bar} className="navy-gradient no-print relative z-30 flex h-10 items-stretch gap-1 px-2 text-[13px] text-white/70 sm:px-3">
+      {/* phones / tablets: one Menu button */}
+      <div className="py-1.5 lg:hidden">
+        <button type="button" onClick={() => setMobile(true)} className="flex h-full items-center gap-1.5 rounded-md px-2.5 font-semibold text-white hover:bg-white/10">
+          <MenuIcon className="size-4" />Menu
+        </button>
+      </div>
+      {current && <span className="flex min-w-0 items-center truncate text-[12px] font-semibold text-white/60 lg:hidden">{menus.find((m) => m.key === current)?.label}</span>}
       {menus.map((m) => {
         const isOpen = open === m.key;
         const isCurrent = current === m.key;
         return (
-          <div key={m.key} className="relative py-1.5" data-menu={m.key} onMouseEnter={() => open && setOpen(m.key)}>
+          <div key={m.key} className="relative hidden py-1.5 lg:block" data-menu={m.key} onMouseEnter={() => open && setOpen(m.key)}>
             <button type="button" onClick={() => setOpen(isOpen ? null : m.key)}
               className={clsx('flex h-full items-center gap-1.5 rounded-md px-2.5 font-semibold transition',
                 isOpen ? 'bg-white text-navy-900' : isCurrent ? 'text-white' : 'hover:bg-white/10 hover:text-white')}>
@@ -79,6 +90,7 @@ function MenuBar({ onAction, onExit }) {
           <Power className="size-4" />Exit
         </button>
       </div>
+      {mobile && <MobileMenu menus={menus} current={current} hasPath={hasPath} onChoose={choose} onClose={() => setMobile(false)} />}
       {open && (() => {
         const m = menus.find((x) => x.key === open);
         const btn = bar.current?.querySelector(`[data-menu="${open}"]`)?.getBoundingClientRect();
@@ -130,6 +142,64 @@ function MenuBar({ onAction, onExit }) {
         );
       })()}
     </nav>
+  );
+}
+
+/* ------------------------------------------------------------------ mobile menu */
+/** Slide-in menu for phones and tablets: search + one accordion per menu. */
+function MobileMenu({ menus, current, hasPath, onChoose, onClose }) {
+  const [openKey, setOpenKey] = useState(current || menus[0]?.key);
+  const [q, setQ] = useState('');
+  const term = q.trim().toLowerCase();
+  const flat = (items) => items.flatMap((i) => (i.section ? [] : i.items ? i.items : [i]));
+  const hits = term ? menus.flatMap((m) => flat(m.items).filter((i) => `${i.label} ${i.hint || ''}`.toLowerCase().includes(term)).map((i) => ({ ...i, menu: m.label }))) : [];
+  useEffect(() => { const esc = (e) => e.key === 'Escape' && onClose(); document.addEventListener('keydown', esc); return () => document.removeEventListener('keydown', esc); }, [onClose]);
+  const Item = ({ i, sub }) => (
+    <button type="button" onClick={() => onChoose(i)}
+      className={clsx('flex w-full items-center gap-3 rounded-md px-3 py-2 text-left', hasPath(i) ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' : 'hover:bg-ink-50 dark:hover:bg-ink-800')}>
+      <i.icon className="size-4 shrink-0 text-navy-600 dark:text-navy-300" />
+      <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold">{i.label}</span>{(sub || i.hint) && <span className="block truncate text-[11px] text-ink-500">{sub || i.hint}</span>}</span>
+      {i.hot && <kbd className="rounded-sm border border-ink-300 bg-ink-50 px-1.5 text-[10px] font-bold text-ink-600 dark:border-ink-700 dark:bg-ink-800">{i.hot}</kbd>}
+    </button>
+  );
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <div className="absolute inset-0 animate-fade-in bg-black/40" onClick={onClose} />
+      <div className="absolute inset-y-0 left-0 flex w-[min(340px,88vw)] flex-col bg-white text-ink-800 dark:bg-ink-900 dark:text-ink-100" style={{ animation: 'fade-in .15s ease-out' }}>
+        <div className="navy-gradient flex h-11 shrink-0 items-center gap-2 px-3 text-white">
+          <MenuIcon className="size-4" /><b className="flex-1 text-[14px]">Menu</b>
+          <button type="button" onClick={onClose} aria-label="Close menu" className="grid size-8 place-items-center rounded-md hover:bg-white/15"><X className="size-5" /></button>
+        </div>
+        <div className="shrink-0 border-b border-ink-100 p-2 dark:border-ink-800">
+          <div className="relative"><Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-400" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a screen…" className="h-9 w-full rounded-md border border-ink-200 bg-white pr-2 pl-8 text-[14px] outline-none focus:border-navy-400 dark:border-ink-700 dark:bg-ink-900" /></div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {term ? (hits.length ? hits.map((i) => <Item key={`${i.menu}-${i.label}`} i={i} sub={i.menu} />) : <p className="p-4 text-center text-[13px] text-ink-400">No screen named "{q}"</p>)
+            : menus.map((m) => {
+              const isOpen = openKey === m.key;
+              return (
+                <div key={m.key} className="border-b border-ink-100 last:border-0 dark:border-ink-800">
+                  <button type="button" onClick={() => setOpenKey(isOpen ? null : m.key)} className={clsx('flex w-full items-center gap-2.5 px-2 py-2.5 text-left', current === m.key && 'text-emerald-800 dark:text-emerald-300')}>
+                    <m.icon className="size-4.5 shrink-0" /><span className="flex-1 text-[14px] font-bold">{m.label}</span>
+                    {current === m.key && <span className="relative flex size-1.5"><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}
+                    <ChevronDown className={clsx('size-4 text-ink-400 transition', isOpen && 'rotate-180')} />
+                  </button>
+                  {isOpen && (
+                    <div className="pb-2 pl-2">
+                      {m.items.map((i, k) => (i.section
+                        ? (i.section.trim() ? <p key={`s${k}`} className="px-3 pt-2 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase">{i.section}</p> : <div key={`s${k}`} className="my-1 border-t border-ink-100 dark:border-ink-800" />)
+                        : i.items ? (
+                          <div key={i.label}><p className="px-3 pt-2 pb-1 text-[10px] font-bold tracking-widest text-ink-400 uppercase">{i.label}</p>{i.items.map((x) => <Item key={x.label} i={x} />)}</div>
+                        ) : <Item key={i.label} i={i} />))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -312,21 +382,21 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
   const name = company?.name || 'Gold Finance';
 
   return (
-    <header className="no-print relative z-20 flex h-12 items-center gap-3 overflow-hidden border-b border-ink-200 bg-white px-5 py-2 dark:border-ink-800 dark:bg-ink-900">
+    <header className="no-print relative z-20 flex h-12 items-center gap-2 overflow-hidden border-b border-ink-200 bg-white px-2 py-2 sm:gap-3 sm:px-5 dark:border-ink-800 dark:bg-ink-900">
       <Link to="/" className="flex shrink-0 items-center gap-2" title={fy ? `Books ${dayjs(fy.start_date).format('DD/MM/YYYY')} to ${dayjs(fy.end_date).format('DD/MM/YYYY')}` : undefined}>
         {company?.logo_path
           ? <img src={company.logo_path} alt="" className="size-6 rounded-md bg-white object-contain ring-1 ring-ink-200" />
           : <span className="grid size-6 place-items-center rounded-md bg-navy-900 text-[13px] font-bold text-white dark:bg-white dark:text-navy-900">{name.replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</span>}
-        <span className="max-w-56 truncate text-[15px] font-bold text-navy-900 dark:text-white">{name}</span>
+        <span className="hidden max-w-56 truncate text-[15px] font-bold text-navy-900 sm:inline dark:text-white">{name}</span>
         {fy && (
-          <span className="flex h-6 items-stretch overflow-hidden rounded-md border border-navy-900 text-[11px] font-bold dark:border-white/70">
+          <span className="hidden h-6 items-stretch md:flex overflow-hidden rounded-md border border-navy-900 text-[11px] font-bold dark:border-white/70">
             <span className="flex items-center bg-navy-900 px-1.5 text-[10px] tracking-wider text-white dark:bg-white dark:text-navy-900">FY</span>
             <span className="num flex items-center bg-white px-1.5 text-navy-900 dark:bg-ink-900 dark:text-white">{fy.name}</span>
           </span>
         )}
       </Link>
 
-      <Sep />
+      <span className="hidden md:block"><Sep /></span>
 
       <div className="hidden items-center md:flex">
         <HeaderStat icon={<CalendarIcon day={dayjs(billing?.billingDate).format('D')} alert={billing?.behind} />} label="Date" value={dayjs(billing?.billingDate).format('DD/MM/YYYY')} accent={billing?.behind ? 'text-rose-600' : undefined}
@@ -347,12 +417,12 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
         <kbd className="hidden rounded bg-ink-100 px-1 text-[10px] font-semibold text-ink-500 sm:block dark:bg-ink-800">Ctrl K</kbd>
       </button>
 
-      <Sep />
+      <span className="hidden sm:block"><Sep /></span>
       <BranchSwitcher />
-      <Sep />
+      <span className="hidden sm:block"><Sep /></span>
 
       <div className="flex shrink-0 items-center">
-        <FullscreenButton />
+        <span className="hidden sm:block"><FullscreenButton /></span>
         <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Theme" className="size-7 rounded-md">{dark ? <Sun className="size-4" /> : <Moon className="size-4" />}</Button>
         <Button variant="ghost" size="icon" onClick={onAlerts} className="relative size-7 rounded-md" aria-label="Reminders">
           <Bell className="size-4" />
@@ -360,12 +430,12 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
         </Button>
       </div>
 
-      <Sep />
+      <span className="hidden sm:block"><Sep /></span>
 
       <button type="button" onClick={onProfile} title={user.role_name}
         className="flex h-7 shrink-0 items-center gap-1.5 rounded-md pr-2 pl-0.5 transition hover:bg-ink-100 dark:hover:bg-ink-800">
         <span className="grid size-6 place-items-center rounded-md bg-navy-900 text-[10px] font-bold text-white uppercase dark:bg-white dark:text-navy-900">{user.username.slice(0, 2)}</span>
-        <span className="text-[12px] font-bold text-navy-900 uppercase dark:text-white">{user.username}</span>
+        <span className="hidden text-[12px] font-bold text-navy-900 uppercase sm:inline dark:text-white">{user.username}</span>
       </button>
     </header>
   );
@@ -380,7 +450,7 @@ function StatusBar() {
     <span className="whitespace-nowrap">{label} <b className={clsx('num ml-1.5 text-base', warn ? 'text-rose-300' : 'text-white')}>{value ?? 0}</b></span>
   );
   return (
-    <footer className="navy-gradient no-print flex items-center gap-8 overflow-x-auto border-t-[3px] border-gold-500 px-5 py-2 text-sm text-navy-100">
+    <footer className="navy-gradient no-print hidden items-center gap-8 overflow-x-auto md:flex border-t-[3px] border-gold-500 px-5 py-2 text-sm text-navy-100">
       <Item label={`${month} Loans`} value={data?.month_loans} />
       <Item label={`${month} Releases`} value={data?.month_releases} />
       <Item label="Open Loans" value={data?.open_loans} />
@@ -466,6 +536,7 @@ export function AppLayout() {
   const { can, logout } = useAuth();
   const { data: alerts = [] } = useFetch('/dashboard/alerts', undefined, { refetchInterval: 5 * 60_000 });
 
+  useEffect(() => { syncAppearance(); }, []); // the user's own look (or the shop default) after login
   useHotkey('ctrl+k', () => setPanel('search'));
   for (const h of HOTKEYS) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -479,7 +550,7 @@ export function AppLayout() {
         <MenuBar onAction={setPanel} onExit={() => setPanel('exit')} />
         <HeaderStrip dark={dark} setDark={setDark} onSearch={() => setPanel('search')} onProfile={() => setPanel('profile')} onAlerts={() => setPanel('alerts')} alertCount={alerts.length} />
       </div>
-      <main className="w-full flex-1 p-2 sm:p-3 xl:has-[.fit-screen]:flex xl:has-[.fit-screen]:min-h-0 xl:has-[.fit-screen]:flex-col xl:has-[.fit-screen]:overflow-hidden">
+      <main className="w-full min-w-0 flex-1 p-2 sm:p-3 xl:has-[.fit-screen]:flex xl:has-[.fit-screen]:min-h-0 xl:has-[.fit-screen]:flex-col xl:has-[.fit-screen]:overflow-hidden">
         <Suspense fallback={<Spinner label="Loading screen…" />}><Outlet /></Suspense>
       </main>
       <div className="sticky bottom-0 z-20"><StatusBar /></div>
