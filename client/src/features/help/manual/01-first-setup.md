@@ -12,7 +12,7 @@ Sign in as the owner (Super Admin). The first sign-in on a new install opens Get
 ## Step 1 - Company details
 **Masters → Company Information**
 1. Company name, address lines 1-3, mobile, phone, e-mail.
-2. Pawn-broker **licence number** (printed on the bill).
+2. Pawn-broker **licence number** - the company default. Each branch has its own licence number (Step 2), and the bill prints the branch's number.
 3. Logo (optional) - click the logo box and choose an image.
 4. **Save (F2)**.
 
@@ -20,10 +20,16 @@ Example: *Sri Lakshmi Gold Finance, 12 Main Road, Nagercoil 629001, 94430 12345,
 
 ## Step 2 - Branch and opening cash
 **Settings → More → Branches**
-1. Edit **Head Office** - code (HO), name, phone, address.
-2. **Loan prefix** - letters before the loan number (leave blank for 1, 2, 3 …; "K" gives K1, K2 …).
-3. **Opening cash** - the money in the drawer before the first entry. Example ₹2,00,000.
-4. Add another branch for every other shop.
+1. Edit **Head Office** - code (HO), name, address.
+2. **Pawn broker licence no** - must be filled. Printed on every bill of this branch. *Licence valid till* is optional.
+3. **Contact numbers** - the first number must be filled; it is the main number. Press **+ Add number** for more (up to 5 in all) and **✕** to remove one. All of them are printed on the bill.
+4. **Loan prefix** - letters before the loan number (leave blank for 1, 2, 3 …; "K" gives K1, K2 …).
+5. **Opening cash** - the money in the drawer before the first entry. Example ₹2,00,000.
+6. Add another branch for every other shop - each with its own licence number and contact numbers.
+
+Example: *HO · Head Office · Licence TN-NGL-0421 · 94430 12345, 04652 231122.*
+
+The branch list shows **Licence no** and **Contact numbers** for every branch; a red **Not set** means it still has to be filled.
 
 ## Step 3 - Today's rate
 **Masters → Gold / Silver Rate** - see the chapter *Gold / Silver Rate*. Do it every morning.

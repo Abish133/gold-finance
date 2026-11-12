@@ -8,6 +8,7 @@ export function SheetHead({ company = {}, title, subtitle }) {
     <div className="mb-3 border-b-2 border-black pb-2 text-center">
       <p className="text-lg font-extrabold">{company.name}</p>
       <p className="text-[11px]">{companyLine(company)}</p>
+      {(company.licence_no || company.mobile || company.phone) && <p className="text-[11px]">{[company.licence_no && `Licence No: ${company.licence_no}`, (company.mobile || company.phone) && `Ph: ${[company.mobile, company.phone].filter(Boolean).join(', ')}`].filter(Boolean).join(' · ')}</p>}
       <p className="mt-1 text-[13px] font-bold uppercase">{title}</p>
       {subtitle && <p className="text-[11px]">{subtitle}</p>}
     </div>

@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS branches (
   address VARCHAR(300),
   city VARCHAR(80), pincode VARCHAR(10),
   phone VARCHAR(40), email VARCHAR(120),
+  phones JSON NULL,                           -- 1 to 5 contact numbers, first = primary (also kept in phone)
+  licence_no VARCHAR(60),                     -- pawn broker licence of this branch (printed on bills)
+  licence_valid_till DATE,
   manager_name VARCHAR(120),
   loan_prefix VARCHAR(10) DEFAULT '',
   opening_cash DECIMAL(14,2) NOT NULL DEFAULT 0,

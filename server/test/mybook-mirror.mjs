@@ -12,7 +12,7 @@ export const call = async (method, url, body) => {
 const D = '2026-11-05';
 await call('POST', '/auth/login', { username: 'admin', password: 'Admin@123' });
 const tag = Date.now().toString().slice(-4);
-branch = String((await call('POST', '/admin/branches', { code: 'X' + tag, name: `MyBook Mirror ${tag}`, phone: '0987654321', loan_prefix: '', opening_cash: 0 })).data.id);
+branch = String((await call('POST', '/admin/branches', { code: 'X' + tag, name: `MyBook Mirror ${tag}`, licence_no: 'TEST-LIC', phone: '0987654321', loan_prefix: '', opening_cash: 0 })).data.id);
 const lk = (await call('GET', '/masters/lookups')).data;
 const scheme = lk.schemes.find((s) => s.calc_mode === 'MYBOOK');
 const cust = (await call('POST', '/customers', { title: 'Mr', name: 'Test Customer', relation_type: 'S/o', relation_name: 'Test Father', street: 'Main Street', city: 'Town', phone: `98765${tag}0`.slice(0, 10), id_proof_type: 'Aadhaar Card' })).data;

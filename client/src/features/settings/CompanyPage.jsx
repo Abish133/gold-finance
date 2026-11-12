@@ -5,19 +5,19 @@ import { Building } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Card, ImageCapture, PageHeader, Spinner } from '@/components/ui';
 import { FormFields } from '@/components/form/FormFields';
-import { useCompany } from '@/hooks/useApi';
+import { useCompanyRaw } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { CompanyInfoList } from './CompanyInfoList';
 
 const FIELDS = [
   { name: 'name', label: 'Company name (printed)', required: true, span: 2 }, { name: 'local_name', label: 'Name in Tamil (promissory note)' }, { name: 'proprietor', label: 'Proprietor' },
-  { name: 'licence_no', label: 'Pawn broker licence no' }, { name: 'licence_valid_till', label: 'Licence valid till', type: 'date' }, { name: 'gstin', label: 'GSTIN' },
+  { name: 'licence_no', label: 'Pawn broker licence no', hint: 'Default - each branch prints its own licence no' }, { name: 'licence_valid_till', label: 'Licence valid till', type: 'date' }, { name: 'gstin', label: 'GSTIN' },
   { name: 'address1', label: 'Address line 1', span: 'full' }, { name: 'address2', label: 'Address line 2', span: 'full' }, { name: 'address3', label: 'Address line 3', span: 'full' },
   { name: 'mobile', label: 'Mobile numbers' }, { name: 'phone', label: 'Phone' }, { name: 'email', label: 'Email', type: 'email' }, { name: 'website', label: 'Website' },
 ];
 
 export function CompanyForm({ embedded }) {
-  const { data, isLoading } = useCompany();
+  const { data, isLoading } = useCompanyRaw();
   const qc = useQueryClient();
   const form = useForm();
   useEffect(() => { if (data) form.reset(data); }, [data, form]);

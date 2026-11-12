@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { letterhead } from '@/lib/branchInfo';
 
 /**
  * Generic data hooks shared by every screen. Query keys always include the
@@ -74,5 +76,13 @@ export function useDeleteResource(endpoint, { onDone } = {}) {
 
 /** Cached lookups used by forms (metals, items, schemes, banks, latest rates). */
 export const useLookups = () => useFetch('/masters/lookups', undefined, { staleTime: 5 * 60_000 });
-export const useCompany = () => useFetch('/admin/company', undefined, { staleTime: 10 * 60_000 });
+/** The company exactly as saved (Company Information screen). */
+export const useCompanyRaw = () => useFetch('/admin/company', undefined, { staleTime: 10 * 60_000 });
+/** Company letterhead for the selected branch: the branch's licence no + contact numbers replace the company ones. */
+export const useCompany = () => {
+  const q = useCompanyRaw();
+  const { currentBranch } = useAuth() || {};
+  const data = useMemo(() => letterhead(q.data, currentBranch), [q.data, currentBranch]);
+  return { ...q, data };
+};
 export const useSettings = () => useFetch('/admin/settings', undefined, { staleTime: 5 * 60_000 });

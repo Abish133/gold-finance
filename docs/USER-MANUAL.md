@@ -80,10 +80,10 @@ After many wrong passwords (20 within 15 minutes) sign-in is blocked for 15 minu
 | Part | What it shows |
 |---|---|
 | **Menu bar** (top) | Loan · Records · Auction · Bank · Accounts · Reports · Masters · Settings · Help · Exit - the same order as MyBook. On the right it shows where you are, e.g. *Loans › Release* |
-| **Header** | Company name and A/c year · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
+| **Header** | Company name, A/c year and the selected branch's **licence number** (and its contact numbers on a wide screen) · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
 | **Search box** (Ctrl+K) | Loan no, customer name, mobile, barcode - or a screen name like *release*. With nothing typed it shows your **recent screens** and **recently opened** loans / customers |
 | **Body** | The screen you opened. Its dark **title bar** holds the screen's buttons (e.g. **Save F2**) and **⌨ Keys** - all shortcuts of that screen |
-| **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · clock. Click a figure to open its screen |
+| **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · your name, branch, licence no and contact numbers · clock. Click a figure to open its screen |
 
 **Billing date** is the working day of the books. It moves to the next day only when you close the day (**Day End**). If it shows a date before today, the previous day is not closed yet.
 
@@ -134,6 +134,8 @@ On a narrow screen the menu becomes a **☰ Menu** button (with search and recen
 
 If you work in more than one branch, the **Branch** box in the header changes branch. Owners can choose **All Branches** to see everything together (entries are always made in one branch).
 
+Every branch has its own **licence number** and **contact numbers** (1 to 5). Point the mouse at the Branch box to see them; the list in the box also shows each branch's licence number. Bills, receipts, notices and printed reports use the numbers of the branch - see *First-time setup, Step 2*.
+
 ## 6. Who can see what
 
 Your **role** decides which menus you see. A cashier does not see accounts or settings, a viewer can only look. The chapters of this manual shown to you follow your role.
@@ -162,7 +164,7 @@ Sign in as the owner (Super Admin). The first sign-in on a new install opens Get
 ## Step 1 - Company details
 **Masters → Company Information**
 1. Company name, address lines 1-3, mobile, phone, e-mail.
-2. Pawn-broker **licence number** (printed on the bill).
+2. Pawn-broker **licence number** - the company default. Each branch has its own licence number (Step 2), and the bill prints the branch's number.
 3. Logo (optional) - click the logo box and choose an image.
 4. **Save (F2)**.
 
@@ -170,10 +172,16 @@ Example: *Sri Lakshmi Gold Finance, 12 Main Road, Nagercoil 629001, 94430 12345,
 
 ## Step 2 - Branch and opening cash
 **Settings → More → Branches**
-1. Edit **Head Office** - code (HO), name, phone, address.
-2. **Loan prefix** - letters before the loan number (leave blank for 1, 2, 3 …; "K" gives K1, K2 …).
-3. **Opening cash** - the money in the drawer before the first entry. Example ₹2,00,000.
-4. Add another branch for every other shop.
+1. Edit **Head Office** - code (HO), name, address.
+2. **Pawn broker licence no** - must be filled. Printed on every bill of this branch. *Licence valid till* is optional.
+3. **Contact numbers** - the first number must be filled; it is the main number. Press **+ Add number** for more (up to 5 in all) and **✕** to remove one. All of them are printed on the bill.
+4. **Loan prefix** - letters before the loan number (leave blank for 1, 2, 3 …; "K" gives K1, K2 …).
+5. **Opening cash** - the money in the drawer before the first entry. Example ₹2,00,000.
+6. Add another branch for every other shop - each with its own licence number and contact numbers.
+
+Example: *HO · Head Office · Licence TN-NGL-0421 · 94430 12345, 04652 231122.*
+
+The branch list shows **Licence no** and **Contact numbers** for every branch; a red **Not set** means it still has to be filled.
 
 ## Step 3 - Today's rate
 **Masters → Gold / Silver Rate** - see the chapter *Gold / Silver Rate*. Do it every morning.
@@ -286,6 +294,17 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 - **Save messages with buttons** - after saving a loan / release the message has **Print** and **Open loan**.
 - **Unsaved changes** - a form you changed asks *Discard changes / Keep editing* before it closes.
 - **Password suggestion** - Change password and New User have a **Suggest** button and a strength bar.
+
+## Branch licence and contact numbers
+| What | Where | What it does |
+|---|---|---|
+| **Licence no for each branch** | Settings → More → Branches | Must be filled for every branch. Printed on that branch's bills and receipts in place of the company licence |
+| **Contact numbers for each branch** | Settings → More → Branches | 1 number must be filled, add more with **+ Add number** (up to 5). All are printed on the bill |
+| **Shown on screen** | Header, Branch box, bottom bar, Help → About | The selected branch's licence no and numbers |
+| **Shown on paper** | Loan bill, pawn ticket, receipts, notices, estimate, printed reports | The loan's own branch - even when you work in *All Branches* |
+| **Customer status link** | The customer's phone | One **Call** button for each number of the branch, and the licence no |
+
+Old branches keep their phone as the first contact number. Fill the licence number of each branch once - until then the company licence is printed.
 
 ## Optional automations (off until switched on)
 In **SMS / WhatsApp → Auto SMS Rules → Automations** (chapter *SMS and WhatsApp*):
@@ -509,6 +528,8 @@ Changing the amount or rate reposts the accounts of that loan. Every edit is kep
 3. In **History**, the printer icon reprints that receipt; the undo icon (manager) **cancels the last entry** of the loan (wrong release, wrong receipt) with a reason.
 4. **Bill** button prints the loan bill again.
 
+The bill heading shows the **licence number** and **contact numbers of the loan's branch** (set in Settings → More → Branches); the *Branch* row of the bill lists all the branch's numbers. Receipts (release, part payment, top-up) and the pawn ticket print the same.
+
 # Jewel Packet Sticker (F9)
 
 **Loan → Print → Jewel Packet Sticker** - labels for the jewel packets (loan no, barcode, customer, weight).
@@ -557,7 +578,7 @@ Example: Mr Ravi Kumar S/o Mani Kumar, 5-43 Main Road, Kappiyarai 629157, mobile
 ## Customer ledger
 Open a customer → **Ledger** - all loans, interest paid, due today. **WhatsApp (Ctrl+W)** opens WhatsApp with the customer's loan details typed in.
 
-**Loan status link** (in the ledger, when switched on - chapter *SMS and WhatsApp*): **Make a link** → **Copy link** or **Send on WhatsApp**. The customer opens it on the phone and sees only their open loans - balance, interest due today, amount to close, settle-before date, last payments. No address, photo, ID or other customers; view only. The box lists the links working now (made by, works till, opened N times) - **Cancel** stops one at once.
+**Loan status link** (in the ledger, when switched on - chapter *SMS and WhatsApp*): **Make a link** → **Copy link** or **Send on WhatsApp**. The customer opens it on the phone and sees only their open loans - balance, interest due today, amount to close, settle-before date, last payments. It also shows a **Call** button for each contact number of the branch, and the branch licence number. No address, photo, ID or other customers; view only. The box lists the links working now (made by, works till, opened N times) - **Cancel** stops one at once.
 
 **Row buttons** in the customer list: 👁 details · 📒 ledger · ✏ edit.
 
@@ -587,6 +608,7 @@ Open a customer → **Ledger** - all loans, interest paid, due today. **WhatsApp
 3. All loans are ticked - untick what you do not want (Space / click, Ctrl+A, Ctrl+D). "3 LOANS" means the customer has several loans in the list.
 4. Notices to customers:
    - **First Notice (F6)** - a **Pre-Auction Notice** for each customer (Ref No FN/loan no): all the customer's ticked loans in one table (loan no, pledge date, loan amount, items, net weight, total), pay within 15 days, *Note: Last Final Notice*.
+   - Every notice heading shows the loan's branch **licence number** and **contact numbers**.
    - **Registered Notice (F7)** - set **Auction date and time** (default 15 days after the billing date). An **Auction Notice (Registered Post)** for each customer (Ref No RN/loan no) with the auction date, time and place in a box; postage is added to the loan.
 5. Lists: **Auction List (F9)**, **Cert. of Post List (F10)**, **Regd. Post List (F11)**. *Post split amount* breaks the post list into parts.
 6. **WhatsApp / SMS (Ctrl+W)** - queues a reminder SMS for the ticked loans (and opens WhatsApp for one loan).
@@ -860,7 +882,7 @@ New loans pick the first scheme; the cashier can change the rate on the loan.
 - **Masters → Metal & Purity** - metals (Gold, Silver) and purities (Fine 100, Ornament 92 …).
 
 # Company Information
-**Masters → Company Information** - name, address, licence, phones, logo, bill heading (see *First-time setup*).
+**Masters → Company Information** - name, address, licence, phones, logo, bill heading (see *First-time setup*). The licence number and phones here are the **default**: when a branch has its own licence number and contact numbers (Settings → More → Branches), the branch's are shown and printed.
 
 # Employees, Attendance, Salary, Designations
 - **Masters → Employees** - staff records: code, name, phone, address, designation, joining date, basic salary, photos; give a login (username / password) to an employee.
@@ -925,6 +947,13 @@ Search (F3), Save Changes (F2), Print settings (F9).
 # Printer Setup and Print settings
 - **Printer Setup** - paper size and copies for loan bill, receipts, stickers (A4 / thermal), test print.
 - **Print settings** - **Loan bill layout** (Branch bill A4 / MyBook pawn ticket), bill language Tamil / English, receipt notes, terms, footer, sticker size and columns. **Label designer** - what is printed on stickers.
+
+# Branches
+**Settings → More → Branches** - one row for each shop: code, name, city, **Licence no**, **Contact numbers**, manager, loan prefix, opening cash, status.
+- **Add Branch** / click a row to edit. **Branch code**, **Branch name** and **Pawn broker licence no** must be filled.
+- **Contact numbers (printed on bill)** - the first box must be filled (main number). **+ Add number** adds another box (up to 5); **✕** removes one. Only digits, spaces and + - ( ); the same number cannot be typed twice.
+- The licence number and all contact numbers are printed on the branch's loan bill, pawn ticket, receipts, notices and reports, and shown in the header.
+- A red **Not set** in the list means the licence number or contact number is still missing.
 
 # Change Company / Branch
 **Settings → Change Company / Branch** - switch the working branch (same as the Branch box in the header).

@@ -24,10 +24,10 @@ After many wrong passwords (20 within 15 minutes) sign-in is blocked for 15 minu
 | Part | What it shows |
 |---|---|
 | **Menu bar** (top) | Loan · Records · Auction · Bank · Accounts · Reports · Masters · Settings · Help · Exit - the same order as MyBook. On the right it shows where you are, e.g. *Loans › Release* |
-| **Header** | Company name and A/c year · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
+| **Header** | Company name, A/c year and the selected branch's **licence number** (and its contact numbers on a wide screen) · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
 | **Search box** (Ctrl+K) | Loan no, customer name, mobile, barcode - or a screen name like *release*. With nothing typed it shows your **recent screens** and **recently opened** loans / customers |
 | **Body** | The screen you opened. Its dark **title bar** holds the screen's buttons (e.g. **Save F2**) and **⌨ Keys** - all shortcuts of that screen |
-| **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · clock. Click a figure to open its screen |
+| **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · your name, branch, licence no and contact numbers · clock. Click a figure to open its screen |
 
 **Billing date** is the working day of the books. It moves to the next day only when you close the day (**Day End**). If it shows a date before today, the previous day is not closed yet.
 
@@ -77,6 +77,8 @@ On a narrow screen the menu becomes a **☰ Menu** button (with search and recen
 ## 5. Branches
 
 If you work in more than one branch, the **Branch** box in the header changes branch. Owners can choose **All Branches** to see everything together (entries are always made in one branch).
+
+Every branch has its own **licence number** and **contact numbers** (1 to 5). Point the mouse at the Branch box to see them; the list in the box also shows each branch's licence number. Bills, receipts, notices and printed reports use the numbers of the branch - see *First-time setup, Step 2*.
 
 ## 6. Who can see what
 

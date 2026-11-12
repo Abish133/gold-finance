@@ -20,7 +20,7 @@ ok(`login as ${me.data.user.full_name}, branches ${me.data.user.branches.length}
 const ho = await testBranch(call); branch = String(ho);   // own branch - the shop's Head Office is never touched
 
 // second branch
-const b2 = await call('POST', '/admin/branches', { code: 'K' + Date.now().toString().slice(-4), name: 'Karungal', phone: '7708950919', loan_prefix: 'K', opening_cash: 100000 });
+const b2 = await call('POST', '/admin/branches', { code: 'K' + Date.now().toString().slice(-4), name: 'Karungal', licence_no: 'TEST-LIC', phone: '7708950919', loan_prefix: 'K', opening_cash: 100000 });
 ok(`branch ${b2.data.name}`);
 await call('PUT', `/admin/branches/${ho}`, { opening_cash: 500000 });
 

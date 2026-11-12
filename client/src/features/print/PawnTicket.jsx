@@ -19,7 +19,8 @@ function Copy({ data, label }) {
         <div>
           <p className="text-2xl font-extrabold text-[#0f1e3c]">{company.name}</p>
           <p className="text-[12px]">{[company.address1, company.address2, company.address3].filter(Boolean).join(', ')}</p>
-          {(company.phone || company.mobile) && <p className="mt-2 text-[12px]">Ph: {company.phone || company.mobile}</p>}
+          {company.licence_no && <p className="text-[12px] font-bold">Licence No: {company.licence_no}</p>}
+          {(company.mobile || company.phone) && <p className="mt-2 text-[12px]">Ph: {[company.mobile, company.phone].filter(Boolean).join(', ')}</p>}
         </div>
         <div className="text-right">
           <p className="inline-block rounded bg-[#0f1e3c] px-8 py-1 text-[13px] font-bold tracking-wide text-white">PAWN TICKET</p>

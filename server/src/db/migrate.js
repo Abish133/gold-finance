@@ -34,6 +34,10 @@ const COLUMNS = [
   ['auction_sales', 'sale_date', 'DATE NULL'],
   ['auction_sales', 'sale_voucher_id', 'INT NULL'],
   ['users', 'appearance', 'TEXT NULL'], // per-user look: accent colour, font, text size ...
+  // each branch: its own pawn broker licence + up to 5 contact numbers
+  ['branches', 'phones', 'JSON NULL AFTER email'],
+  ['branches', 'licence_no', 'VARCHAR(60) NULL AFTER phones'],
+  ['branches', 'licence_valid_till', 'DATE NULL AFTER licence_no'],
 ];
 
 const TABLES = `
@@ -92,6 +96,9 @@ const run = async () => {
       VALUES ('GL000', 'Gold Loan (MyBook)', NULL, 75, 'MONTHLY', 'MYBOOK', 'FROM_LOAN_DATE', '[{"upto_months":null,"rate":1.5}]', 0, 0, 12, 'Rate per month, every started month charged, interest on the loan amount')`);
   }
   await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (3, 'MyBook interest mode')");
+  // branch contact numbers: carry the old single phone into the list
+  await conn.query("UPDATE branches SET phones = JSON_ARRAY(phone) WHERE phones IS NULL AND phone IS NOT NULL AND phone <> ''");
+  await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (4, 'Branch licence no and contact numbers')");
   await conn.end();
   console.log(`✔ Database "${env.db.database}" is up to date`);
 };

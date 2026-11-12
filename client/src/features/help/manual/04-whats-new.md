@@ -35,6 +35,17 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 - **Unsaved changes** - a form you changed asks *Discard changes / Keep editing* before it closes.
 - **Password suggestion** - Change password and New User have a **Suggest** button and a strength bar.
 
+## Branch licence and contact numbers
+| What | Where | What it does |
+|---|---|---|
+| **Licence no for each branch** | Settings → More → Branches | Must be filled for every branch. Printed on that branch's bills and receipts in place of the company licence |
+| **Contact numbers for each branch** | Settings → More → Branches | 1 number must be filled, add more with **+ Add number** (up to 5). All are printed on the bill |
+| **Shown on screen** | Header, Branch box, bottom bar, Help → About | The selected branch's licence no and numbers |
+| **Shown on paper** | Loan bill, pawn ticket, receipts, notices, estimate, printed reports | The loan's own branch - even when you work in *All Branches* |
+| **Customer status link** | The customer's phone | One **Call** button for each number of the branch, and the licence no |
+
+Old branches keep their phone as the first contact number. Fill the licence number of each branch once - until then the company licence is printed.
+
 ## Optional automations (off until switched on)
 In **SMS / WhatsApp → Auto SMS Rules → Automations** (chapter *SMS and WhatsApp*):
 - **Daily summary to the owner** by SMS.

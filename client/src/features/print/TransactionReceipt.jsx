@@ -21,7 +21,8 @@ function Head({ company, small }) {
     <div className="border-b border-black pb-2 text-center">
       <p className="text-2xl font-bold">{company.name}</p>
       <p className={small ? 'text-[12px] text-ink-600' : 'text-[13px]'}>{[company.address1, company.address2, company.address3].filter(Boolean).join(', ')}</p>
-      {(company.phone || company.mobile) && <p className={small ? 'text-[12px] text-ink-600' : 'text-[13px]'}>{small ? 'Phone' : 'Ph:'} {company.phone || company.mobile}</p>}
+      {(company.mobile || company.phone) && <p className={small ? 'text-[12px] text-ink-600' : 'text-[13px]'}>{small ? 'Phone' : 'Ph:'} {[company.mobile, company.phone].filter(Boolean).join(', ')}</p>}
+      {company.licence_no && <p className={small ? 'text-[12px] text-ink-600' : 'text-[13px]'}>Licence No: {company.licence_no}</p>}
     </div>
   );
 }

@@ -8,6 +8,7 @@ export function PrintableTable({ title, subtitle, company, columns, rows, totals
     <div className="p-1 text-[10.5px] text-black">
       <div className="mb-2 border-b-2 border-black pb-1 text-center">
         <p className="text-base font-bold">{company?.name}</p>
+        {(company?.licence_no || company?.mobile || company?.phone) && <p className="text-[10px]">{[company.branch_name, company.licence_no && `Licence No: ${company.licence_no}`, (company.mobile || company.phone) && `Ph: ${[company.mobile, company.phone].filter(Boolean).join(', ')}`].filter(Boolean).join(' · ')}</p>}
         <p className="text-[12px] font-semibold">{title}</p>
         {subtitle && <p>{subtitle}</p>}
       </div>

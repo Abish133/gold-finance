@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { money, date, weight, amount, today } from '@/lib/format';
+import { letterhead, loanBranch } from '@/lib/branchInfo';
 
 const TYPE = { REMINDER: 'Reminder', FIRST: 'First Notice', SECOND: 'Second Notice', FINAL: 'Final Notice before Auction', AUCTION: 'Auction Intimation' };
 export const NOTICE_FORMATS = [
@@ -11,6 +12,9 @@ export const NOTICE_FORMATS = [
 
 const addressLines = (l) => [`${l.customer_title || ''} ${l.customer_name}`.trim(), l.relation_name && `${l.relation_type || ''} ${l.relation_name}`.trim(), l.address, l.area, l.customer_phone && `Ph: ${l.customer_phone}`].filter(Boolean);
 const companyLine = (c) => [c.address1, c.address2, c.address3].filter(Boolean).join(', ');
+const phoneLine = (c) => [c.mobile, c.phone].filter(Boolean).join(', ');
+/** each loan prints its own branch's licence no + contact numbers */
+const forLoan = (company, l) => (l && (l.branch_licence_no || l.branch_phones) ? letterhead(company, loanBranch(l)) : company);
 
 function Body({ l, company, type, auctionDate, auctionTime }) {
   return (
@@ -37,6 +41,7 @@ function Head({ company, small }) {
       <p className={clsx('font-extrabold text-[#c0392b]', small ? 'text-base' : 'text-xl')}>{company.name}</p>
       <p className="text-[11px]">{companyLine(company)}</p>
       {company.licence_no && <p className="text-[11px]">Licence No: {company.licence_no}</p>}
+      {phoneLine(company) && <p className="text-[11px]">Ph: {phoneLine(company)}</p>}
     </div>
   );
 }
@@ -60,7 +65,8 @@ function DeskNotice({ group, company, registered, auctionDate, auctionTime }) {
       <div className="border-b-4 border-double border-[#1f3a5f] pb-2 text-center">
         <p className="text-2xl font-bold text-[#1f3a5f]">{company.name}</p>
         <p>{companyLine(company)}</p>
-        {(company.phone || company.mobile) && <p>Ph: {company.mobile || company.phone}</p>}
+        {phoneLine(company) && <p>Ph: {phoneLine(company)}</p>}
+        {company.licence_no && <p>Licence No: {company.licence_no}</p>}
       </div>
       <div className="mt-3 flex justify-between"><span>Ref No: {registered ? 'RN' : 'FN'}/{l.bill_no}</span><span>Date: {date(today())}</span></div>
       <div className="mt-2 flex gap-6"><span className="font-bold">To:</span><span>{oneLine(l)}</span></div>
@@ -93,18 +99,24 @@ function DeskNotice({ group, company, registered, auctionDate, auctionTime }) {
 export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, auctionTime, format = 'LETTER' }) {
   if (format === 'MYBOOK' || format === 'MYBOOK_REGISTERED') {
     const groups = Object.values(loans.reduce((a, l) => { (a[l.customer_id || l.customer_name] ||= []).push(l); return a; }, {}));
-    return <div className="mx-auto w-[190mm]">{groups.map((g) => <DeskNotice key={g[0].id} group={g} company={company} registered={format === 'MYBOOK_REGISTERED'} auctionDate={auctionDate} auctionTime={auctionTime} />)}</div>;
+    return <div className="mx-auto w-[190mm]">{groups.map((g) => <DeskNotice key={g[0].id} group={g} company={forLoan(company, g[0])} registered={format === 'MYBOOK_REGISTERED'} auctionDate={auctionDate} auctionTime={auctionTime} />)}</div>;
   }
   return (
     <div className="mx-auto w-[190mm] text-[13px] text-black">
-      {loans.map((l) => (
-        <div key={l.id} className="page-break pb-6">
+      {loans.map((l) => <LetterFor key={l.id} l={l} company={forLoan(company, l)} type={type} auctionDate={auctionDate} auctionTime={auctionTime} format={format} />)}
+    </div>
+  );
+}
+
+function LetterFor({ l, company, type, auctionDate, auctionTime, format }) {
+  return (
+        <div className="page-break pb-6">
           {format === 'INLAND' ? (
             /* Inland letter: top half = address panel (outside after folding), bottom = message */
             <div className="border border-dashed border-black">
               <div className="grid h-[95mm] grid-cols-2 border-b border-dashed border-black">
                 <div className="border-r border-dashed border-black p-4 text-[11px]">
-                  <p className="font-bold">From:</p><p className="font-semibold">{company.name}</p><p>{companyLine(company)}</p>{company.phone && <p>Ph: {company.phone}</p>}
+                  <p className="font-bold">From:</p><p className="font-semibold">{company.name}</p><p>{companyLine(company)}</p>{phoneLine(company) && <p>Ph: {phoneLine(company)}</p>}
                 </div>
                 <div className="p-4">
                   <p className="text-[11px] font-bold">To,</p>
@@ -136,7 +148,5 @@ export function NoticeLetters({ loans, company, type = 'FIRST', auctionDate, auc
             </>
           )}
         </div>
-      ))}
-    </div>
   );
 }

@@ -16,7 +16,7 @@ const eq = (a, b, m) => { if (Math.abs(Number(a) - Number(b)) > 0.01) throw new 
 
 const me = (await call('POST', '/auth/login', { username: 'admin', password: 'Admin@123' })).data.user;
 const tag = Date.now().toString().slice(-5);
-const br = (await call('POST', '/admin/branches', { code: 'T' + tag.slice(-4), name: `Flow Test ${tag}`, phone: '9000000000', loan_prefix: 'T', opening_cash: 1000000 })).data;
+const br = (await call('POST', '/admin/branches', { code: 'T' + tag.slice(-4), name: `Flow Test ${tag}`, licence_no: 'TEST-LIC', phone: '9000000000', loan_prefix: 'T', opening_cash: 1000000 })).data;
 branch = String(br.id);
 console.log('branch', br.name, br.id);
 const lk = (await call('GET', '/masters/lookups')).data;

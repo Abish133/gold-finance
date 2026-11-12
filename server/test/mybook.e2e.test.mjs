@@ -15,7 +15,7 @@ const eq = (got, exp, what) => { if (Math.abs(Number(got) - exp) > 0.5) fails.pu
 
 await call('POST', '/auth/login', { username: 'admin', password: 'Admin@123' });
 const tag = Date.now().toString().slice(-5);
-branch = String((await call('POST', '/admin/branches', { code: 'M' + tag.slice(-4), name: `MyBook Check ${tag}`, phone: '9000000001', loan_prefix: 'M', opening_cash: 500000 })).data.id);
+branch = String((await call('POST', '/admin/branches', { code: 'M' + tag.slice(-4), name: `MyBook Check ${tag}`, licence_no: 'TEST-LIC', phone: '9000000001', loan_prefix: 'M', opening_cash: 500000 })).data.id);
 const lk = (await call('GET', '/masters/lookups')).data;
 const scheme = lk.schemes.find((s) => s.calc_mode === 'MYBOOK');
 if (!scheme) throw new Error('MyBook scheme missing - run npm run db:migrate');

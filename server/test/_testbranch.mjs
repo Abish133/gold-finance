@@ -5,6 +5,6 @@ export const testBranch = async (call) => {
   const rows = list.rows || list.items || list;
   const found = rows.find((b) => b.code === 'ZTEST');
   if (found) return String(found.id);
-  const b = (await call('POST', '/admin/branches', { code: 'ZTEST', name: 'Automatic Tests', phone: '9000000099', loan_prefix: 'Z', opening_cash: 500000 })).data;
+  const b = (await call('POST', '/admin/branches', { code: 'ZTEST', name: 'Automatic Tests', phone: '9000000099', licence_no: 'TEST-LIC-01', loan_prefix: 'Z', opening_cash: 500000 })).data;
   return String(b.id);
 };

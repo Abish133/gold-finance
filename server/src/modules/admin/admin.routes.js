@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { query, queryOne, withTransaction } from '#config/db.js';
 import { permit, invalidateUserCache } from '#middleware/auth.js';
 import { requireBranch } from '#middleware/branch.js';
+import { parsePhones, MAX_PHONES } from '#utils/phones.js';
 import { upload, publicPath } from '#middleware/upload.js';
 import { createCrudRouter } from '#utils/crudFactory.js';
 import { ApiError } from '#utils/ApiError.js';
@@ -49,9 +50,27 @@ router.post('/company/logo', permit('s_company', 'edit'), upload.single('file'),
 /* ---------------- branches ---------------- */
 router.use('/branches', createCrudRouter({
   table: 'branches', screen: 's_branches', alias: 'b',
-  fields: ['code', 'name', 'local_name', 'address', 'city', 'pincode', 'phone', 'email', 'manager_name', 'loan_prefix', 'opening_cash', 'is_active'],
-  booleans: ['is_active'], required: ['code', 'name'], searchable: ['b.name', 'b.code', 'b.city'],
-  sortable: { name: 'b.name', code: 'b.code' }, defaultSort: 'name',
+  fields: ['code', 'name', 'local_name', 'address', 'city', 'pincode', 'phone', 'phones', 'licence_no', 'licence_valid_till', 'email', 'manager_name', 'loan_prefix', 'opening_cash', 'is_active'],
+  booleans: ['is_active'], required: ['code', 'name'], searchable: ['b.name', 'b.code', 'b.city', 'b.licence_no', 'b.phone', 'b.phones'],
+  sortable: { name: 'b.name', code: 'b.code', licence_no: 'b.licence_no' }, defaultSort: 'name',
+  beforeSave: async (data, req, existing) => {
+    // licence no + at least one contact number are compulsory for every branch
+    const touchesPhones = 'phones' in req.body || 'phone' in req.body || !existing;
+    if (touchesPhones) {
+      const raw = 'phones' in req.body ? req.body.phones : req.body.phone;
+      if (Array.isArray(raw) && raw.filter((p) => String(p ?? '').trim()).length > MAX_PHONES) throw ApiError.badRequest(`Up to ${MAX_PHONES} contact numbers only`);
+      const phones = parsePhones(raw);
+      if (!phones.length) throw ApiError.badRequest('At least one contact number is required');
+      if (phones.some((p) => !/^[0-9+\-\s()]{6,20}$/.test(p))) throw ApiError.badRequest('Contact numbers can have only digits, spaces, + - ( )');
+      data.phones = JSON.stringify(phones);
+      data.phone = phones[0];
+    }
+    if ('licence_no' in data || !existing) {
+      data.licence_no = String(data.licence_no ?? '').trim() || null;
+      if (!data.licence_no) throw ApiError.badRequest('Licence number is required');
+    }
+    return data;
+  },
   afterSave: async (row, req, existing) => {
     if (!existing) {
       // creator gets access to new branch immediately

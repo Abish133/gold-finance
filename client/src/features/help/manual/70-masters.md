@@ -38,7 +38,7 @@ New loans pick the first scheme; the cashier can change the rate on the loan.
 - **Masters → Metal & Purity** - metals (Gold, Silver) and purities (Fine 100, Ornament 92 …).
 
 # Company Information
-**Masters → Company Information** - name, address, licence, phones, logo, bill heading (see *First-time setup*).
+**Masters → Company Information** - name, address, licence, phones, logo, bill heading (see *First-time setup*). The licence number and phones here are the **default**: when a branch has its own licence number and contact numbers (Settings → More → Branches), the branch's are shown and printed.
 
 # Employees, Attendance, Salary, Designations
 - **Masters → Employees** - staff records: code, name, phone, address, designation, joining date, basic salary, photos; give a login (username / password) to an employee.

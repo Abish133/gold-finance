@@ -85,7 +85,10 @@ export default function CustomerStatusPage() {
             ))}
 
             <footer className="space-y-2 pb-6 text-center text-[12px] text-ink-500">
-              {d.shop.phone && <a href={`tel:${d.shop.phone}`} className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 bg-white px-3 py-1.5 font-semibold text-navy-900 dark:border-ink-700 dark:bg-ink-900 dark:text-white"><Phone className="size-3.5" />Call the shop</a>}
+              <div className="flex flex-wrap justify-center gap-2">{(d.shop.phones?.length ? d.shop.phones : [d.shop.phone].filter(Boolean)).map((ph, i) => (
+                <a key={ph} href={`tel:${ph.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 bg-white px-3 py-1.5 font-semibold text-navy-900 dark:border-ink-700 dark:bg-ink-900 dark:text-white"><Phone className="size-3.5" />{i === 0 ? 'Call the shop' : 'Call'} · <span className="num">{ph}</span></a>
+              ))}</div>
+              {d.shop.licence_no && <p className="text-[11px]">Licence No: {d.shop.licence_no}</p>}
               <p className="flex items-center justify-center gap-1"><ShieldCheck className="size-3.5" />View only · this link works till {dayjs(d.expiresAt).format('DD MMM YYYY')}</p>
               <p>Amounts are as on today. The shop's receipt is final.</p>
             </footer>

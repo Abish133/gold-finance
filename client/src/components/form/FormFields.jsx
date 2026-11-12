@@ -2,7 +2,51 @@ import { Controller } from 'react-hook-form';
 import clsx from 'clsx';
 import { Field, Input, Select, Textarea, Switch } from '@/components/ui';
 import { useList } from '@/hooks/useApi';
+import { Phone, Plus, X } from 'lucide-react';
 import { PasswordHelp } from '@/components/common/PasswordHelp';
+
+const PHONE_RE = /^[0-9+\-\s()]{6,20}$/;
+const validatePhones = (v, f) => {
+  const list = (v || []).map((x) => String(x ?? '').trim()).filter(Boolean);
+  if (f.required && !list.length) return 'At least one contact number is required';
+  if (list.some((x) => !PHONE_RE.test(x))) return 'Use only digits, spaces, + - ( ) (6 to 20 characters)';
+  if (new Set(list).size !== list.length) return 'The same number is entered twice';
+  return true;
+};
+
+/** 1..max phone numbers: the first is the primary (mandatory when required), the rest are optional and can be added / removed. */
+function PhoneList({ field, f, err }) {
+  const max = f.max || 5;
+  const list = Array.isArray(field.value) && field.value.length ? field.value : [''];
+  const set = (next) => field.onChange(next);
+  return (
+    <div className={clsx('block', err && 'field-error')}>
+      <span className="label">{f.label}{f.required && <span aria-hidden className="ml-1 inline-block size-1.5 -translate-y-px rounded-full bg-rose-500 align-middle" title="Required" />}</span>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {list.map((v, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <Input value={v ?? ''} inputMode="tel" maxLength={20} autoComplete="off" prefix={<Phone className="size-3.5" />}
+              placeholder={i === 0 ? 'Primary number' : `Number ${i + 1} (optional)`} aria-label={i === 0 ? 'Primary contact number' : `Contact number ${i + 1}`}
+              onChange={(e) => set(list.map((x, j) => (j === i ? e.target.value : x)))} onBlur={field.onBlur} />
+            {i > 0 && (
+              <button type="button" title="Remove this number" aria-label={`Remove number ${i + 1}`} onClick={() => set(list.filter((_, j) => j !== i))}
+                className="grid size-8 shrink-0 place-items-center rounded-md text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"><X className="size-3.5" /></button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex items-center gap-2">
+        {list.length < max && (
+          <button type="button" onClick={() => set([...list, ''])} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-navy-700 hover:bg-ink-100 dark:text-ink-200 dark:hover:bg-ink-800">
+            <Plus className="size-3.5" />Add number
+          </button>
+        )}
+        <span className="text-[11px] text-ink-400">{list.length} of {max}{f.hint ? ` · ${f.hint}` : ''}</span>
+      </div>
+      {err && <span role="alert" className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-rose-600"><span aria-hidden className="grid size-3 shrink-0 place-items-center rounded-full bg-rose-600 text-[8px] font-bold text-white">!</span>{err}</span>}
+    </div>
+  );
+}
 
 /** Select whose options come from an API list endpoint ({ all: 1 }). */
 export function AsyncSelect({ endpoint, params, labelKey = 'name', valueKey = 'id', format, ...props }) {
@@ -30,6 +74,14 @@ export function FormFields({ fields, form, cols = 2, dense = false, className })
         const rules = { required: f.required ? `${f.label} is required` : false, ...(f.rules || {}) };
         const span = f.span === 'full' ? 'col-span-full' : f.span === 2 ? 'sm:col-span-2' : '';
         const err = errors[f.name]?.message;
+        if (f.type === 'phone-list') {
+          return (
+            <div key={f.name} className={span}>
+              <Controller name={f.name} control={control} rules={{ validate: (v) => validatePhones(v, f) }}
+                render={({ field }) => <PhoneList field={field} f={f} err={err} />} />
+            </div>
+          );
+        }
         if (f.type === 'switch') {
           return (
             <div key={f.name} className={clsx(span, 'pt-1')}>

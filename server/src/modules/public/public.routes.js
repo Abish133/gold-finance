@@ -2,6 +2,7 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import dayjs from 'dayjs';
 import { query, queryOne } from '#config/db.js';
+import { parsePhones } from '#utils/phones.js';
 import { ApiError } from '#utils/ApiError.js';
 import { getSettings } from '#services/settings.service.js';
 import { getLoanFull } from '#modules/loans/loans.service.js';
@@ -37,6 +38,7 @@ router.get('/loan-status/:token', limiter, async (req, res) => {
     const l = full.loan; const c = full.calc;
     loans.push({
       loan_no: l.manual_bill_no ? `${l.bill_no} / ${l.manual_bill_no}` : l.bill_no, branch: l.branch_name || null,
+      branch_phones: parsePhones(l.branch_phones, l.branch_phone), branch_licence_no: l.branch_licence_no || null,
       loan_date: l.loan_date, due_date: l.due_date, items: l.item_summary, net_wt: l.net_wt, principal: l.principal,
       outstanding: c.principalOutstanding, interest_due: Number(c.interestDue || 0) + Number(c.penalDue || 0), total_payable: c.totalPayable,
       monthly_interest: c.monthlyInterest, paid_up_to: c.paidUpTo, overdue: !!c.isOverdue, overdue_days: c.overdueDays,
@@ -46,7 +48,10 @@ router.get('/loan-status/:token', limiter, async (req, res) => {
   await query('UPDATE customer_links SET views = views + 1, last_viewed_at = NOW() WHERE id = :id', { id: link.id });
   res.set('Cache-Control', 'no-store');
   res.json({ data: {
-    shop: { name: company?.name || '', phone: company?.mobile || company?.phone || '' },
+    shop: (() => {
+      const phones = loans[0]?.branch_phones?.length ? loans[0].branch_phones : parsePhones([company?.mobile, company?.phone]);
+      return { name: company?.name || '', phone: phones[0] || '', phones, licence_no: loans[0]?.branch_licence_no || null };
+    })(),
     customer: { name: customer.name, phone: mask(customer.phone) },
     asOn: dayjs().format('YYYY-MM-DD'), expiresAt: link.expires_at, loans,
   } });

@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import dayjs from 'dayjs';
 import { useForm } from 'react-hook-form';
-import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize, Menu as MenuIcon, X, CalendarDays, Coins } from 'lucide-react';
+import { Bell, LogOut, Moon, Search, Sun, Building2, Phone, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize, Menu as MenuIcon, X, CalendarDays, Coins } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch, useAction, useCompany } from '@/hooks/useApi';
@@ -284,7 +284,8 @@ function BranchSwitcher() {
 
   return (
     <div ref={box} className="relative shrink-0">
-      <button type="button" disabled={single} onClick={() => setOpen((o) => !o)} title="Switch branch - data is kept separate for every branch"
+      <button type="button" disabled={single} onClick={() => setOpen((o) => !o)}
+        title={[current && current.id !== 'all' ? `${current.name}${current.licence_no ? ` · Licence ${current.licence_no}` : ''}${current.phones?.length ? ` · Ph ${current.phones.join(', ')}` : ''}` : '', single ? '' : 'Switch branch - data is kept separate for every branch'].filter(Boolean).join('\n')}
         className="flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 py-1 pr-2 pl-1 text-left transition hover:border-emerald-400 disabled:cursor-default dark:border-emerald-900 dark:bg-emerald-950/30">
         <span className="relative grid size-8 shrink-0 place-items-center rounded-md bg-emerald-600 text-white">
           {branch === 'all' ? <Layers className="size-4" /> : <Building2 className="size-4" />}
@@ -319,6 +320,7 @@ function BranchSwitcher() {
                       className={clsx('flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px]', i === hi && 'bg-ink-100 dark:bg-ink-800')}>
                       {b.id === 'all' ? <Layers className="size-3.5 shrink-0 text-ink-500" /> : <Building2 className="size-3.5 shrink-0 text-ink-500" />}
                       <span className={clsx('flex-1 truncate', active ? 'font-bold text-emerald-800 dark:text-emerald-300' : 'font-medium')}>{b.name}</span>
+                      {b.id !== 'all' && b.licence_no && <span className="num max-w-20 truncate text-[10px] text-ink-400" title="Licence no">{b.licence_no}</span>}
                       {b.id !== 'all' && b.code && <span className="num text-[10px] text-ink-400">{b.code}</span>}
                       {active && (
                         <span className="relative flex size-1.5" aria-hidden>
@@ -381,7 +383,11 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
           : <span className="grid size-9 place-items-center rounded-md bg-navy-900 text-[16px] font-bold text-white dark:bg-white dark:text-navy-900">{name.replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</span>}
         <span className="hidden min-w-0 flex-col leading-none sm:flex">
           <span className="max-w-56 truncate text-[15px] font-bold text-navy-900 dark:text-white">{name}</span>
-          {fy && <span className="mt-1 text-[11px] text-ink-500">Books <b className="num font-semibold text-ink-700 dark:text-ink-300">FY {fy.name}</b></span>}
+          <span className="mt-1 flex max-w-72 items-center gap-1.5 truncate text-[11px] text-ink-500">
+            {fy && <span>Books <b className="num font-semibold text-ink-700 dark:text-ink-300">FY {fy.name}</b></span>}
+            {company?.licence_no && <span title="Pawn broker licence no">{fy && '· '}Lic <b className="num font-semibold text-ink-700 dark:text-ink-300">{company.licence_no}</b></span>}
+            {company?.phones?.length > 0 && <span className="hidden truncate 2xl:inline" title={`Contact: ${company.phones.join(', ')}`}>· <Phone className="inline size-3 -translate-y-px" /> <b className="num font-semibold text-ink-700 dark:text-ink-300">{company.phones.join(', ')}</b></span>}
+          </span>
         </span>
       </Link>
 
@@ -494,7 +500,7 @@ function StatusBar() {
         <span className={clsx('size-2 rounded-full', serverOk ? 'bg-emerald-400' : 'animate-pulse bg-rose-400')} />{serverOk ? 'Online' : 'Offline'}
       </span>
       <Sep />
-      <span className="hidden h-6 shrink-0 items-center truncate text-[11px] leading-none text-white/70 lg:flex" title="Signed in as">{user.username} · {isAllBranches ? 'All branches' : currentBranch?.name}</span>
+      <span className="hidden h-6 shrink-0 items-center truncate text-[11px] leading-none text-white/70 lg:flex" title="Signed in as">{user.username} · {isAllBranches ? 'All branches' : currentBranch?.name}{!isAllBranches && currentBranch?.licence_no ? ` · Lic ${currentBranch.licence_no}` : ''}{!isAllBranches && currentBranch?.phones?.length ? ` · Ph ${currentBranch.phones.join(', ')}` : ''}</span>
       <span className="hidden lg:block"><Sep /></span>
       <span className="num flex h-6 shrink-0 items-center text-[12px] leading-none font-semibold text-white/85" title={now.format('dddd, DD MMMM YYYY')}>{now.format('ddd DD MMM · hh:mm A')}</span>
       <Sep />
@@ -569,7 +575,7 @@ function AboutDrawer({ open, onClose }) {
         <div className="min-w-0"><p className="truncate text-lg font-bold text-navy-900 dark:text-white">{company?.name || 'Gold Finance'}</p><p className="text-[12px] text-ink-500">A complete pawn broker solution</p></div>
       </div>
       <div className="mt-2 overflow-hidden rounded-md border border-ink-200 text-[13px] dark:border-ink-800">
-        {[['Edition', 'Web edition 1.0'], ['Branches', 'Multi-branch'], ['Licence', company?.licence_no || '-'], ['Phone', company?.mobile || company?.phone || '-']].map(([k, v]) => (
+        {[['Edition', 'Web edition 1.0'], ['Branch', company?.branch_name || 'All branches'], ['Licence', company?.licence_no || '-'], ['Phone', company?.phones?.join(', ') || '-']].map(([k, v]) => (
           <div key={k} className="flex justify-between gap-3 border-b border-ink-100 px-3 py-1.5 last:border-0 dark:border-ink-800"><span className="text-ink-500">{k}</span><b className="text-right">{v}</b></div>
         ))}
       </div>

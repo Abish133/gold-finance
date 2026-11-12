@@ -4,7 +4,7 @@ import { Pencil, FileText, Printer, LogOut, Building } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { Button, Drawer } from '@/components/ui';
-import { useCompany, useFetch } from '@/hooks/useApi';
+import { useCompanyRaw, useFetch } from '@/hooks/useApi';
 import { printTable } from '@/lib/printTable';
 import { date, n } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
@@ -13,7 +13,7 @@ import { PageActions } from '@/components/common/PageActions';
 
 export function CompanyInfoList() {
   const navigate = useNavigate();
-  const { data: c } = useCompany();
+  const { data: c } = useCompanyRaw();
   const { data: years = [] } = useFetch('/admin/financial-years');
   const { data: branches = [] } = useFetch('/admin/branches');
   const status = useFetch('/dashboard/status');

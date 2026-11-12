@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '#config/env.js';
 import { queryOne, query } from '#config/db.js';
 import { ApiError } from '#utils/ApiError.js';
+import { parsePhones } from '#utils/phones.js';
 
 export const COOKIE = 'gf_token';
 
@@ -12,6 +13,10 @@ export const signToken = (user) =>
 const cache = new Map();
 const TTL = 60_000;
 export const invalidateUserCache = (userId) => (userId ? cache.delete(Number(userId)) : cache.clear());
+
+/** what every screen needs of a branch: header, bills, receipts */
+const BRANCH_COLS = 'b.id, b.code, b.name, b.local_name, b.address, b.city, b.pincode, b.phone, b.phones, b.licence_no, b.licence_valid_till';
+const withPhones = (b) => ({ ...b, phones: parsePhones(b.phones, b.phone) });
 
 export const loadAuthUser = async (userId) => {
   const hit = cache.get(userId);
@@ -27,9 +32,9 @@ export const loadAuthUser = async (userId) => {
 
   const allBranches = !!(user.is_super_admin || user.all_branches);
   const branches = allBranches
-    ? await query('SELECT id, code, name FROM branches WHERE is_active = 1 ORDER BY name')
+    ? await query(`SELECT ${BRANCH_COLS} FROM branches b WHERE b.is_active = 1 ORDER BY b.name`)
     : await query(
-        `SELECT b.id, b.code, b.name FROM user_branches ub JOIN branches b ON b.id = ub.branch_id
+        `SELECT ${BRANCH_COLS} FROM user_branches ub JOIN branches b ON b.id = ub.branch_id
           WHERE ub.user_id = :id AND b.is_active = 1 ORDER BY b.name`,
         { id: userId },
       );
@@ -49,7 +54,7 @@ export const loadAuthUser = async (userId) => {
     ...user,
     is_super_admin: !!user.is_super_admin,
     all_branches: allBranches,
-    branches,
+    branches: branches.map(withPhones),
     branchIds: branches.map((b) => b.id),
     permissions: perms,
   };

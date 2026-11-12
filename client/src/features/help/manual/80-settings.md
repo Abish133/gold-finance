@@ -59,6 +59,13 @@ Search (F3), Save Changes (F2), Print settings (F9).
 - **Printer Setup** - paper size and copies for loan bill, receipts, stickers (A4 / thermal), test print.
 - **Print settings** - **Loan bill layout** (Branch bill A4 / MyBook pawn ticket), bill language Tamil / English, receipt notes, terms, footer, sticker size and columns. **Label designer** - what is printed on stickers.
 
+# Branches
+**Settings → More → Branches** - one row for each shop: code, name, city, **Licence no**, **Contact numbers**, manager, loan prefix, opening cash, status.
+- **Add Branch** / click a row to edit. **Branch code**, **Branch name** and **Pawn broker licence no** must be filled.
+- **Contact numbers (printed on bill)** - the first box must be filled (main number). **+ Add number** adds another box (up to 5); **✕** removes one. Only digits, spaces and + - ( ); the same number cannot be typed twice.
+- The licence number and all contact numbers are printed on the branch's loan bill, pawn ticket, receipts, notices and reports, and shown in the header.
+- A red **Not set** in the list means the licence number or contact number is still missing.
+
 # Change Company / Branch
 **Settings → Change Company / Branch** - switch the working branch (same as the Branch box in the header).
 

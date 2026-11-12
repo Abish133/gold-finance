@@ -12,6 +12,8 @@ screens: loan_list, loan_print, loan_sticker
 3. In **History**, the printer icon reprints that receipt; the undo icon (manager) **cancels the last entry** of the loan (wrong release, wrong receipt) with a reason.
 4. **Bill** button prints the loan bill again.
 
+The bill heading shows the **licence number** and **contact numbers of the loan's branch** (set in Settings → More → Branches); the *Branch* row of the bill lists all the branch's numbers. Receipts (release, part payment, top-up) and the pawn ticket print the same.
+
 # Jewel Packet Sticker (F9)
 
 **Loan → Print → Jewel Packet Sticker** - labels for the jewel packets (loan no, barcode, customer, weight).

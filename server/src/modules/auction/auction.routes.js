@@ -35,8 +35,9 @@ router.get('/list', permit('auction', 'view'), async (req, res) => {
       (SELECT GROUP_CONCAT(CONCAT(li.item_name, ' ', li.pcs) ORDER BY li.id SEPARATOR ', ') FROM loan_items li WHERE li.loan_id = l.id) items_text,
       (SELECT COUNT(*) FROM auction_notices n WHERE n.loan_id = l.id) notices,
       (SELECT MAX(notice_date) FROM auction_notices n WHERE n.loan_id = l.id) last_notice,
-      (SELECT COALESCE(SUM(postage),0) FROM auction_notices n WHERE n.loan_id = l.id) postage
-    FROM loans l JOIN customers c ON c.id = l.customer_id
+      (SELECT COALESCE(SUM(postage),0) FROM auction_notices n WHERE n.loan_id = l.id) postage,
+      br.name branch_name, br.code branch_code, br.phone branch_phone, br.phones branch_phones, br.licence_no branch_licence_no
+    FROM loans l JOIN customers c ON c.id = l.customer_id JOIN branches br ON br.id = l.branch_id
     WHERE l.branch_id IN (:b) AND l.status = 'OPEN' ${req.query.include === 'bank' ? '' : 'AND l.bank_pledge_id IS NULL'}
       AND ${req.query.older_than ? 'l.loan_date <= DATE_SUB(:d, INTERVAL :om MONTH)' : 'DATEDIFF(:d, l.due_date) >= :min'}
       ${req.query.from ? 'AND l.loan_date >= :from' : ''} ${req.query.to ? 'AND l.loan_date <= :to' : ''}
