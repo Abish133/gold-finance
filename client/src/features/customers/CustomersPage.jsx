@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Plus, FileDown, RefreshCw, FileSpreadsheet, BookUser, Search } from 'lucide-react';
+import { Plus, FileDown, RefreshCw, FileSpreadsheet, BookUser, Search, Eye, Pencil } from 'lucide-react';
 import clsx from 'clsx';
 import { Avatar, Button, DataTable, Input, Select } from '@/components/ui';
 import { useList, useFetch, useCompany } from '@/hooks/useApi';
@@ -15,6 +15,7 @@ import { CustomerFormDrawer } from './CustomerFormDrawer';
 import { CustomerDetailDrawer } from './CustomerDetailDrawer';
 import { MergeCustomersPanel } from './MergeCustomersPage';
 import { PageActions } from '@/components/common/PageActions';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 const address = (r) => [[r.door_no, r.street, r.area, r.city].filter(Boolean).join(', '), r.pincode].filter(Boolean).join(' - ');   // desktop: 5-43, Main Road, Kappiyarai, Nagercoil - 629157
 
@@ -93,7 +94,12 @@ export default function CustomersPage() {
       </div>
       {/* table, with the merge section on its right when open */}
       <div className={clsx('grid gap-2 xl:min-h-0 xl:flex-1 xl:[grid-template-rows:minmax(0,1fr)]', merging && 'xl:grid-cols-[1fr_340px]')}>
-        <DataTable fill columns={columns} rows={list.data?.data} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
+        <DataTable fill columns={[...columns, { key: '_actions', label: 'Actions', align: 'right', className: 'w-px !py-0.5', render: (r) => (
+          <RowActions actions={[
+            { icon: Eye, label: 'Customer details', onClick: () => { setSelected(r); setParams({ view: r.id }); } },
+            { icon: BookUser, label: 'Customer ledger', onClick: () => setLedger(r.id) },
+            { icon: Pencil, label: 'Edit customer', hidden: !can('customers', 'edit'), onClick: () => setEditing(r) },
+          ]} />) }]} rows={list.data?.data} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
           sort={state.sort} order={state.order} onSort={(sort, order) => set({ sort, order })} onPage={(page) => set({ page })} onPageSize={(pageSize) => set({ pageSize })}
           onRowClick={(r) => setSelected(r)} onRowDoubleClick={(r) => { setSelected(r); setParams({ view: r.id }); }} rowClassName={(r) => (selected?.id === r.id ? '!bg-emerald-50 dark:!bg-emerald-950/30' : '')} />
         <MergeCustomersPanel open={merging} selected={selected} />

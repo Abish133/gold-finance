@@ -14,6 +14,7 @@ import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from '@/features/loans/desk';
 import { VoucherDrawer } from './VouchersPage';
 import { PageActions } from '@/components/common/PageActions';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 /** Voucher Entry (desktop: frmVoucherEntry) - money received (Jama) or paid (Nave) other than loans. */
 export default function VoucherEntryPage() {
@@ -145,7 +146,7 @@ export default function VoucherEntryPage() {
             <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 dark:border-ink-800"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" /><p className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">Vouchers - {dayjs(d).format('DD/MM/YYYY')}</p><span className="ml-auto text-[11px] text-ink-500">Click = select · double-click = edit</span></div>
             <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-[12px]">
-                <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="px-3 py-2 text-left">V. No</th><th className="px-3 text-left">Type</th><th className="px-3 text-left">Account</th><th className="px-3 text-left">Narration</th><th className="px-3 text-left">Mode</th><th className="px-3 text-right">Jama</th><th className="px-3 text-right">Nave</th></tr></thead>
+                <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="px-3 py-2 text-left">V. No</th><th className="px-3 text-left">Type</th><th className="px-3 text-left">Account</th><th className="px-3 text-left">Narration</th><th className="px-3 text-left">Mode</th><th className="px-3 text-right">Jama</th><th className="px-3 text-right">Nave</th><ActionsHead /></tr></thead>
                 <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                   {rows.map((v) => (
                     <tr key={v.id} onClick={() => setSel(v.source_type ? null : v)} onDoubleClick={() => !v.source_type && edit(v)} title={v.source_type ? 'Posted by Auction Release - change it there' : undefined} className={clsx('cursor-pointer', sel?.id === v.id ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
@@ -153,11 +154,12 @@ export default function VoucherEntryPage() {
                       <td className="px-3"><span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase', v.voucher_type === 'RECEIPT' ? 'bg-emerald-100 text-emerald-800' : v.voucher_type === 'PAYMENT' ? 'bg-rose-100 text-rose-700' : 'bg-ink-100 text-ink-700')}>{v.voucher_type === 'RECEIPT' ? 'Jama' : v.voucher_type === 'PAYMENT' ? 'Nave' : v.voucher_type}</span></td>
                       <td className="max-w-64 truncate px-3">{v.source_type ? 'Auction' : v.account || v.lines_text}</td><td className="max-w-64 truncate px-3 text-ink-600 dark:text-ink-300">{v.narration}</td><td className="px-3 text-[11px]">{v.mode || (/Cash/.test(v.lines_text) ? 'Cash' : 'Bank')}</td>
                       <td className="num px-3 text-right text-emerald-700">{v.voucher_type === 'RECEIPT' ? amount(v.amount) : ''}</td><td className="num px-3 text-right text-rose-600">{v.voucher_type === 'PAYMENT' ? amount(v.amount) : ''}</td>
+                      <td className="px-2 py-0.5 text-right"><RowActions actions={[{ icon: Pencil, label: 'Edit voucher', disabled: !!v.source_type, onClick: () => edit(v) }, { icon: Trash2, label: 'Delete voucher', tone: 'danger', hidden: !can('acc_voucher', 'delete'), disabled: !!v.source_type, onClick: () => setDel(v) }]} /></td>
                     </tr>
                   ))}
-                  {!rows.length && <tr><td colSpan={7} className="py-12 text-center text-ink-400">No vouchers for this date</td></tr>}
+                  {!rows.length && <tr><td colSpan={8} className="py-12 text-center text-ink-400">No vouchers for this date</td></tr>}
                 </tbody>
-                <tfoot className="sticky bottom-0 border-t-2 border-amber-400 bg-amber-50 font-bold text-amber-950 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-100"><tr><td colSpan={5} className="px-3 py-1.5 text-[11px] tracking-wider uppercase">Total (vouchers)</td><td className="num px-3 text-right text-emerald-700">{amount(jama)}</td><td className="num px-3 text-right text-rose-600">{amount(nave)}</td></tr></tfoot>
+                <tfoot className="sticky bottom-0 border-t-2 border-amber-400 bg-amber-50 font-bold text-amber-950 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-100"><tr><td colSpan={5} className="px-3 py-1.5 text-[11px] tracking-wider uppercase">Total (vouchers)</td><td className="num px-3 text-right text-emerald-700">{amount(jama)}</td><td className="num px-3 text-right text-rose-600">{amount(nave)}</td><td /></tr></tfoot>
               </table>
             </div>
           </div>

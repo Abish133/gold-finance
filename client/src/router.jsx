@@ -80,6 +80,7 @@ const P = {
   GettingStarted: lazy(() => import('@/features/help/GettingStartedPage')),
   BankReco: lazy(() => import('@/features/accounts/BankRecoPage')),
   Tally: lazy(() => import('@/features/accounts/TallyExportPage')),
+  Analytics: lazy(() => import('@/features/reports/AnalyticsPage')),
 };
 
 function RequireAuth({ children }) {
@@ -188,6 +189,7 @@ export const router = createBrowserRouter([
       r('help/manual', P.Manual, 'dashboard'),
       r('getting-started', P.GettingStarted, 'dashboard'),
       r('accounts/bank-reco', P.BankReco, 'acc_bank_reco'),
+      r('analytics', P.Analytics, ['dashboard', 'reports_summary']),
       r('accounts/tally', P.Tally, 'acc_tally'),
       { path: '*', element: <Empty title="Page not found" message="The page you are looking for does not exist." /> },
     ],

@@ -91,8 +91,8 @@ export const DataTable = memo(function DataTable({
   const [hidden, setHiddenState] = useState(() => loadHidden(storeKey));
   useEffect(() => { setHiddenState(loadHidden(storeKey)); }, [storeKey]);
   const setHidden = (h) => { setHiddenState(h); try { localStorage.setItem(storeKey, JSON.stringify(h)); } catch { /* private mode */ } };
-  const canChoose = chooser && columns.filter((c) => typeof c.label !== 'string' || c.label.trim()).length >= 4;
-  const named = columns.filter((c) => typeof c.label !== 'string' || c.label.trim());
+  const canChoose = chooser && columns.filter((c) => !String(c.key).startsWith('_') && (typeof c.label !== 'string' || c.label.trim())).length >= 4;
+  const named = columns.filter((c) => !String(c.key).startsWith('_') && (typeof c.label !== 'string' || c.label.trim()));
   const cols = canChoose ? columns.filter((c) => !hidden.includes(c.key)) : columns;
 
   // rows that just appeared get a soft highlight

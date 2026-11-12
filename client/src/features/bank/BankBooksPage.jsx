@@ -10,6 +10,7 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { PageActions } from '@/components/common/PageActions';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const QUICK = { Today: () => [today(), today()], 'This Month': () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], 'A/c Year': () => [fyStart(), today()], 'All Years': () => ['', ''] };
@@ -39,14 +40,15 @@ function Grid({ cols, rows, onOpen, sel, setSel }) {
   return (
     <div className="min-h-48 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
       <table className="w-full text-[12px]">
-        <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-2 py-1.5 font-semibold whitespace-nowrap', ['money', 'weight', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
+        <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-2 py-1.5 font-semibold whitespace-nowrap', ['money', 'weight', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}{onOpen && <ActionsHead />}</tr></thead>
         <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
-          {!rows.length && <tr><td colSpan={cols.length} className="py-8 text-center text-[12px] text-ink-400">No bank loans for these filters</td></tr>}
+          {!rows.length && <tr><td colSpan={cols.length + (onOpen ? 1 : 0)} className="py-8 text-center text-[12px] text-ink-400">No bank loans for these filters</td></tr>}
           {rows.map((r) => (
             <tr key={r.id || r.month} onClick={() => setSel?.(r)} onDoubleClick={() => onOpen?.(r)} className={clsx('cursor-pointer', sel && (sel.id || sel.month) === (r.id || r.month) && 'bg-emerald-50 dark:bg-emerald-950/30')}>
               {cols.map((c) => <td key={c.key} className={clsx('px-2 py-1', ['money', 'weight', 'number'].includes(c.type) && 'num text-right')}>
                 {c.key === 'state' ? <span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold', r.status === 'OPEN' ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800')}>{r.state}</span>
                   : c.type === 'money' ? amount(r[c.key]) : c.type === 'weight' ? weight(r[c.key]) : c.type === 'date' ? (r[c.key] ? date(r[c.key]) : '') : r[c.key] ?? ''}</td>)}
+              {onOpen && <td className="px-2 py-0.5 text-right">{r.id && <RowActions actions={[{ icon: FileText, label: 'Bank loan details', onClick: () => onOpen(r) }]} />}</td>}
             </tr>
           ))}
         </tbody>
@@ -59,6 +61,7 @@ function Grid({ cols, rows, onOpen, sel, setSel }) {
               return <td key={c.key} className={clsx('px-2 py-1.5 font-semibold', ['money', 'weight', 'number'].includes(c.type) && 'num text-right')}>
                 {k === 0 ? `Total - ${rows.filter((r) => !r.opening).length}` : skip ? '' : c.type === 'money' ? amount(v) : c.type === 'weight' ? weight(v) : v}</td>;
             })}
+            {onOpen && <td />}
           </tr></tfoot>
         )}
       </table>

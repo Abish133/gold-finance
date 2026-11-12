@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Users, UserX, Merge, FilePlus2, History, BookOpen, HandCoins, Wallet, ArrowUpCircle, RefreshCcw, Unlock, Printer, Tag,
+  ChartNoAxesCombined, LayoutDashboard, Users, UserX, Merge, FilePlus2, History, BookOpen, HandCoins, Wallet, ArrowUpCircle, RefreshCcw, Unlock, Printer, Tag,
   Calculator, Landmark, Building2, Gavel, Boxes, ScanLine, BookText, Receipt, NotebookPen, Scale, Coins, Lock, BarChart3, UserCog, CalendarCheck,
   BadgeIndianRupee, Gem, TrendingUp, Layers, ListChecks, Briefcase, Building, Shield, KeyRound, Settings2, MessageSquare, ScrollText,
   DatabaseBackup, CalendarRange, UserPlus, Pencil, Trash, Files, Banknote, FileBarChart, Wrench, LifeBuoy, Keyboard, Info, CircleDollarSign, BookCheck, Lightbulb, Palette, Rocket,
@@ -84,6 +84,7 @@ export const MENUS = [
     key: 'reports', label: 'Reports', icon: FileBarChart,
     items: [
       { label: 'Day Report', hint: 'Today at a glance', path: '/accounts/day-report', icon: BookText, screen: 'acc_cashbook', hot: 'F7' },
+      { label: 'Business Analytics', hint: 'Trends, compare periods, ageing, top customers', path: '/analytics', icon: ChartNoAxesCombined, screen: ['dashboard', 'reports_summary'] },
       { label: 'Loan Reports', icon: FileBarChart, items: [
         { label: 'Loan Report', hint: 'Loans given, status today', path: '/reports/loans', icon: FileBarChart, screen: 'reports_loan' },
         { label: 'Release Report', hint: 'Loan amount back, interest', path: '/reports/releases', icon: FileBarChart, screen: 'reports_release' },

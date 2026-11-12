@@ -14,6 +14,7 @@ import { ExitButton, useKeys } from '@/features/loans/desk';
 import { NATURE_TONE, jn } from './LedgerReportPage';
 import { amount } from '@/lib/format';
 import { SHELL, Head, Chip, Dot, Bar, Actions, thead, tfoot, inp } from './compact';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 const VIEWS = [
   ['all', 'All accounts', () => true], ['mine', 'My accounts', (l) => !l.is_system], ['system', 'System (locked)', (l) => !!l.is_system],
@@ -84,7 +85,7 @@ export default function LedgersPage() {
             <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 dark:border-ink-800"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" /><p className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">{viewLabel}</p><span className="ml-auto text-[11px] text-ink-500">{rows.length} accounts</span></div>
             <div className="min-h-0 flex-1 overflow-auto">
               <table className="w-full text-[12px]">
-                <thead className={thead}><tr><th className="w-20 px-3 py-2 text-left">A/c No</th><th className="px-3 text-left">A/c Name</th><th className="px-3 text-left">Group</th><th className="px-3 text-right">Balance</th><th className="w-8" /></tr></thead>
+                <thead className={thead}><tr><th className="w-20 px-3 py-2 text-left">A/c No</th><th className="px-3 text-left">A/c Name</th><th className="px-3 text-left">Group</th><th className="px-3 text-right">Balance</th><th className="w-8" /><ActionsHead /></tr></thead>
                 <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                   {rows.map((l) => (
                     <tr key={l.id} onClick={() => setSel(l)} onDoubleClick={() => openEdit(l)} className={clsx('cursor-pointer', sel?.id === l.id ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50', !l.is_active && 'opacity-50')}>
@@ -92,11 +93,12 @@ export default function LedgersPage() {
                       <td className="px-3"><Badge tone={NATURE_TONE[l.nature]} className="text-[10px]">{l.group_name}</Badge></td>
                       <td className={clsx('num px-3 text-right whitespace-nowrap', l.balance > 0 ? 'text-rose-600' : 'text-emerald-700')}>{jn(l.balance)}</td>
                       <td className="px-2">{l.is_system ? <Lock className="size-3.5 text-gold-600" /> : null}</td>
+                      <td className="px-2 py-0.5 text-right"><RowActions actions={[{ icon: Pencil, label: 'Edit account', onClick: () => openEdit(l) }, { icon: BookOpen, label: 'Open ledger', onClick: () => navigate(`/accounts/ledger?ledger=${l.id}`) }, { icon: Trash2, label: 'Delete account', tone: 'danger', disabled: !!l.is_system, onClick: () => setDel(l) }]} /></td>
                     </tr>
                   ))}
-                  {!rows.length && <tr><td colSpan={5} className="py-12 text-center text-ink-400">No account found</td></tr>}
+                  {!rows.length && <tr><td colSpan={6} className="py-12 text-center text-ink-400">No account found</td></tr>}
                 </tbody>
-                <tfoot className={tfoot}><tr><td colSpan={3} className="px-3 py-1.5 text-[11px] tracking-wider uppercase">Total · {rows.length} accounts</td><td className="num px-3 text-right whitespace-nowrap"><span className="text-rose-600">{amount(totalDr)} Nave</span> · <span className="text-emerald-700">{amount(totalCr)} Jama</span></td><td /></tr></tfoot>
+                <tfoot className={tfoot}><tr><td colSpan={3} className="px-3 py-1.5 text-[11px] tracking-wider uppercase">Total · {rows.length} accounts</td><td className="num px-3 text-right whitespace-nowrap"><span className="text-rose-600">{amount(totalDr)} Nave</span> · <span className="text-emerald-700">{amount(totalCr)} Jama</span></td><td /><td /></tr></tfoot>
               </table>
             </div>
           </div>

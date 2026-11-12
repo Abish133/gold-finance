@@ -13,6 +13,7 @@ import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { useKeys } from '@/features/loans/desk';
 import { PageActions } from '@/components/common/PageActions';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 export default function UsersPage() {
   const navigate = useNavigate();
@@ -77,9 +78,9 @@ export default function UsersPage() {
       </div>
       <div className="min-h-64 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
         <table className="w-full text-[12px]">
-          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{['ID', 'User Name', 'Employee', 'Role', 'Branches', 'Status', 'Last Activity'].map((h) => <th key={h} className="px-3 py-1.5 text-left font-semibold">{h}</th>)}</tr></thead>
+          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{['ID', 'User Name', 'Employee', 'Role', 'Branches', 'Status', 'Last Activity'].map((h) => <th key={h} className="px-3 py-1.5 text-left font-semibold">{h}</th>)}<ActionsHead /></tr></thead>
           <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
-            {!rows.length && <tr><td colSpan={7} className="py-10 text-center text-[12px] text-ink-400">{list.isLoading ? 'Loading…' : 'No users'}</td></tr>}
+            {!rows.length && <tr><td colSpan={8} className="py-10 text-center text-[12px] text-ink-400">{list.isLoading ? 'Loading…' : 'No users'}</td></tr>}
             {rows.map((u) => (
               <tr key={u.id} onClick={() => setSel(u)} onDoubleClick={() => can('s_users', 'edit') && setEdit(u)} className={clsx('cursor-pointer', sel?.id === u.id ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')} title="Double-click to edit">
                 <td className="num px-3 py-1">{u.id}</td><td className="px-3 font-bold uppercase">{u.username}</td><td className="px-3">{u.full_name}</td>
@@ -87,6 +88,7 @@ export default function UsersPage() {
                 <td className="max-w-56 truncate px-3 text-[11px] text-ink-600 dark:text-ink-300">{u.is_super_admin || u.all_branches ? 'All branches' : u.branch_names}</td>
                 <td className="px-3">{u.is_active ? <Badge tone="green">Active</Badge> : <Badge tone="red">Inactive</Badge>}</td>
                 <td className="px-3">{u.last_login_at ? date(u.last_login_at) : '-'}</td>
+                <td className="px-2 py-0.5 text-right"><RowActions actions={[{ icon: Pencil, label: 'Edit user', hidden: !can('s_users', 'edit'), onClick: () => setEdit(u) }, { icon: Trash2, label: 'Delete user', tone: 'danger', hidden: !can('s_users', 'delete'), disabled: u.id === me.id, onClick: () => setDel(u) }]} /></td>
               </tr>
             ))}
           </tbody>

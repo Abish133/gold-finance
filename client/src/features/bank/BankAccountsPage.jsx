@@ -13,6 +13,7 @@ import { exportCsv } from '@/lib/exporters';
 import { amount, n } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
 import { PageActions } from '@/components/common/PageActions';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 const USED = { PLEDGE: 'Potali', OPERATING: 'Online money', BOTH: 'Both' };
 const cols = [{ key: 'code', label: 'Code' }, { key: 'bank_name', label: 'Bank Name' }, { key: 'bank_branch', label: 'Branch' }, { key: 'account_no', label: 'A/c No' }, { key: 'used', label: 'Used For' }, { key: 'open_count', label: 'Open', type: 'number' }, { key: 'outstanding', label: 'Outstanding', type: 'money' }];
@@ -63,13 +64,14 @@ export default function BankAccountsPage() {
       </div>
       <div className="min-h-48 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
         <table className="w-full text-[12px]">
-          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-3 py-1.5 font-semibold', ['money', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
+          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-3 py-1.5 font-semibold', ['money', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}<ActionsHead /></tr></thead>
           <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
-            {!rows.length && <tr><td colSpan={7} className="py-8 text-center text-[12px] text-ink-400">No bank accounts - press New Bank (Ctrl+N)</td></tr>}
+            {!rows.length && <tr><td colSpan={8} className="py-8 text-center text-[12px] text-ink-400">No bank accounts - press New Bank (Ctrl+N)</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} onClick={() => setSel(r)} onDoubleClick={() => setEdit(r)} className={clsx('cursor-pointer', sel?.id === r.id && 'bg-emerald-50 dark:bg-emerald-950/30', !r.is_active && 'text-ink-400')}>
                 <td className="px-3 py-1">{r.code}</td><td className="px-3 font-semibold">{r.bank_name}</td><td className="px-3">{r.bank_branch}</td><td className="px-3">{r.account_no}</td><td className="px-3">{r.used}</td>
                 <td className="num px-3 text-right">{r.open_count}</td><td className="num px-3 text-right">{amount(r.outstanding)}</td>
+                <td className="px-2 py-0.5 text-right"><RowActions actions={[{ icon: Pencil, label: 'Edit bank', hidden: !can('bank_accounts', 'edit'), onClick: () => setEdit(r) }, { icon: Trash2, label: 'Delete bank', tone: 'danger', hidden: !can('bank_accounts', 'delete'), onClick: () => { setSel(r); setDel(true); } }]} /></td>
               </tr>
             ))}
           </tbody>

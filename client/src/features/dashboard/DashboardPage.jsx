@@ -238,10 +238,15 @@ export default function DashboardPage() {
 
 /** Second tab of the main card: portfolio tiles, trend charts and branch-wise table. */
 function Overview({ data, trend, showCharts }) {
+  const navigate = useNavigate();
   const css = (k, d) => (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue(k).trim()) || d;
   const accent = css('--color-navy-900', '#18181b'); const accent2 = css('--color-navy-400', '#71717a');
   return (
     <div className="space-y-2">
+      <button type="button" onClick={() => navigate('/analytics')} className="flex w-full items-center justify-between gap-2 rounded-md border border-ink-200 px-3 py-2 text-left text-[13px] hover:bg-ink-50 dark:border-ink-800 dark:hover:bg-ink-800">
+        <span><b className="text-navy-900 dark:text-white">Business Analytics</b><span className="ml-2 text-[12px] text-ink-500">any period · compare with before · loan ageing · top customers</span></span>
+        <span className="text-[12px] font-semibold text-navy-700 dark:text-ink-300">Open →</span>
+      </button>
       {showCharts && <div className="grid gap-2 xl:grid-cols-3">
         <Card title="Business trend · 6 months" className="xl:col-span-2">
           <div className="h-52">

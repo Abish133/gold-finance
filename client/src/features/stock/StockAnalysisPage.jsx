@@ -12,6 +12,7 @@ import { useKeys } from '@/features/loans/desk';
 import { LoanDetailsDrawer } from '@/features/loans/LoanDetailsDrawer';
 import { api } from '@/lib/api';
 import { PageActions } from '@/components/common/PageActions';
+import { RowActions, ActionsHead } from '@/components/common/RowActions';
 
 const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const RESULT = { PROFIT: ['Profit', 'bg-emerald-100 text-emerald-800'], RISK: ['At risk', 'bg-amber-100 text-amber-800'], LOSS: ['Loss', 'bg-rose-100 text-rose-700'] };
@@ -86,9 +87,9 @@ export default function StockAnalysisPage() {
       </div>
       <div className="min-h-64 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
         <table className="w-full min-w-[1600px] text-[12px]">
-          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-2 py-1.5 font-semibold whitespace-nowrap', ['money', 'weight', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
+          <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr>{cols.map((c) => <th key={c.key} className={clsx('px-2 py-1.5 font-semibold whitespace-nowrap', ['money', 'weight', 'number'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}<ActionsHead /></tr></thead>
           <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
-            {!rows.length && <tr><td colSpan={cols.length} className="py-12 text-center text-[12px] text-ink-400">{q ? 'No open loans' : 'Select the dates and press Load (F5)'}</td></tr>}
+            {!rows.length && <tr><td colSpan={cols.length + 1} className="py-12 text-center text-[12px] text-ink-400">{q ? 'No open loans' : 'Select the dates and press Load (F5)'}</td></tr>}
             {rows.map((r) => (
               <tr key={r.id} onClick={() => setSel(r)} onDoubleClick={() => open(r)} className={clsx('cursor-pointer', sel?.id === r.id ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
                 <td className={clsx('border-l-2 px-2 py-1', sel?.id === r.id ? 'border-emerald-600' : 'border-transparent')}>{r.sno}</td><td className="px-2"><span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold', RESULT[r.result][1])}>{RESULT[r.result][0]}</span></td>
@@ -99,6 +100,7 @@ export default function StockAnalysisPage() {
                 <td className="num px-2 text-right">{n(r.part_paid) ? amount(r.part_paid) : '-'}</td><td className="num px-2 text-right">{amount(r.balance)}</td><td className="num px-2 text-right">{amount(r.interest_due)}</td>
                 <td className="num px-2 text-right font-bold">{amount(r.total_due)}</td><td className="num px-2 text-right">{amount(r.market_value)}</td>
                 <td className={clsx('num px-2 text-right font-semibold', n(r.margin) < 0 ? 'text-rose-600' : 'text-emerald-700')}>{amount(r.margin)}</td><td className="num px-2 text-right">{r.margin_pct ?? '-'}</td>
+                <td className="px-2 py-0.5 text-right"><RowActions actions={[{ icon: FileText, label: 'Loan details', onClick: () => open(r) }]} /></td>
               </tr>
             ))}
           </tbody>
