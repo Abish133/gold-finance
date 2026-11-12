@@ -70,18 +70,18 @@ export function Markdown({ text, highlight }) {
     blocks.push({ t: 'p', text: p.join(' ') });
   }
   const hl = highlight?.trim().toLowerCase();
-  const mark = (s) => (hl && s.toLowerCase().includes(hl) ? 'bg-gold-100 dark:bg-gold-900/40' : '');
+  const mark = (s) => (hl && s.toLowerCase().includes(hl) ? 'bg-yellow-100 dark:bg-yellow-500/20' : '');
   return (
-    <div className="manual space-y-3 text-[15px] leading-relaxed text-ink-800 dark:text-ink-100">
+    <div className="manual mx-auto max-w-3xl space-y-3 text-[14px] leading-relaxed text-ink-800 dark:text-ink-100">
       {blocks.map((b, n) => {
-        if (b.t === 'h1') return <h1 key={n} id={slug(b.text)} className="border-b-2 border-gold-500 pb-1 text-2xl font-bold text-navy-900 dark:text-white">{inline(b.text)}</h1>;
-        if (b.t === 'h2') return <h2 key={n} id={slug(b.text)} className="pt-3 text-xl font-bold text-navy-900 dark:text-white">{inline(b.text)}</h2>;
-        if (b.t === 'h3') return <h3 key={n} id={slug(b.text)} className="pt-2 text-base font-bold text-navy-800 dark:text-ink-100">{inline(b.text)}</h3>;
-        if (b.t === 'tip') return <p key={n} className={clsx('rounded-md border-l-4 border-gold-500 bg-cream-100 px-3 py-2 text-sm dark:bg-ink-800', mark(b.text))}>{inline(b.text)}</p>;
+        if (b.t === 'h1') return <h1 key={n} id={slug(b.text)} className="border-b border-ink-200 pb-2 text-[22px] font-bold tracking-tight text-navy-900 dark:border-ink-800 dark:text-white">{inline(b.text)}</h1>;
+        if (b.t === 'h2') return <h2 key={n} id={slug(b.text)} className="pt-3 text-[17px] font-bold text-navy-900 dark:text-white">{inline(b.text)}</h2>;
+        if (b.t === 'h3') return <h3 key={n} id={slug(b.text)} className="pt-1.5 text-[14px] font-bold text-navy-800 dark:text-ink-100">{inline(b.text)}</h3>;
+        if (b.t === 'tip') return <p key={n} className={clsx('flex gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-[13px] text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100', mark(b.text))}><span aria-hidden className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-sky-600 text-[10px] font-bold text-white">i</span><span className="min-w-0">{inline(b.text)}</span></p>;
         if (b.t === 'table') return (
-          <div key={n} className="overflow-x-auto"><table className="w-full border-collapse text-sm">
-            <thead><tr>{b.head.map((c, k) => <th key={k} className="border border-ink-300 bg-navy-800 px-2 py-1 text-left text-white dark:border-ink-700">{inline(c)}</th>)}</tr></thead>
-            <tbody>{b.rows.map((r, k) => <tr key={k} className={mark(r.join(' '))}>{r.map((c, j) => <td key={j} className="border border-ink-300 px-2 py-1 align-top dark:border-ink-700">{inline(c)}</td>)}</tr>)}</tbody>
+          <div key={n} className="overflow-x-auto rounded-md border border-ink-200 dark:border-ink-800"><table className="w-full border-collapse text-[13px]">
+            <thead><tr>{b.head.map((c, k) => <th key={k} className="navy-gradient px-2.5 py-1.5 text-left text-[11px] font-semibold tracking-wide text-white uppercase">{inline(c)}</th>)}</tr></thead>
+            <tbody className="divide-y divide-ink-100 dark:divide-ink-800">{b.rows.map((r, k) => <tr key={k} className={mark(r.join(' '))}>{r.map((c, j) => <td key={j} className="px-2.5 py-1.5 align-top">{inline(c)}</td>)}</tr>)}</tbody>
           </table></div>
         );
         if (b.t === 'ol' || b.t === 'ul') {

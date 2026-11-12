@@ -94,7 +94,7 @@ export default function GettingStartedPage() {
             <Button variant="outline" icon={ArrowRight} onClick={() => navigate(path)}>Open</Button>
           </div>
         ))}
-        <Button variant="gold" icon={BookOpen} onClick={() => navigate('/help/manual')}>Open the User Manual</Button>
+        <Button variant="primary" icon={BookOpen} onClick={() => navigate('/help/manual')}>Open the User Manual</Button>
       </div>
     );
   }
@@ -127,7 +127,7 @@ export default function GettingStartedPage() {
                 </>)}
               </div>
               <div className="flex shrink-0 flex-col gap-1 [&_button]:h-7 [&_button]:text-[11px]">
-                <Button size="sm" variant={next ? 'gold' : 'outline'} icon={ArrowRight} onClick={() => navigate(s.path)}>Open</Button>
+                <Button size="sm" variant={next ? 'primary' : 'outline'} icon={ArrowRight} onClick={() => navigate(s.path)}>Open</Button>
                 {!done && s.manual && <Button size="sm" variant="outline" icon={CheckCircle2} onClick={() => mark(s.key, true)}>Mark done</Button>}
                 {!done && !skipped && s.optional && <Button size="sm" variant="ghost" icon={SkipForward} onClick={() => mark(s.key, 'skip')}>Skip</Button>}
                 {(st.skipped || (done && s.manual)) && <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => mark(s.key, null)}>Undo</Button>}

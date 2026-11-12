@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { Button, Input, Select } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Markdown, parseFront } from './Markdown';
+import { PageActions } from '@/components/common/PageActions';
 
 /* every chapter is a markdown file in ./manual (also joined into docs/USER-MANUAL.md) */
 const FILES = import.meta.glob('./manual/*.md', { query: '?raw', import: 'default', eager: true });
@@ -49,8 +50,12 @@ export default function ManualPage() {
         <BookOpen className="size-5 shrink-0 opacity-80" />
         <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">User Manual</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Every menu, step by step, with examples · showing the chapters for <b>{admin ? (view === 'All' ? 'every role' : view) : user?.role_name}</b></p></div>
         {admin && <Select className="!h-8 w-48 text-[13px] !text-ink-900" value={view} onChange={(e) => setView(e.target.value)} options={['All', ...Object.keys(ROLE_SCREENS)].map((r) => ({ value: r, label: r === 'All' ? 'Show: every role' : `Show for: ${r}` }))} />}
-        <Button variant="outline" className="h-8 !bg-white text-[12px]" icon={Rocket} onClick={() => navigate('/getting-started')}>Getting Started</Button>
       </section>
+      <PageActions>
+        <Button variant="outline" icon={Rocket} onClick={() => navigate('/getting-started')}>Getting Started</Button>
+        <Button variant="outline" icon={Printer} onClick={() => print(false)}>Print chapter</Button>
+        <Button variant="outline" icon={Printer} onClick={() => print(true)}>Print all</Button>
+      </PageActions>
       <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[260px_1fr]">
         <aside className="card no-print flex max-h-[60vh] flex-col overflow-hidden xl:max-h-none xl:min-h-0">
           <div className="shrink-0 border-b border-ink-100 p-1.5 dark:border-ink-800"><Input prefix={<Search className="size-3.5" />} className="!h-8 text-[13px]" placeholder="Search the manual…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -73,18 +78,14 @@ export default function ManualPage() {
           {!visible.length && <p className="p-3 text-[12px] text-ink-500">Nothing found for "{q}".</p>}
           </div>
         </aside>
-        <article id="manual-article" className="card overflow-y-auto p-4 xl:min-h-0">
-          <div className="no-print mb-2 flex flex-wrap justify-end gap-1.5 [&_button]:h-7 [&_button]:text-[12px]">
-            <Button size="sm" variant="outline" icon={Printer} onClick={() => print(false)}>Print this chapter</Button>
-            <Button size="sm" variant="outline" icon={Printer} onClick={() => print(true)}>Print whole manual</Button>
-          </div>
+        <article id="manual-article" className="card overflow-y-auto px-5 py-5 xl:min-h-0">
           {all
             ? visible.map((c) => <div key={c.id} className="page-break mb-8"><Markdown text={c.body} /></div>)
             : chapter && <Markdown text={chapter.body} highlight={q} />}
           {!all && chapter && (
             <div className="no-print mt-4 flex justify-between gap-2 border-t border-ink-200 pt-2.5 dark:border-ink-700 [&_button]:h-8 [&_button]:text-[12px]">
               <Button variant="outline" disabled={idx <= 0} onClick={() => setCur(visible[idx - 1].id)}>← {visible[idx - 1]?.title || 'Previous'}</Button>
-              <Button variant="gold" disabled={idx >= visible.length - 1} onClick={() => { setCur(visible[idx + 1].id); document.getElementById('manual-article')?.scrollTo({ top: 0 }); }}>{visible[idx + 1]?.title || 'Next'} →</Button>
+              <Button variant="primary" disabled={idx >= visible.length - 1} onClick={() => { setCur(visible[idx + 1].id); document.getElementById('manual-article')?.scrollTo({ top: 0 }); }}>{visible[idx + 1]?.title || 'Next'} →</Button>
             </div>
           )}
         </article>
