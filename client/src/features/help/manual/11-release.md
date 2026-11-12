@@ -29,7 +29,7 @@ screens: loan_release
 
    **Charge interest** - how much interest to take now:
    - **Full** (usual) - the system figure: every started month.
-   - **Days** - type the days or press **7 / 15 / 30**. Interest = interest per month ÷ 30 × days, less interest already paid (and advance). Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
+   - **Days** - type the days or press **7 / 15 / 30**, and the **rate %** (filled with the loan's rate; type e.g. 1.25 to charge a lower rate). Interest = interest per month at that rate ÷ 30 × days, less interest already paid (and advance). A typed rate is printed on the release receipt. Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
    - **Amount** - type the interest to take now.
    - *Interest now* shows the amount taken. If it is **less than the system figure**, the line *Less than system* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
    - A *minimum days* set in System Control cannot be gone under.

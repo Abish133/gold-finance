@@ -40,6 +40,8 @@ const COLUMNS = [
   ['branches', 'licence_valid_till', 'DATE NULL AFTER licence_no'],
   // interest charged by days (7, 15 ...) instead of whole months
   ['loan_transactions', 'interest_days', 'INT NULL AFTER months_paid'],
+  // rate % per month typed for this payment (null = the loan's own rate)
+  ['loan_transactions', 'interest_rate_used', 'DECIMAL(6,3) NULL AFTER interest_days'],
 ];
 
 const TABLES = `

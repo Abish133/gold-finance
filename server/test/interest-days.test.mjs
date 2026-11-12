@@ -44,6 +44,13 @@ eq(-t.principal_amount, 5000, 'part amount on the same receipt');
 eq(t.interest_days, 7, 'days on the part payment receipt');
 eq(full2.calc.principalOutstanding, 25000, 'outstanding after part amount');
 
+// 2b. typed rate (1.25% instead of 1.5%) is stored on the receipt
+await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 375, months_paid: 1, interest_rate: 1.25 });
+t = (await call('GET', `/loans/${L1.id}`)).data.transactions.filter((x) => !x.is_void).at(-1);
+eq(t.interest_rate_used, 1.25, 'typed rate stored');
+await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 10, interest_rate: 99 }, true);
+ok('rate above 20% refused');
+
 // 3. release: interest by days (lower than the full month) - admin passes approval itself
 const L2 = await newLoan();
 const c2 = (await call('GET', `/loans/${L2.id}`)).data.calc;

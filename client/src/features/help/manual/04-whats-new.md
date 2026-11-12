@@ -51,6 +51,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 |---|---|---|
 | **Interest + part amount on one receipt** | Loan → Part Payment | Fill the interest and the part amount together - one receipt, both lines on it |
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
+| **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
 | **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
 | **Approval** | Release | Interest below the system figure counts like a discount - above the limit it needs a manager's password |
 | **Minimum days** | Settings → System Control → *Interest by days: minimum days* | Staff cannot charge fewer days than this |

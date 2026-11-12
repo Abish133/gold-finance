@@ -16,6 +16,7 @@ import { whatsappAfterSave } from '@/lib/whatsapp';
 import { Panel, Line, useKeys, PaymentsGrid, useLoan, useApproval, CustomerLedgerDrawer, Chip, GoldButton } from './desk';
 import { PageActions } from '@/components/common/PageActions';
 
+const numBox = 'num h-9 w-full min-w-0 rounded-md border border-ink-200 bg-white px-2 text-center text-lg font-extrabold text-navy-900 outline-none [appearance:textfield] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-ink-700 dark:bg-ink-950 dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 const MODES = [['CASH', 'Cash'], ['UPI', 'UPI'], ['BANK', 'Bank / NEFT'], ['CARD', 'Card'], ['CHEQUE', 'Cheque']];
 
 /** Part Payment & Interest (desktop: frmPartPayments) - months strip, months stepper, multi-mode payment. */
@@ -36,6 +37,7 @@ export default function PartPaymentPage() {
   const [days, setDays] = useState('');
   const [intAmt, setIntAmt] = useState('');
   const [partAmt, setPartAmt] = useState('');
+  const [rateText, setRateText] = useState('');
   const [pay, setPay] = useState({ mode: 'CASH', amount: '', reference: '', bank_account_id: '' });
   const [lines, setLines] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -43,21 +45,28 @@ export default function PartPaymentPage() {
   const l = full?.loan;
   const c = full?.calc;
 
-  const reset = () => { setMode('MONTHS'); setMonths(0); setDays(''); setIntAmt(''); setPartAmt(''); setLines([]); };
+  const reset = () => { setMode('MONTHS'); setMonths(0); setDays(''); setIntAmt(''); setPartAmt(''); setRateText(''); setLines([]); };
   useEffect(reset, [loanId]);
   // desktop: opens with all due months ready to pay
-  useEffect(() => { if (c) setMonths(Math.max(0, (c.monthsDue || 0) - (c.monthsPaid || 0))); }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (c) { setMonths(Math.max(0, (c.monthsDue || 0) - (c.monthsPaid || 0))); setRateText(String(round2(c.rateType === 'MONTHLY' ? n(c.rate) : n(c.rate) / 12))); } }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
   const others = useFetch(l ? '/loans' : null, { customer_id: l?.customer_id, status: 'OPEN', pageSize: 50 });
   const openCount = others.data?.length || 0;
 
-  const monthly = c?.monthlyInterest || 0;
-  const perDay = monthly / 30;
+  const sysMonthly = c?.monthlyInterest || 0;                        // the loan's own interest per month
+  const sysPerDay = sysMonthly / 30;
   const minDays = n(settings?.INTEREST_MIN_DAYS);
   const topupsAmt = round2((full?.transactions || []).filter((t) => !t.is_void && t.txn_type === 'TOPUP').reduce((s, t) => s + n(t.principal_amount), 0));
+  // rate % per month for this payment: the loan's rate, or typed by the shop (e.g. 1.25 instead of 1.5)
+  const loanRate = c ? round2(c.rateType === 'MONTHLY' ? n(c.rate) : n(c.rate) / 12) : 0;
+  const rateTyped = rateText !== '' && n(rateText) >= 0 && round2(n(rateText)) !== loanRate;
+  const ratePct = rateTyped ? n(rateText) : loanRate;
+  const rateBase = c ? (c.mode === 'MYBOOK' ? n(l.principal) + topupsAmt : n(c.principalOutstanding)) : 0;
+  const monthly = rateTyped ? Math.round((rateBase * ratePct) / 100) : sysMonthly;
+  const perDay = monthly / 30;
   const paidMonths = c?.monthsPaid || 0;
   const dueMonths = Math.max(0, (c?.monthsDue || 0) - paidMonths);
   // interest already paid, as whole months + the days left over (when earlier interest was taken by days)
-  const leftDays = perDay > 0 && c ? Math.max(0, Math.round((n(c.interestPaid) - paidMonths * monthly) / perDay)) : 0;
+  const leftDays = sysPerDay > 0 && c ? Math.max(0, Math.round((n(c.interestPaid) - paidMonths * sysMonthly) / sysPerDay)) : 0;
   const paidBase = l ? dayjs(l.loan_date).add(paidMonths, 'month').add(leftDays, 'day') : null;
   const dayCount = Math.max(0, Math.floor(n(days)));
   const interest = mode === 'MONTHS' ? round2(months * monthly) : mode === 'DAYS' ? Math.round(perDay * dayCount) : round2(Math.max(0, n(intAmt)));
@@ -66,17 +75,17 @@ export default function PartPaymentPage() {
   const received = round2(lines.reduce((s, x) => s + n(x.amount), 0));
   const balance = round2(total - received);
   const paidUpTo = !paidBase || interest <= 0 ? null
-    : (mode === 'MONTHS' ? paidBase.add(months, 'month') : paidBase.add(mode === 'DAYS' ? dayCount : (perDay > 0 ? Math.round(interest / perDay) : 0), 'day')).format('YYYY-MM-DD');
+    : (mode === 'MONTHS' ? paidBase.add(months, 'month') : paidBase.add(mode === 'DAYS' ? dayCount : (sysPerDay > 0 ? Math.round(interest / sysPerDay) : 0), 'day')).format('YYYY-MM-DD');
   const daysTooFew = mode === 'DAYS' && dayCount > 0 && minDays > 0 && dayCount < minDays;
   const strip = useMemo(() => Array.from({ length: Math.max(12, paidMonths + months + 1, c?.monthsDue || 0) }, (_, i) => {
     const m = i + 1;
-    const advM = l && n(l.advance_interest) && monthly ? Math.round(n(l.advance_interest) / monthly) : 0;
+    const advM = l && n(l.advance_interest) && sysMonthly ? Math.round(n(l.advance_interest) / sysMonthly) : 0;
     if (m <= advM) return 'adv';
     if (m <= paidMonths) return 'paid';
     if (m <= paidMonths + months) return 'now';
     if (m <= (c?.monthsDue || 0)) return 'due';
     return 'not';
-  }), [paidMonths, months, c, l, monthly]);
+  }), [paidMonths, months, c, l, sysMonthly]);
 
   const load = async () => {
     if (!q.trim()) return;
@@ -98,6 +107,7 @@ export default function PartPaymentPage() {
       interest_amount: interest, interest_upto: paidUpTo,
       months_paid: mode === 'MONTHS' && interest > 0 ? months : 0,
       interest_days: mode === 'DAYS' && interest > 0 ? dayCount : undefined,
+      interest_rate: mode !== 'AMOUNT' && interest > 0 && rateTyped ? ratePct : undefined,
     };
     setSaving(true);
     try {
@@ -117,7 +127,7 @@ export default function PartPaymentPage() {
     f2: () => setMode((m) => MODES_INT[(MODES_INT.indexOf(m) + 1) % MODES_INT.length]), f3: () => document.getElementById('part-amount')?.focus(),
     '+': () => mode === 'MONTHS' && setMonths((m) => m + 1), '-': () => mode === 'MONTHS' && setMonths((m) => Math.max(0, m - 1)),
     f4: addLine, f5: () => { setSp({}); setQ(''); }, f10: () => save(true), escape: () => navigate('/'),
-  }, [l, months, mode, days, intAmt, partAmt, lines, pay, total]);
+  }, [l, months, mode, days, intAmt, partAmt, rateText, lines, pay, total]);
 
   const banks = (lk?.banks || []).map((b) => ({ value: b.id, label: b.bank_name }));
   const cell = { adv: 'bg-violet-200 text-violet-900', paid: 'bg-emerald-200 text-emerald-900', now: 'bg-ink-900 text-white', due: 'bg-rose-100 text-rose-800', not: 'bg-ink-100 text-ink-400' };
@@ -209,86 +219,95 @@ export default function PartPaymentPage() {
 
         <div className="desk-col">
         <Panel title="Receive" bodyClassName="flex flex-col gap-2 p-3">
-          {/* ---------- interest: by months, days or a typed amount */}
+          {/* ---------- interest: by months, days or a typed amount, at the loan rate or a typed rate */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">Interest</span>
-            {c?.interestDue > 0 && <span className="text-[11px] text-amber-700 dark:text-amber-300">due {money(c.interestDue)}</span>}
+            {c?.interestDue > 0 && <span className="truncate text-[11px] text-amber-700 dark:text-amber-300">due {money(c.interestDue)}</span>}
             <span className="flex-1" />
-            <span className="text-[10px] text-ink-400">F2 change</span>
-          </div>
-          <div className="grid grid-cols-3" role="tablist" aria-label="Charge interest by">
-            {[['MONTHS', 'Months'], ['DAYS', 'Days'], ['AMOUNT', 'Amount']].map(([k, t]) => (
-              <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
-                className={clsx('-ml-px flex h-8 items-center justify-center gap-1.5 border text-[12px] font-bold first:ml-0 first:rounded-l-md last:rounded-r-md',
-                  mode === k ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>
-                {mode === k && <span className="size-1.5 rounded-full bg-emerald-600" aria-hidden />}{t}
-              </button>
-            ))}
-          </div>
-          {mode === 'MONTHS' && <>
-            <div className="flex items-center gap-2 rounded-md border border-ink-200 p-1.5 dark:border-ink-800">
-              <span className="flex-1 pl-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Months to pay</span>
-              <Button variant="outline" size="icon" className="size-8" onClick={() => setMonths((m) => Math.max(0, m - 1))} aria-label="One month less"><Minus className="size-4" /></Button>
-              <input type="number" min="0" inputMode="numeric" aria-label="Months to pay" value={months}
-                onChange={(e) => setMonths(Math.max(0, Math.floor(Number(e.target.value) || 0)))} onFocus={(e) => e.target.select()}
-                className="num h-8 w-14 rounded-md border border-ink-200 bg-white text-center text-xl font-extrabold text-navy-900 outline-none [appearance:textfield] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-ink-700 dark:bg-ink-950 dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
-              <Button variant="outline" size="icon" className="size-8" onClick={() => setMonths((m) => m + 1)} aria-label="One month more"><Plus className="size-4" /></Button>
+            <div className="grid shrink-0 grid-cols-3" role="tablist" aria-label="Charge interest by" title="F2 changes">
+              {[['MONTHS', 'Months'], ['DAYS', 'Days'], ['AMOUNT', 'Amount']].map(([k, t]) => (
+                <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
+                  className={clsx('-ml-px h-7 border px-2.5 text-[12px] font-bold first:ml-0 first:rounded-l-md last:rounded-r-md',
+                    mode === k ? 'relative z-10 border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>{t}</button>
+              ))}
             </div>
-            <div className="grid grid-cols-4 gap-1.5 [&_button]:h-8 [&_button]:px-1 [&_button]:text-[12px]">
+          </div>
+          {/* one row: count (months / days) or amount + rate % per month */}
+          <div className={clsx('grid gap-2', mode === 'AMOUNT' ? 'grid-cols-1' : 'grid-cols-[1fr_108px]')}>
+            {mode === 'MONTHS' && (
+              <div>
+                <p className="label">Months</p>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setMonths((m) => Math.max(0, m - 1))} aria-label="One month less"><Minus className="size-4" /></Button>
+                  <input type="number" min="0" inputMode="numeric" aria-label="Months to pay" value={months}
+                    onChange={(e) => setMonths(Math.max(0, Math.floor(Number(e.target.value) || 0)))} onFocus={(e) => e.target.select()}
+                    className={numBox} />
+                  <Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setMonths((m) => m + 1)} aria-label="One month more"><Plus className="size-4" /></Button>
+                </div>
+              </div>
+            )}
+            {mode === 'DAYS' && (
+              <div>
+                <p className="label">Days</p>
+                <input type="number" min="0" inputMode="numeric" aria-label="Days to charge" value={days} placeholder="0" autoFocus
+                  onChange={(e) => setDays(e.target.value)} onFocus={(e) => e.target.select()} className={numBox} />
+              </div>
+            )}
+            {mode === 'AMOUNT' && (
+              <div>
+                <p className="label">Interest amount (₹)</p>
+                <input type="number" min="0" aria-label="Interest amount" value={intAmt} placeholder="0" autoFocus
+                  onChange={(e) => setIntAmt(e.target.value)} onFocus={(e) => e.target.select()} className={clsx(numBox, '!text-right')} />
+              </div>
+            )}
+            {mode !== 'AMOUNT' && (
+              <div>
+                <p className="label">Rate % / month</p>
+                <input type="number" min="0" step="0.01" inputMode="decimal" aria-label="Interest rate percent per month" value={rateText} placeholder={l ? String(loanRate) : '0'}
+                  onChange={(e) => setRateText(e.target.value)} onFocus={(e) => e.target.select()}
+                  className={clsx(numBox, rateTyped && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')} />
+              </div>
+            )}
+          </div>
+          {mode === 'MONTHS' && (
+            <div className="grid grid-cols-4 gap-1 [&_button]:h-7 [&_button]:px-1 [&_button]:text-[12px]">
               <Button variant="outline" onClick={() => setMonths(0)}>None</Button>
               <Button variant="outline" onClick={() => setMonths(1)}>1 month</Button>
               <Button variant="outline" onClick={() => setMonths(3)}>3 months</Button>
               <Button variant="outline" onClick={() => setMonths(dueMonths)}>All due ({dueMonths})</Button>
             </div>
-          </>}
-          {mode === 'DAYS' && <>
-            <div className="flex items-center gap-2 rounded-md border border-ink-200 p-1.5 dark:border-ink-800">
-              <span className="flex-1 pl-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Days to charge</span>
-              <input type="number" min="0" inputMode="numeric" aria-label="Days to charge" value={days} placeholder="0" autoFocus
-                onChange={(e) => setDays(e.target.value)} onFocus={(e) => e.target.select()}
-                className="num h-8 w-20 rounded-md border border-ink-200 bg-white text-center text-xl font-extrabold text-navy-900 outline-none [appearance:textfield] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-ink-700 dark:bg-ink-950 dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
-            </div>
-            <div className="grid grid-cols-4 gap-1.5 [&_button]:h-8 [&_button]:px-1 [&_button]:text-[12px]">
+          )}
+          {mode === 'DAYS' && (
+            <div className="grid grid-cols-4 gap-1 [&_button]:h-7 [&_button]:px-1 [&_button]:text-[12px]">
               {[7, 15, 21, 30].map((x) => <Button key={x} variant="outline" disabled={minDays > 0 && x < minDays} onClick={() => setDays(String(x))}>{x} days</Button>)}
             </div>
-            {daysTooFew && <p className="text-[12px] font-semibold text-rose-600">At least {minDays} days must be charged.</p>}
-          </>}
-          {mode === 'AMOUNT' && (
-            <Field label="Interest amount"><Input type="number" min="0" autoFocus className="!h-10 text-right text-lg font-bold" value={intAmt} onChange={(e) => setIntAmt(e.target.value)} placeholder="0" /></Field>
           )}
-          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">
-            <Line label="Interest / month" value={amount(monthly)} />
-            {mode === 'MONTHS' && <Line label="Months" value={months} />}
-            {mode === 'DAYS' && <Line label={`Days · ₹${amount(perDay)} a day`} value={dayCount} />}
-            <Line label="Paid up to (after save)" value={paidUpTo ? date(paidUpTo) : '-'} />
-            <Line bold label="Interest" value={amount(interest)} />
+          {daysTooFew && <p className="text-[12px] font-semibold text-rose-600">At least {minDays} days must be charged.</p>}
+          {rateTyped && (
+            <p className="flex items-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-300">
+              <span>Rate {ratePct}% for this payment only (loan rate {loanRate}%).</span>
+              <button type="button" className="font-bold underline" onClick={() => setRateText('')}>Use loan rate</button>
+            </p>
+          )}
+          <div className="rounded-md border border-ink-200 px-2.5 py-0.5 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">
+            <Line label={mode === 'AMOUNT' ? 'Interest' : mode === 'DAYS' ? `${dayCount} days × ₹${amount(perDay)} a day` : `${months} × ₹${amount(monthly)} a month`} value={amount(interest)} bold />
+            <Line label="Paid up to (after save)" value={paidUpTo ? date(paidUpTo) : '-'} tone="text-ink-500" />
           </div>
 
           {/* ---------- part amount: optional, on the same receipt */}
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">Part amount</span>
-            <span className="text-[11px] text-ink-400">optional · same receipt</span>
-            <span className="flex-1" />
-            <span className="text-[10px] text-ink-400">F3</span>
+          <div className="mt-0.5 grid grid-cols-[1fr_140px] items-center gap-2">
+            <div className="min-w-0 leading-tight">
+              <p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">Part amount <span className="font-normal normal-case text-ink-400">· F3</span></p>
+              <p className="truncate text-[11px] text-ink-500">{part > 0 && c ? <>Outstanding {money(c.principalOutstanding)} → <b className="text-navy-900 dark:text-white">{money(Math.max(0, c.principalOutstanding - part))}</b></> : 'optional · same receipt'}</p>
+            </div>
+            <Input id="part-amount" type="number" min="0" aria-label="Part amount received" className="!h-9 text-right text-[15px] font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} placeholder="0" />
           </div>
-          <Input id="part-amount" type="number" min="0" aria-label="Part amount received" className="!h-10 text-right text-lg font-bold" value={partAmt} onChange={(e) => setPartAmt(e.target.value)} placeholder="0" />
-          {part > 0 && (
-            <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">
-              <Line label="Outstanding now" value={c ? money(c.principalOutstanding) : '-'} />
-              <Line label="Paying" value={`− ${money(part)}`} />
-              <Line bold label="New outstanding" value={c ? money(Math.max(0, c.principalOutstanding - part)) : '-'} />
-              <p className="pt-0.5 text-[11px] text-ink-500">{c?.mode === 'MYBOOK' ? 'Interest stays on the original loan amount (MyBook).' : 'Interest from today is on the new outstanding amount.'}</p>
+          <div className="navy-gradient rounded-md px-3 py-2 text-white">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Total to receive</span>
+              <span className="num text-2xl font-extrabold">{money(total)}</span>
             </div>
-          )}
-          {interest > 0 && part > 0 && (
-            <div className="rounded-md bg-emerald-50 px-2.5 py-1.5 text-[12px] text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 [&>div]:py-0 [&>div]:text-[12px]">
-              <Line label="Interest" value={amount(interest)} />
-              <Line label="Part amount" value={amount(part)} />
-            </div>
-          )}
-          <div className="navy-gradient flex items-baseline justify-between rounded-md px-3 py-2 text-white">
-            <span className="text-[10px] font-bold tracking-wider uppercase opacity-70">Total to receive</span>
-            <span className="num text-2xl font-extrabold">{money(total)}</span>
+            {interest > 0 && part > 0 && <p className="num text-right text-[11px] text-white/70">Interest {amount(interest)} + Part amount {amount(part)}</p>}
           </div>
           <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-1.5">
             <Field label="Payment mode"><Select value={pay.mode} onChange={(e) => setPay({ ...pay, mode: e.target.value })} options={MODES.map(([v, t]) => ({ value: v, label: t }))} /></Field>

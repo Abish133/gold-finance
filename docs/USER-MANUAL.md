@@ -311,6 +311,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 |---|---|---|
 | **Interest + part amount on one receipt** | Loan → Part Payment | Fill the interest and the part amount together - one receipt, both lines on it |
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
+| **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
 | **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
 | **Approval** | Release | Interest below the system figure counts like a discount - above the limit it needs a manager's password |
 | **Minimum days** | Settings → System Control → *Interest by days: minimum days* | Staff cannot charge fewer days than this |
@@ -408,7 +409,7 @@ Due date is 12 months from the loan date.
 
    **Charge interest** - how much interest to take now:
    - **Full** (usual) - the system figure: every started month.
-   - **Days** - type the days or press **7 / 15 / 30**. Interest = interest per month ÷ 30 × days, less interest already paid (and advance). Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
+   - **Days** - type the days or press **7 / 15 / 30**, and the **rate %** (filled with the loan's rate; type e.g. 1.25 to charge a lower rate). Interest = interest per month at that rate ÷ 30 × days, less interest already paid (and advance). A typed rate is printed on the release receipt. Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
    - **Amount** - type the interest to take now.
    - *Interest now* shows the amount taken. If it is **less than the system figure**, the line *Less than system* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
    - A *minimum days* set in System Control cannot be gone under.
@@ -440,10 +441,10 @@ Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per m
 **Loan → Part Payment** - the customer pays interest, pays back part of the loan amount, or **both on one receipt**, and keeps the loan open.
 
 The **Receive** panel on the right has two parts:
-- **Interest** - charged by **Months**, **Days** or a typed **Amount** (F2 changes between them).
+- **Interest** - charged by **Months**, **Days** or a typed **Amount** (the small switch next to *Interest*; F2 changes between them), at the loan's rate or a **rate % / month** you type.
 - **Part amount** - optional (F3 goes to the box). Leave it 0 to take interest only.
 
-**Total to receive** = interest + part amount.
+**Total to receive** = interest + part amount (when both are taken, the split is shown under the total).
 
 ## 1. Load the loan
 Type the **loan no** → **Load** (Enter). The **Interest months** strip shows each month: advance, paid, paying now, due, not yet. Next to *Interest* the amount still **due** is shown.
@@ -455,6 +456,10 @@ Type the **loan no** → **Load** (Enter). The **Interest months** strip shows e
 | **Days** | Type the days, or press **7 / 15 / 21 / 30 days** | interest per month ÷ 30 × days (rounded to the rupee) |
 | **Amount** | Type the interest amount | the amount you type |
 
+**Rate % / month** (next to Months / Days) - filled with the loan's rate (e.g. 1.5). Type another rate to charge this payment at that rate, e.g. **1.25**. The box turns amber and the line *Rate 1.25% for this payment only (loan rate 1.5%)* appears; **Use loan rate** puts it back.
+- The typed rate is used **only for this receipt** and printed on it (*Interest Rate 1.25% per month*). The loan keeps its own rate - to change the rate for good use **Loan → Edit Loan Record**.
+- Interest taken at a lower rate is counted as paid; what the loan rate still asks for stays due (it shows as *due* next time and at release, where it can be settled with *Days* / *Amount*).
+
 *Paid up to (after save)* moves on by the months or days charged (for *Amount*, by the days that amount covers).
 
 Use **Days** when a whole month is too much - for example the customer comes after 10 days and the shop decides to take 15 days' interest.
@@ -464,7 +469,7 @@ If the owner set a **minimum days** (System Control → *Interest by days: minim
 > Nothing is lost by taking less now: everything paid is counted, and the rest stays due. It shows as *due* next time and at release.
 
 ## 3. Part amount (optional)
-Type the amount paid back, e.g. ₹5,000. The panel shows *Outstanding now*, *Paying* and *New outstanding*.
+Type the amount paid back, e.g. ₹5,000. The line under *Part amount* shows *Outstanding ₹55,000 → ₹50,000*.
 - Interest **and** part amount → **one receipt** (Part Payment receipt) with both lines.
 - Part amount only → set interest to *None* (Months) or 0.
 - The part amount must be less than the outstanding; to pay everything use **Release**.
@@ -479,12 +484,13 @@ Type the amount paid back, e.g. ₹5,000. The panel shows *Outstanding now*, *Pa
 Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
 - **Months:** 3 months = **₹2,475**.
 - **Days:** 15 days = 27.50 × 15 = **₹413**.
+- **Typed rate:** 1 month at **1.25%** = 55,000 × 1.25% = **₹688** (instead of ₹825).
 - **Both on one bill:** 15 days interest ₹413 + part amount ₹5,000 = **₹5,413** - one receipt, new outstanding ₹50,000.
 
 ## Good to know
 - Interest receipts are taken off at release (*Interest already paid*).
 - **F5** on this screen clears it for the next customer.
-- The receipt shows *Interest Months* (with from–to dates) or *Interest Days* (with the paid-up date), interest received, part amount received, outstanding after it, and the payment modes.
+- The receipt shows *Interest Months* (with from–to dates) or *Interest Days* (with the paid-up date), the *Interest Rate* when one was typed, interest received, part amount received, outstanding after it, and the payment modes.
 
 ---
 
