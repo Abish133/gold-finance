@@ -104,6 +104,11 @@ export default function DashboardPage() {
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const goldToday = data.rates.some((r) => dayjs(r.rate_date).isSame(dayjs(billing?.billingDate || undefined), 'day'));
   const interestToday = n(data.today.loans.advance_interest) + Object.values(t).reduce((s, x) => s + n(x.interest) + n(x.penal), 0);
+  const interestMonth = n(data.month.loans?.advance_interest) + Object.values(data.month.transactions || {}).reduce((s, x) => s + n(x.interest) + n(x.penal), 0);
+  const metalWt = (re) => (data.metalMix || []).filter((m) => re.test(m.metal)).reduce((s, m) => s + n(m.net_wt), 0);
+  const goldWt = metalWt(/gold/i); const silverWt = metalWt(/silver/i);
+  const ltv = n(data.portfolio.ltv);
+  const ltvTone = ltv > 80 ? 'text-rose-600' : ltv > 70 ? 'text-amber-600' : 'text-emerald-700';
   const trend = data.trend.map((r) => ({ month: dayjs(`${r.m}-01`).format('MMM'), lent: n(r.lent), collected: n(r.collected), released: n(r.released) }));
   const on = (k) => settings?.[k] !== '0';   // System Control > Home page
   const actions = ACTIONS.filter((a) => on(a.set) && allowed(can, a.screen) && !(isAllBranches && ['loan_new', 'loan_old'].includes(a.screen)));
@@ -157,6 +162,18 @@ export default function DashboardPage() {
         {on('HOME_TILE_INTEREST') && <Kpi tone="bg-amber-500" to="/accounts/day-report" label="Interest today" value={`₹${amount(interestToday)}`} hint="advance + release + part payment" />}
         {on('HOME_TILE_AUCTION') && <Kpi tone="bg-rose-600" to="/auction" label="Due for auction" value={n(status?.unsettled_12m)} hint={`over 12 months · ${n(data.overdue.cnt)} past due`} valueClass={n(status?.unsettled_12m) ? 'text-rose-600' : undefined} />}
       </div>
+
+      {/* the whole loan book at a glance - each figure opens its screen */}
+      {on('HOME_STRIP_BOOK') && (
+        <div className="grid shrink-0 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-2 xl:grid-cols-6 dark:border-ink-800 dark:bg-ink-900">
+          <Kpi tone="bg-navy-900 dark:bg-white" to="/loans" label="Open loans" value={n(data.portfolio.open_loans)} hint={`${compact(data.portfolio.outstanding)} outstanding`} />
+          <Kpi tone="bg-amber-500" to="/stock/current" label="Gold in custody" value={grams(goldWt || data.portfolio.net_wt)} hint={silverWt ? `Silver ${grams(silverWt)}` : 'net weight'} />
+          <Kpi tone="bg-sky-600" to="/stock/analysis" label="Loan to value" value={`${ltv}%`} valueClass={ltvTone} hint={`market ${compact(data.portfolio.market_value)}`} />
+          <Kpi tone="bg-rose-600" to="/loans/calculator" label="Overdue loans" value={n(data.overdue.cnt)} valueClass={n(data.overdue.cnt) ? 'text-rose-600' : undefined} hint={`${compact(data.overdue.amount)} past settle date`} />
+          <Kpi tone="bg-emerald-600" to="/reports/summary" label={`${dayjs(billing?.billingDate || undefined).format('MMMM')} lent`} value={`${compact(data.month.loans.principal)}`} hint={`${n(data.month.loans.cnt)} loans · interest ${compact(interestMonth)}`} />
+          <Kpi tone="bg-violet-600" to="/customers" label="Active customers" value={n(data.portfolio.active_customers)} hint="with open loans" />
+        </div>
+      )}
 
       <div className="grid gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_380px]">
         <Panel head={<div className="flex h-full gap-4">{tabBtn('actions', 'Quick actions')}{tabBtn('overview', 'Business overview')}</div>}
@@ -221,14 +238,10 @@ export default function DashboardPage() {
 
 /** Second tab of the main card: portfolio tiles, trend charts and branch-wise table. */
 function Overview({ data, trend, showCharts }) {
+  const css = (k, d) => (typeof window !== 'undefined' && getComputedStyle(document.documentElement).getPropertyValue(k).trim()) || d;
+  const accent = css('--color-navy-900', '#18181b'); const accent2 = css('--color-navy-400', '#71717a');
   return (
     <div className="space-y-2">
-      <div className="grid overflow-hidden rounded-md border border-ink-200 sm:grid-cols-2 2xl:grid-cols-4 dark:border-ink-800">
-        <Kpi tone="bg-navy-900 dark:bg-white" label="Outstanding" value={compact(data.portfolio.outstanding)} hint={`${n(data.portfolio.open_loans)} open loans`} />
-        <Kpi tone="bg-amber-500" label="Gold in custody" value={grams(data.portfolio.net_wt)} hint={`MV ${compact(data.portfolio.market_value)} · LTV ${data.portfolio.ltv}%`} />
-        <Kpi tone="bg-emerald-600" label="This month lent" value={compact(data.month.loans.principal)} hint={`${data.month.loans.cnt} loans`} />
-        <Kpi tone="bg-violet-600" label="Active customers" value={n(data.portfolio.active_customers)} hint="with open loans" />
-      </div>
       {showCharts && <div className="grid gap-2 xl:grid-cols-3">
         <Card title="Business trend · 6 months" className="xl:col-span-2">
           <div className="h-52">
@@ -239,8 +252,8 @@ function Overview({ data, trend, showCharts }) {
                 <YAxis tickFormatter={(v) => compact(v)} tickLine={false} axisLine={false} fontSize={11} width={70} />
                 <Tooltip formatter={(v) => money(v)} />
                 <Legend />
-                <Area type="monotone" dataKey="lent" name="Lent" stroke="#18181b" strokeWidth={2} fill="#18181b" fillOpacity={0.12} />
-                <Area type="monotone" dataKey="released" name="Recovered" stroke="#71717a" strokeWidth={2} fill="#71717a" fillOpacity={0.12} />
+                <Area type="monotone" dataKey="lent" name="Lent" stroke={accent} strokeWidth={2} fill={accent} fillOpacity={0.12} />
+                <Area type="monotone" dataKey="released" name="Recovered" stroke={accent2} strokeWidth={2} fill={accent2} fillOpacity={0.12} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

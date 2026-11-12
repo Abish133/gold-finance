@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Spinner, Empty } from '@/components/ui';
 import { ShieldOff } from 'lucide-react';
 import LoginPage from '@/features/auth/LoginPage';
+import { MENUS, allowed } from '@/config/navigation';
 
 // every screen is code-split -> tiny initial bundle, instant first paint
 const P = {
@@ -96,6 +97,14 @@ function Guard({ screen, children }) {
   return children;
 }
 
+/** Start screen after login: the dashboard - or, for a role without it, the first screen it may open. */
+function Home() {
+  const { can } = useAuth();
+  if (can('dashboard')) return <P.Dashboard />;
+  const first = MENUS.flatMap((m) => m.items.flatMap((i) => (i.section ? [] : i.items ? i.items : [i]))).find((i) => i.path && allowed(can, i.screen));
+  return first ? <Navigate to={first.path} replace /> : <Empty icon={ShieldOff} title="Access restricted" message="Your role does not have access to any screen yet. Contact your administrator." />;
+}
+
 const r = (path, Comp, screen, props) => ({ path, element: <Guard screen={screen}><Comp {...props} /></Guard> });
 const REPORT_SCREENS = ['reports_loan', 'reports_release', 'reports_collection', 'reports_customer', 'reports_summary'];
 
@@ -105,7 +114,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: <RequireAuth><AppLayout /></RequireAuth>,
     children: [
-      { index: true, element: <Guard screen="dashboard"><P.Dashboard /></Guard> },
+      { index: true, element: <Home /> },
       r('customers', P.Customers, 'customers'),
       r('customers/blocked', P.BlockedCustomers, 'customer_blocked'),
       r('customers/merge', P.MergeCustomers, 'customer_merge'),
