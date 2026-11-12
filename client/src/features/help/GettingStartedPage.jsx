@@ -18,7 +18,7 @@ export const SETUP = [
     why: 'Every loan belongs to a branch. Opening cash is the money in the drawer on the first day - Day Report starts from it.',
     what: ['Settings → More → Branches', 'Edit "Head Office": code, name, phone, loan number prefix', 'Enter Opening cash (cash in drawer today) and Save', 'More shops? Add one branch for each'],
     sample: 'HO · Head Office · prefix (blank) · opening cash ₹2,00,000' },
-  { key: 'rate', title: "Today's gold and silver rate", path: '/masters/rates', time: '1 min',
+  { key: 'rate', title: "Today's gold and silver rate", path: '/masters?tab=rates', time: '1 min',
     why: 'Item value and the eligible loan amount come from today\'s rate. New loans cannot be saved without it.',
     what: ['Masters → Gold / Silver Rate', 'Type the 100% (fine) gold rate and silver rate', 'Press "Auto from 100% Rate" to fill the 92% rows', 'Save Today\'s Rate (F2) - do this every morning'],
     sample: 'Fine Gold ₹7,900 → Gold Ornament 92% ₹7,268 · Fine Silver ₹100' },
@@ -100,31 +100,33 @@ export default function GettingStartedPage() {
   }
 
   return (
-    <div className="animate-rise mx-auto max-w-5xl space-y-3">
-      <section className="navy-gradient flex flex-wrap items-center gap-4 rounded-md px-5 py-4 text-white">
-        <Rocket className="size-9 text-gold-300" />
-        <div className="flex-1"><h1 className="text-2xl font-bold">Getting Started</h1><p className="text-sm text-navy-100">Do these steps once, top to bottom, before the shop starts real work. Each step ticks itself when it is done.</p></div>
+    /* fit-screen: the steps scroll on their own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <Rocket className="size-5 shrink-0 opacity-80" />
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Getting Started</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Do these steps once, top to bottom, before the shop starts real work. Each step ticks itself when it is done.</p></div>
         <div className="w-56"><div className="flex justify-between text-xs font-bold"><span>{data?.done ?? 0} of {data?.total ?? SETUP.length} done</span><span>{pct}%</span></div><div className="mt-1 h-2 rounded bg-white/20"><div className="h-2 rounded bg-gold-400" style={{ width: `${pct}%` }} /></div></div>
       </section>
+      <div className="grid content-start gap-2 overflow-y-auto xl:min-h-0 xl:flex-1 xl:grid-cols-2">
       {SETUP.map((s, i) => {
         const st = status[s.key] || {};
         const done = st.done; const skipped = st.skipped && !done; const next = s.key === nextKey;
         return (
-          <div key={s.key} className={clsx('card px-4 py-3', next && 'ring-2 ring-gold-500', (done || skipped) && 'opacity-80')}>
-            <div className="flex flex-wrap items-start gap-4">
-              <div className="pt-0.5">{done ? <CheckCircle2 className="size-7 text-emerald-600" /> : <Circle className={clsx('size-7', next ? 'text-gold-500' : 'text-ink-300')} />}</div>
+          <div key={s.key} className={clsx('card px-3 py-2.5', next && 'border-emerald-400 ring-1 ring-emerald-400', done && 'bg-emerald-50/40 dark:bg-emerald-950/10', (done || skipped) && 'opacity-80')}>
+            <div className="flex items-start gap-3">
+              <div className="pt-0.5">{done ? <CheckCircle2 className="size-5 text-emerald-600" /> : <Circle className={clsx('size-5', next ? 'text-emerald-500' : 'text-ink-300')} />}</div>
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-navy-900 dark:text-white">Step {i + 1} · {s.title} {s.optional && <span className="ml-1 rounded bg-ink-100 px-1.5 text-[10px] font-bold text-ink-600 uppercase dark:bg-ink-800">optional</span>}
-                  {next && <span className="ml-1 rounded bg-gold-100 px-1.5 text-[10px] font-bold text-gold-800 uppercase">do this next</span>}
+                <p className="text-[13px] font-bold text-navy-900 dark:text-white">Step {i + 1} · {s.title} {s.optional && <span className="ml-1 rounded bg-ink-100 px-1.5 text-[10px] font-bold text-ink-600 uppercase dark:bg-ink-800">optional</span>}
+                  {next && <span className="ml-1 rounded-sm bg-emerald-100 px-1.5 text-[10px] font-bold text-emerald-800 uppercase">do this next</span>}
                   {skipped && <span className="ml-1 rounded bg-ink-100 px-1.5 text-[10px] font-bold text-ink-600 uppercase">skipped</span>}
                   <span className="ml-2 text-xs font-normal text-ink-500">about {s.time}</span></p>
-                <p className="mt-0.5 text-sm text-ink-600 dark:text-ink-300">{s.why}</p>
+                <p className="mt-0.5 text-[12px] text-ink-600 dark:text-ink-300">{s.why}</p>
                 {!done && (<>
-                  <ol className="mt-2 list-decimal space-y-0.5 pl-5 text-sm">{s.what.map((w) => <li key={w}>{w}</li>)}</ol>
-                  <p className="mt-2 rounded bg-cream-100 px-2 py-1 text-xs text-ink-700 dark:bg-ink-800 dark:text-ink-200"><b>Example:</b> {s.sample}</p>
+                  <ol className="mt-1.5 list-decimal space-y-0.5 pl-5 text-[12px]">{s.what.map((w) => <li key={w}>{w}</li>)}</ol>
+                  <p className="mt-1.5 rounded-md bg-ink-50 px-2 py-1 text-[11px] text-ink-700 dark:bg-ink-800 dark:text-ink-200"><b>Example:</b> {s.sample}</p>
                 </>)}
               </div>
-              <div className="flex shrink-0 flex-col gap-1.5">
+              <div className="flex shrink-0 flex-col gap-1 [&_button]:h-7 [&_button]:text-[11px]">
                 <Button size="sm" variant={next ? 'gold' : 'outline'} icon={ArrowRight} onClick={() => navigate(s.path)}>Open</Button>
                 {!done && s.manual && <Button size="sm" variant="outline" icon={CheckCircle2} onClick={() => mark(s.key, true)}>Mark done</Button>}
                 {!done && !skipped && s.optional && <Button size="sm" variant="ghost" icon={SkipForward} onClick={() => mark(s.key, 'skip')}>Skip</Button>}
@@ -134,9 +136,10 @@ export default function GettingStartedPage() {
           </div>
         );
       })}
-      <div className="card flex flex-wrap items-center gap-3 px-4 py-3">
-        <BookOpen className="size-5 text-navy-700" /><p className="flex-1 text-sm">Every screen is explained step by step, with examples, in the <b>User Manual</b> (Help menu).</p>
-        <Button variant="outline" onClick={() => navigate('/help/manual')}>Open User Manual</Button>
+      </div>
+      <div className="card flex shrink-0 flex-wrap items-center gap-2.5 px-3 py-2">
+        <BookOpen className="size-4 text-navy-700 dark:text-white" /><p className="flex-1 text-[12px]">Every screen is explained step by step, with examples, in the <b>User Manual</b> (Help menu).</p>
+        <Button variant="outline" className="h-8 text-[12px]" onClick={() => navigate('/help/manual')}>Open User Manual</Button>
       </div>
     </div>
   );

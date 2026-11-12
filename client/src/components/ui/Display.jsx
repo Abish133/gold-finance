@@ -12,33 +12,40 @@ const TONES = {
 
 export function Badge({ tone = 'gray', children, className, dot }) {
   return (
-    <span className={clsx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap', TONES[tone], className)}>
+    <span className={clsx('inline-flex items-center gap-1.5 rounded-sm px-1.5 py-px text-[11px] font-semibold whitespace-nowrap', TONES[tone], className)}>
       {dot && <span className="size-1.5 rounded-full bg-current" />}
       {children}
     </span>
   );
 }
 
+/* one colour per status across the app: open = blue, released / done = green, overdue / failed = red, auction = violet, void = grey struck */
 const STATUS_TONE = {
-  OPEN: 'green', ACTIVE: 'green', CLOSED: 'gray', RENEWED: 'blue', AUCTIONED: 'violet', CANCELLED: 'red', BLOCKED: 'red', LEFT: 'gray',
-  PENDING: 'gold', SENT: 'green', FAILED: 'red', SKIPPED: 'gray',
+  OPEN: 'blue', ACTIVE: 'green', CLOSED: 'green', RELEASED: 'green', RENEWED: 'blue', AUCTIONED: 'violet', AUCTION: 'violet', IN_BANK: 'violet', PLEDGED: 'violet',
+  OVERDUE: 'red', CANCELLED: 'gray', VOID: 'gray', BLOCKED: 'red', LEFT: 'gray', INACTIVE: 'gray',
+  PENDING: 'gold', SENT: 'green', FAILED: 'red', SKIPPED: 'gray', PAID: 'green', DUE: 'gold',
 };
-export const StatusBadge = ({ status }) => <Badge tone={STATUS_TONE[status] || 'gray'} dot>{status ? status.charAt(0) + status.slice(1).toLowerCase() : '—'}</Badge>;
+const STATUS_TEXT = { IN_BANK: 'In bank' };
+export const StatusBadge = ({ status }) => {
+  const s = String(status || '').toUpperCase();
+  const struck = s === 'VOID' || s === 'CANCELLED';
+  return <Badge tone={STATUS_TONE[s] || 'gray'} dot className={struck ? 'line-through decoration-1' : undefined}>{status ? (STATUS_TEXT[s] || s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ')) : '—'}</Badge>;
+};
 
 export function Card({ title, subtitle, actions, children, className, bodyClassName, icon: Icon }) {
   return (
-    <section className={clsx('card', className)}>
+    <section className={clsx('overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900', className)}>
       {(title || actions) && (
-        <header className="flex items-center gap-3 border-b border-ink-200 px-5 py-3 dark:border-ink-800">
-          {Icon && <Icon className="size-4.5 text-navy-600" />}
+        <header className="flex min-h-9 items-center gap-2 border-b border-ink-200 px-3 py-1.5 dark:border-ink-800">
+          {Icon ? <Icon className="size-4 text-navy-700 dark:text-white" /> : <span aria-hidden className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />}
           <div className="min-w-0 flex-1">
-            {title && <h3 className="truncate text-sm font-bold tracking-wide text-navy-800 uppercase dark:text-white">{title}</h3>}
-            {subtitle && <p className="truncate text-xs text-ink-500">{subtitle}</p>}
+            {title && <h3 className="truncate text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">{title}</h3>}
+            {subtitle && <p className="truncate text-[11px] text-ink-500">{subtitle}</p>}
           </div>
           {actions}
         </header>
       )}
-      <div className={clsx('p-5', bodyClassName)}>{children}</div>
+      <div className={clsx('p-3', bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -46,18 +53,19 @@ export function Card({ title, subtitle, actions, children, className, bodyClassN
 /** Stat card with coloured top border, like the desktop dashboard tiles. */
 export function Stat({ label, value, hint, icon: Icon, tone = 'blue', trend }) {
   const t = {
-    blue: ['border-t-navy-700', 'text-navy-800 dark:text-white'], green: ['border-t-emerald-600', 'text-emerald-700'],
-    gold: ['border-t-gold-500', 'text-gold-700'], red: ['border-t-rose-600', 'text-rose-600'], violet: ['border-t-violet-600', 'text-violet-700'],
-  }[tone] || ['border-t-navy-700', 'text-navy-800'];
+    blue: ['bg-navy-900 dark:bg-white', 'text-navy-900 dark:text-white'], green: ['bg-emerald-600', 'text-emerald-700'],
+    gold: ['bg-amber-500', 'text-amber-700'], red: ['bg-rose-600', 'text-rose-600'], violet: ['bg-violet-600', 'text-violet-700'],
+  }[tone] || ['bg-navy-900', 'text-navy-900'];
   return (
-    <div className={clsx('card relative overflow-hidden border-t-4 p-4', t[0])}>
-      <div className="flex items-start justify-between gap-3">
+    <div className="relative overflow-hidden rounded-md border border-ink-200 bg-white px-3 py-1.5 pl-4 dark:border-ink-800 dark:bg-ink-900">
+      <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', t[0])} />
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-bold tracking-wide text-ink-600 uppercase dark:text-ink-300">{label}</p>
-          <p className={clsx('num mt-1.5 truncate text-2xl font-bold', t[1])}>{value}</p>
-          {hint && <p className="mt-1 truncate text-xs text-ink-500">{hint}</p>}
+          <p className="truncate text-[10px] font-bold tracking-wider text-ink-500 uppercase">{label}</p>
+          <p className={clsx('num truncate text-[15px] leading-tight font-bold', t[1])}>{value}</p>
+          {hint && <p className="truncate text-[10px] text-ink-500">{hint}</p>}
         </div>
-        {Icon && <Icon className={clsx('size-6 shrink-0 opacity-70', t[1])} />}
+        {Icon && <Icon className={clsx('size-4 shrink-0 opacity-60', t[1])} />}
       </div>
       {trend}
     </div>
@@ -85,15 +93,14 @@ export function Empty({ title = 'Nothing here yet', message, icon: Icon = Inbox,
 
 export function PageHeader({ title, subtitle, actions, icon: Icon, children }) {
   return (
-    <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-gold-500 px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
-        {Icon && <div className="grid size-10 place-items-center rounded-md bg-navy-800 text-white"><Icon className="size-5" /></div>}
-        <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold text-navy-900 sm:text-xl dark:text-white">{title}</h1>
-          {subtitle && <p className="text-xs text-ink-500 sm:text-sm">{subtitle}</p>}
-        </div>
+    /* same slim dark title bar as the counter / report screens */
+    <div className="navy-gradient mb-2 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+      {Icon && <Icon className="size-5 shrink-0 opacity-80" />}
+      <div className="flex min-w-0 flex-1 items-baseline gap-3">
+        <h1 className="truncate text-lg font-bold whitespace-nowrap">{title}</h1>
+        {subtitle && <p className="hidden truncate text-[12px] text-white/60 lg:block">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-1.5 text-ink-900 [&_button]:h-8 [&_button]:text-[12px]">{actions}</div>}
       {children}
     </div>
   );
@@ -101,7 +108,7 @@ export function PageHeader({ title, subtitle, actions, icon: Icon, children }) {
 
 export function Tabs({ tabs, value, onChange, className }) {
   return (
-    <div className={clsx('flex gap-1 overflow-x-auto border-b border-ink-200 dark:border-ink-800', className)}>
+    <div className={clsx('flex gap-1 overflow-x-auto overflow-y-hidden border-b border-ink-200 [scrollbar-width:none] dark:border-ink-800 [&::-webkit-scrollbar]:hidden', className)}>
       {tabs.map((t) => (
         <button key={t.value} type="button" onClick={() => onChange(t.value)}
           className={clsx('-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition',

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Wallet, IndianRupee, Layers, Percent, TrendingUp, Receipt, BadgePercent } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -67,7 +67,7 @@ export default function ReLoanPage() {
         discount: f.discount, add_items: extra.map(({ key, metal, ...i }) => i), item_photo: photo, payments, rate_per_gram: goldRate, silver_rate: silverRate, rate_basis: 100, approval: ap,
       }));
       setPayOpen(false);
-      toast.success(`Re-loan saved as #${r.data.loan.bill_no}`);
+      toast.success(`Re-loan saved as #${r.data.loan.bill_no}`, { duration: 8000, action: { label: 'Print', onClick: () => printLoan(r.data) } });
       qc.invalidateQueries({ queryKey: ['/loans'] });
       if (settings?.PRINT_AFTER_LOAN !== '0') printLoan(r.data);
       setSp({ loan: r.data.loan.id });
@@ -100,30 +100,36 @@ export default function ReLoanPage() {
           <Panel title="Add item (F4)"><ItemEntry loanOn={l?.loan_on || 'GOLD'} rates={{ gold: goldRate, silver: silverRate }} lookups={lk} onAdd={(it) => setExtra([...extra, it])} /></Panel>
         </>}
         right={(
-          <Panel title="New loan">
-            <div className="space-y-2">
-              <Field label="New loan amount"><Input type="number" className="h-12 bg-gold-50 text-right text-xl font-bold" value={f.new_principal} onChange={(e) => set({ new_principal: e.target.value })} onFocus={(e) => e.target.select()} /></Field>
-              <Field label="Scheme"><Select value={f.scheme_id} onChange={(e) => { const s = lk.schemes.find((x) => String(x.id) === e.target.value); set({ scheme_id: e.target.value, interest_rate: parseSlabs(s?.slabs)[0]?.rate ?? f.interest_rate }); }} options={(lk?.schemes || []).map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} /></Field>
+          <Panel title="New loan" bodyClassName="flex flex-col gap-2">
+            <div className="flex flex-1 flex-col gap-2">
+              <Field label="New loan amount"><Input type="number" prefix={<IndianRupee className="size-4" />} className="!h-11 text-right text-xl font-bold" value={f.new_principal} onChange={(e) => set({ new_principal: e.target.value })} onFocus={(e) => e.target.select()} /></Field>
+              <Field label="Scheme"><Select prefix={<Layers className="size-3.5" />} value={f.scheme_id} onChange={(e) => { const s = lk.schemes.find((x) => String(x.id) === e.target.value); set({ scheme_id: e.target.value, interest_rate: parseSlabs(s?.slabs)[0]?.rate ?? f.interest_rate }); }} options={(lk?.schemes || []).map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} /></Field>
               <div className="grid grid-cols-2 gap-2">
-                <Field label={`Interest % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input type="number" value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
-                <Field label="Calculation"><Select value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
-                <Field label="Doc charges"><Input type="number" value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
+                <Field label={`Interest % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input type="number" prefix={<Percent className="size-3.5" />} value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
+                <Field label="Calculation"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
+                <Field label="Doc charges"><Input type="number" prefix={<Receipt className="size-3.5" />} value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
                 <Field label="Advance interest (F6)">
-                  <div className="flex gap-1"><button type="button" onClick={() => set({ advance: !f.advance })} className={clsx('h-10 w-14 rounded-md text-sm font-bold', f.advance ? 'bg-emerald-100 text-emerald-800' : 'bg-ink-100')}>{f.advance ? 'Yes' : 'No'}</button>
-                    <Input readOnly className="bg-ink-50 text-right" value={amount(adv)} /></div>
+                  <div className="flex gap-1"><button type="button" onClick={() => set({ advance: !f.advance })} title="Advance interest (F6)"
+                    className={clsx('h-9 w-14 shrink-0 rounded-md border text-sm font-bold', f.advance ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300')}>{f.advance ? 'Yes' : 'No'}</button>
+                    <Input prefix={<Wallet className="size-3.5" />} readOnly className="bg-ink-50 text-right" value={amount(adv)} /></div>
                 </Field>
               </div>
               <LtvBar value={valueToday ? (np / valueToday) * 100 : 0} max={n(scheme?.ltv_percent || 75)} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="(value today)" />
-              <Line label="Old loan total" value={amount(oldTotal)} />
-              <div className="grid grid-cols-[1fr_110px] items-center gap-2 text-sm"><span>Less: discount on interest</span><Input type="number" value={f.discount} onChange={(e) => set({ discount: e.target.value })} /></div>
-              <Line label="Less: advance interest + charges" value={amount(deductions)} />
+              <div className="flex min-h-28 flex-1 flex-col justify-evenly rounded-md border border-ink-200 bg-ink-50/50 px-2.5 py-1 dark:border-ink-800 dark:bg-ink-800/30 [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700">
+                <Line label="Old loan total" value={amount(oldTotal)} />
+                <div className="grid grid-cols-[1fr_120px] items-center gap-2 py-1 text-[13px]"><span>Less: discount on interest</span><Input type="number" prefix={<BadgePercent className="size-3.5" />} className="!h-8 text-right" value={f.discount} onChange={(e) => set({ discount: e.target.value })} /></div>
+                <Line label="Less: advance interest + charges" value={amount(deductions)} minus />
+              </div>
+              {settings?.DISCOUNT_APPROVAL_LIMIT && <p className="text-[11px] text-ink-400">Discount above ₹{settings.DISCOUNT_APPROVAL_LIMIT} needs admin approval.</p>}
+            </div>
+            {/* pinned to the bottom of the panel */}
+            <div className="mt-auto space-y-2 pt-1">
               <BigTotal label={payToCustomer > 0 ? 'Pay to customer' : 'Receive from customer'} value={Math.abs(payToCustomer)} tone={payToCustomer > 0 ? 'navy' : 'green'} />
               <GoldButton disabled={!l || l.status !== 'OPEN' || saving} loading={saving && !payOpen} onClick={start}>Save Re-loan (F2)</GoldButton>
-              {settings?.DISCOUNT_APPROVAL_LIMIT && <p className="text-xs text-ink-500">Discount above ₹{settings.DISCOUNT_APPROVAL_LIMIT} needs admin approval.</p>}
             </div>
           </Panel>
         )}
-        footerLeft={<Button variant="outline" icon={Plus} onClick={() => setSp({})}>New / Clear (Ctrl+N)</Button>}
+        footerLeft={<Button variant="soft-danger" icon={Plus} onClick={() => setSp({})}>New / Clear (Ctrl+N)</Button>}
         footerRight={<ExitButton />}
         hints={[['Enter', 'Load loan'], ['F3', 'Bill book no'], ['F4', 'Add item'], ['F5', 'Customer ledger'], ['F6', 'Advance interest'], ['F2', 'Save'], ['Ctrl+N', 'Clear'], ['Esc', 'Exit']]}
       />

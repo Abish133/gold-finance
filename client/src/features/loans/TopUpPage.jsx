@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import { Button, Field, Input } from '@/components/ui';
@@ -76,30 +76,38 @@ export default function TopUpPage() {
             <ItemsSummary items={full?.items} />
           </Panel>
           <Panel title={`Top-ups on this loan · ${topups.length ? topups.length : 'none'}`} bodyClassName="p-0">
-            <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 text-right">Top-up</th><th className="px-3 text-right">Loan after</th><th className="px-3 text-left">Paid by</th><th className="px-3 text-left">Entry</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">{topupRows.map((t) => <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="num px-3 text-right">{amount(t.principal_amount)}</td><td className="num px-3 text-right">{amount(t.after)}</td><td className="px-3">{t.payments.map((x) => x.mode).join(', ')}</td><td className="px-3">{t.created_by_name}</td></tr>)}
-                {!topups.length && <tr><td colSpan={5} className="py-6 text-center text-ink-400">No top-ups yet</td></tr>}</tbody></table>
+            <table className="w-full text-[13px]"><thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="px-3 py-1.5 text-left font-semibold">Date</th><th className="px-3 text-right font-semibold">Top-up</th><th className="px-3 text-right font-semibold">Loan after</th><th className="px-3 text-left font-semibold">Paid by</th><th className="px-3 text-left font-semibold">Entry</th></tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">{topupRows.map((t) => <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="num px-3 text-right">{amount(t.principal_amount)}</td><td className="num px-3 text-right">{amount(t.after)}</td><td className="px-3">{t.payments.map((x) => x.mode).join(', ')}</td><td className="px-3">{t.created_by_name}</td></tr>)}
+                {!topups.length && <tr><td colSpan={5} className="py-6 text-center text-[12px] text-ink-400">No top-ups yet</td></tr>}</tbody></table>
           </Panel>
         </>}
         right={(
-          <Panel title={`Top-up · as on ${dayjs().format('DD/MM/YYYY')}`}>
-            <div className="space-y-2">
-              <Line label="Loan amount now" value={c ? amount(c.principalOutstanding) : '-'} />
-              <Line label="Top-up given before" value={amount(topups.reduce((s, t) => s + n(t.principal_amount), 0))} />
-              <Line label="Items value today" value={l ? amount(valueToday) : '-'} />
-              <Line label="Eligible (scheme LTV)" value={l ? amount(l.eligible_amount) : '-'} />
-              <Field label="Top-up amount"><Input type="number" className="h-12 bg-gold-50 text-right text-xl font-bold" value={amt} onChange={(e) => setAmt(e.target.value)} disabled={tooLate} /></Field>
-              <Field label="Interest deducted now (optional)"><Input type="number" value={deduct} onChange={(e) => setDeduct(e.target.value)} /></Field>
-              <Line label="New loan total" value={amount(newTotal)} bold />
-              <Line label="Interest / month (new total)" value={amount(newTotal * rate)} />
+          <Panel title={`Top-up · as on ${dayjs().format('DD/MM/YYYY')}`} bodyClassName="flex flex-col gap-2">
+            <div className="flex flex-1 flex-col gap-2">
+              {/* where the loan stands now - stretches to fill the panel */}
+              <div className={`flex min-h-32 flex-1 flex-col justify-evenly bg-ink-50/50 dark:bg-ink-800/30 rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700`}>
+                <Line label="Loan amount now" value={c ? amount(c.principalOutstanding) : '-'} />
+                <Line label="Top-up given before" value={amount(topups.reduce((s, t) => s + n(t.principal_amount), 0))} />
+                <Line label="Items value today" value={l ? amount(valueToday) : '-'} />
+                <Line label="Eligible (scheme LTV)" value={l ? amount(l.eligible_amount) : '-'} />
+              </div>
+              <Field label="Top-up amount"><Input type="number" prefix={<IndianRupee className="size-4" />} className="!h-11 text-right text-xl font-bold" value={amt} onChange={(e) => setAmt(e.target.value)} disabled={tooLate} /></Field>
+              <Field label="Interest deducted now (optional)"><Input type="number" prefix={<IndianRupee className="size-3.5" />} className="text-right" value={deduct} onChange={(e) => setDeduct(e.target.value)} /></Field>
+              <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700">
+                <Line label="New loan total" value={amount(newTotal)} bold />
+                <Line label="Interest / month (new total)" value={amount(newTotal * rate)} />
+              </div>
               <LtvBar value={valueToday ? (newTotal / valueToday) * 100 : 0} max={l ? (n(l.eligible_amount) / n(l.market_value || 1)) * 100 : 75} suffix="(value today)" />
-              {tooLate && <p className="rounded-md bg-rose-50 p-2 text-sm text-rose-700">Top-up allowed only within {within} days of loan date. Use Re-loan.</p>}
+              {tooLate && <p className="rounded-md border-l-2 border-rose-600 bg-rose-50 px-2.5 py-1.5 text-[12px] text-rose-700 dark:bg-rose-950/30 dark:text-rose-200">Top-up allowed only within {within} days of loan date. Use Re-loan.</p>}
+            </div>
+            {/* pinned to the bottom of the panel */}
+            <div className="mt-auto space-y-2 pt-1">
               <BigTotal label="Pay to customer" value={Math.max(0, pay)} />
               <GoldButton disabled={!l || tooLate || saving} loading={saving && !payOpen} onClick={start}>Give Top-up (F2)</GoldButton>
             </div>
           </Panel>
         )}
-        footerLeft={<Button variant="outline" icon={Plus} onClick={() => setSp({})}>New / Clear (Ctrl+N)</Button>}
+        footerLeft={<Button variant="soft-danger" icon={Plus} onClick={() => setSp({})}>New / Clear (Ctrl+N)</Button>}
         footerRight={<ExitButton />}
         hints={[['Enter', 'Load loan'], ['F2', 'Give top-up'], ['F3', 'Bill book no'], ['F5', 'Customer ledger'], ['Ctrl+N', 'Clear'], ['Esc', 'Exit']]}
       />

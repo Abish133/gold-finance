@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Save, Eraser, Pencil, Trash2, Printer, ArrowDownCircle, ArrowUpCircle, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Save, Eraser, Pencil, Trash2, Printer, ArrowDownCircle, ArrowUpCircle, BookOpen, Receipt, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Button, ConfirmDrawer, Field, Input, Select } from '@/components/ui';
+import { Button, ConfirmDrawer, Input, Select } from '@/components/ui';
 import { useFetch, useCompany } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -12,10 +13,12 @@ import { printTable } from '@/lib/printTable';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from '@/features/loans/desk';
 import { VoucherDrawer } from './VouchersPage';
+import { PageActions } from '@/components/common/PageActions';
 
 /** Voucher Entry (desktop: frmVoucherEntry) - money received (Jama) or paid (Nave) other than loans. */
 export default function VoucherEntryPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { can, isAllBranches } = useAuth();
   const { data: company } = useCompany();
   const { data: settings } = useFetch('/admin/settings');
@@ -67,82 +70,104 @@ export default function VoucherEntryPage() {
     { key: 'narration', label: 'Narration' }, { key: 'amount', label: 'Amount', type: 'money' }] });
   useKeys({ f10: save, f3: () => sel && edit(sel), delete: () => sel && setDel(sel), f9: print }, [f, d, sel, editing]);
 
-  const typeBtn = (t, label, Icon, on) => (
-    <button type="button" onClick={() => setF({ ...f, type: t })} className={clsx('flex h-11 items-center justify-center gap-2 rounded-md border text-sm font-bold', f.type === t ? on : 'border-ink-300 bg-white text-ink-600')}>
-      <Icon className="size-4" />{label}
+  const toggle = (on, tone = 'emerald') => clsx('-ml-px flex h-9 flex-1 items-center justify-center gap-1.5 border px-2.5 text-[12px] font-semibold first:ml-0 first:rounded-l-md last:rounded-r-md',
+    on ? (tone === 'rose' ? 'relative z-10 border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-200' : 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200') : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300');
+  const dot = (c = 'emerald') => <span className="relative flex size-1.5"><span className={clsx('absolute inline-flex size-full animate-ping rounded-full opacity-75', c === 'rose' ? 'bg-rose-500' : 'bg-emerald-500')} /><span className={clsx('relative inline-flex size-1.5 rounded-full', c === 'rose' ? 'bg-rose-600' : 'bg-emerald-600')} /></span>;
+  const typeBtn = (t, label, Icon, tone) => (
+    <button type="button" onClick={() => setF({ ...f, type: t })} className={toggle(f.type === t, tone)}>
+      {f.type === t ? dot(tone) : <Icon className="size-3.5" />}{label}
     </button>
   );
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">Voucher Entry</h1><p className="text-sm text-navy-100">Money received (Jama) or paid (Nave) other than loans - rent, salary, bills, capital, bank</p></div>
-        <div className="rounded-md bg-white/10 px-4 py-1.5 text-center"><p className="text-[11px] font-bold uppercase">Date</p><p className="font-bold">{dayjs(d).format('DD/MM/YYYY')}</p></div>
-        <div className={clsx('rounded-md px-4 py-1.5 text-center', isClosed ? 'bg-rose-600' : 'bg-white/10')}><p className="text-[11px] font-bold uppercase">Day</p><p className="font-bold">{isClosed ? 'Closed' : 'Open'}</p></div>
-      </section>
-      <div className="grid items-start gap-3 xl:grid-cols-[400px_1fr]">
-        <div className="card space-y-3 p-4">
-          <div className="flex items-center justify-between"><p className="text-xs font-bold text-ink-600 uppercase">{editing ? `Edit voucher ${editing.voucher_no}` : 'New voucher'}</p><span className="text-xs text-ink-500">V. No {editing ? editing.voucher_no : nextNo.data?.next || '-'}</span></div>
-          <Field label="Date" hint={settings?.ALLOW_BACKDATE_BILLING === '1' ? 'Back date allowed (setting)' : 'Back date not allowed'}>
-            <Input type="date" max={today()} disabled={settings?.ALLOW_BACKDATE_BILLING !== '1'} value={d} onChange={(e) => setD(e.target.value)} />
-          </Field>
-          <div><p className="label">Type</p><div className="grid grid-cols-2 gap-2">
-            {typeBtn('RECEIPT', 'Jama - Received', ArrowDownCircle, 'border-emerald-300 bg-emerald-50 text-emerald-800')}
-            {typeBtn('PAYMENT', 'Nave - Paid', ArrowUpCircle, 'border-rose-300 bg-rose-50 text-rose-700')}
-          </div></div>
-          <Field label="Account (type A/c no or name)">
-            <Input value={acq} onChange={(e) => { setAcq(e.target.value); setF({ ...f, ledger_id: '' }); }} onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { setF({ ...f, ledger_id: String(matches[0].id) }); setAcq(matches[0].name); amt.current?.focus(); } }} />
-          </Field>
-          {!f.ledger_id && matches.length > 0 && (
-            <div className="-mt-2 max-h-48 overflow-y-auto rounded-md border border-ink-200">
-              {matches.map((l) => <button key={l.id} type="button" onClick={() => { setF({ ...f, ledger_id: String(l.id) }); setAcq(l.name); amt.current?.focus(); }} className="flex w-full justify-between px-3 py-1.5 text-left text-sm hover:bg-navy-50"><span>{l.id} · {l.name}</span><span className="text-xs text-ink-400">{l.group_name}</span></button>)}
-            </div>
-          )}
-          <div className="rounded-md bg-cream-100 px-3 py-2 text-sm">{chosen ? <span><b>{chosen.name}</b> · {chosen.group_name} · balance {amount(Math.abs(chosen.balance))} {chosen.balance >= 0 ? 'Dr' : 'Cr'}</span> : 'No account selected'}</div>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Amount"><Input ref={amt} type="number" className="h-11 text-lg font-bold" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && save()} /></Field>
-            <div><p className="label">{f.type === 'RECEIPT' ? 'Received in' : 'Paid from'}</p><div className="grid grid-cols-2 gap-1">
-              {['CASH', 'BANK'].map((m) => <button key={m} type="button" onClick={() => setF({ ...f, mode: m })} className={clsx('h-11 rounded-md border text-sm font-bold', f.mode === m ? 'border-navy-800 bg-navy-800 text-white' : 'border-ink-300')}>{m === 'CASH' ? 'Cash' : 'Bank'}</button>)}
-            </div></div>
-          </div>
-          {f.mode === 'BANK' && <Field label="Bank"><Select value={f.bank_ledger_id} onChange={(e) => setF({ ...f, bank_ledger_id: e.target.value })} placeholder={banks.length ? 'Select bank' : 'Add a bank account first'} options={banks.map((b) => ({ value: b.id, label: b.name }))} /></Field>}
-          <Field label="Narration"><Input value={f.narration} onChange={(e) => setF({ ...f, narration: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && save()} /></Field>
-          <div className="grid grid-cols-[1fr_auto] gap-2 pt-2">
-            <Button variant="outline" size="lg" icon={Save} disabled={isClosed || !can('acc_voucher', 'add')} onClick={save}>Save Voucher (F10)</Button>
-            <Button variant="outline" size="lg" icon={Eraser} onClick={clear}>Clear</Button>
-          </div>
-          <button type="button" onClick={() => setJournal(true)} className="text-xs font-semibold text-navy-700 hover:underline">Journal / Contra voucher →</button>
+    /* fit-screen: form on the left, the day's vouchers scroll on the right */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <Receipt className="size-5 shrink-0 opacity-80" />
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Voucher Entry</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Money received (Jama) or paid (Nave) other than loans - rent, salary, bills, capital, bank</p></div>
+        <div className="flex items-center gap-1.5">
+          <div className="rounded-md border border-white/15 px-3 py-1"><span className="mr-2 text-[10px] font-bold tracking-wider text-white/60 uppercase">V. No</span><b className="num text-[13px]">{editing ? editing.voucher_no : nextNo.data?.next || '-'}</b></div>
+          <div className="rounded-md border border-white/15 px-3 py-1"><span className="mr-2 text-[10px] font-bold tracking-wider text-white/60 uppercase">Date</span><b className="num text-[13px]">{dayjs(d).format('DD/MM/YYYY')}</b></div>
+          <div className={clsx('flex items-center gap-2 rounded-md border px-3 py-1', isClosed ? 'border-rose-400 bg-rose-600' : 'border-white/15')}><span className="text-[10px] font-bold tracking-wider text-white/60 uppercase">Day</span><b className="text-[13px]">{isClosed ? 'Closed' : 'Open'}</b></div>
         </div>
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-4">
-            {[['Vouchers', rows.length, 'text-navy-900'], ['Jama (received)', amount(jama), 'text-emerald-700'], ['Nave (paid)', amount(nave), 'text-rose-600']].map(([l, v, c]) => (
-              <div key={l} className="card px-4 py-3"><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className={clsx('num text-2xl font-bold', c)}>{v}</p></div>
+      </section>
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_1fr]">
+        {/* entry form */}
+        <div className="card flex flex-col overflow-hidden xl:min-h-0">
+          <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 dark:border-ink-800">
+            <span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />
+            <p className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">{editing ? `Edit voucher ${editing.voucher_no}` : 'New voucher'}</p>
+            {editing && <span className="ml-auto rounded-sm bg-amber-100 px-1.5 text-[10px] font-bold text-amber-800 uppercase">editing</span>}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+            <div>
+              <p className="label">Date <span className="font-normal normal-case text-ink-400">· {settings?.ALLOW_BACKDATE_BILLING === '1' ? 'back date allowed' : 'back date not allowed'}</span></p>
+              <Input type="date" className="!h-8 text-[13px]" max={today()} disabled={settings?.ALLOW_BACKDATE_BILLING !== '1'} value={d} onChange={(e) => setD(e.target.value)} />
+            </div>
+            <div><p className="label">Type</p><div className="flex">
+              {typeBtn('RECEIPT', 'Jama - Received', ArrowDownCircle, 'emerald')}
+              {typeBtn('PAYMENT', 'Nave - Paid', ArrowUpCircle, 'rose')}
+            </div></div>
+            <div className="relative">
+              <p className="label">Account (type A/c no or name)</p>
+              <Input prefix={<Search className="size-3.5" />} className="!h-8 text-[13px]" value={acq} placeholder="Search account…" onChange={(e) => { setAcq(e.target.value); setF({ ...f, ledger_id: '' }); }} onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { setF({ ...f, ledger_id: String(matches[0].id) }); setAcq(matches[0].name); amt.current?.focus(); } }} />
+              {!f.ledger_id && matches.length > 0 && (
+                <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-md border border-ink-200 bg-white dark:border-ink-700 dark:bg-ink-900">
+                  {matches.map((l, i) => <button key={l.id} type="button" onClick={() => { setF({ ...f, ledger_id: String(l.id) }); setAcq(l.name); amt.current?.focus(); }} className={clsx('flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-[12px] hover:bg-ink-50 dark:hover:bg-ink-800', i === 0 && 'bg-emerald-50/60 dark:bg-emerald-950/20')}><span className="truncate"><b className="num mr-1.5 text-ink-500">{l.id}</b>{l.name}</span><span className="shrink-0 text-[10px] text-ink-400">{l.group_name}</span></button>)}
+                </div>
+              )}
+            </div>
+            <div className={clsx('rounded-md border px-2.5 py-1.5 text-[12px]', chosen ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20' : 'border-dashed border-ink-200 text-ink-400 dark:border-ink-700')}>
+              {chosen ? <div className="flex items-center justify-between gap-2"><span className="min-w-0 truncate"><b>{chosen.name}</b> <span className="text-ink-500">· {chosen.group_name}</span></span><b className="num shrink-0">{amount(Math.abs(chosen.balance))} {chosen.balance >= 0 ? 'Dr' : 'Cr'}</b></div> : 'No account selected'}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><p className="label">Amount</p><Input ref={amt} type="number" className="!h-10 text-right text-[17px] font-bold" value={f.amount} placeholder="0.00" onChange={(e) => setF({ ...f, amount: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && save()} /></div>
+              <div><p className="label">{f.type === 'RECEIPT' ? 'Received in' : 'Paid from'}</p><div className="flex [&>button]:!h-10">
+                {['CASH', 'BANK'].map((m) => <button key={m} type="button" onClick={() => setF({ ...f, mode: m })} className={toggle(f.mode === m)}>{f.mode === m && dot()}{m === 'CASH' ? 'Cash' : 'Bank'}</button>)}
+              </div></div>
+            </div>
+            {f.mode === 'BANK' && <div><p className="label">Bank</p><Select className="!h-8 text-[13px]" value={f.bank_ledger_id} onChange={(e) => setF({ ...f, bank_ledger_id: e.target.value })} placeholder={banks.length ? 'Select bank' : 'Add a bank account first'} options={banks.map((b) => ({ value: b.id, label: b.name }))} /></div>}
+            <div><p className="label">Narration</p><Input className="!h-8 text-[13px]" value={f.narration} placeholder="optional" onChange={(e) => setF({ ...f, narration: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && save()} /></div>
+            <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-1">
+              <Button variant="gold" className="h-10" icon={Save} disabled={isClosed || !can('acc_voucher', 'add')} onClick={save}>{editing ? 'Update' : 'Save'} Voucher (F10)</Button>
+              <Button variant="soft-danger" className="h-10" icon={Eraser} onClick={clear}>Clear</Button>
+            </div>
+            <button type="button" onClick={() => setJournal(true)} className="self-start text-[12px] font-semibold text-navy-700 hover:underline dark:text-ink-300">Journal / Contra voucher →</button>
+          </div>
+        </div>
+        {/* the day's vouchers */}
+        <div className="flex min-w-0 flex-col gap-2 xl:min-h-0">
+          <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+            {[['Vouchers', rows.length, 'bg-navy-900 dark:bg-white', 'text-navy-900 dark:text-white'], ['Jama (received)', amount(jama), 'bg-emerald-600', 'text-emerald-700'], ['Nave (paid)', amount(nave), 'bg-rose-600', 'text-rose-600'], ['Cash effect', amount(jama - nave), 'bg-amber-500', 'text-navy-900 dark:text-white']].map(([l, v, bar, c]) => (
+              <div key={l} className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800"><span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} /><p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p><p className={clsx('num truncate text-[15px] leading-tight font-bold', c)}>{v}</p></div>
             ))}
-            <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Cash effect</p><p className="num text-2xl font-bold">{amount(jama - nave)}</p></div>
           </div>
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-ink-200 px-4 py-2"><p className="font-bold text-navy-900">Vouchers - {dayjs(d).format('DD/MM/YYYY')}</p><span className="text-xs text-ink-500">Click = select · double-click = edit</span></div>
-            <table className="w-full text-sm">
-              <thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">V. No</th><th className="px-3 text-left">Type</th><th className="px-3 text-left">Account</th><th className="px-3 text-left">Narration</th><th className="px-3 text-left">Mode</th><th className="px-3 text-right">Jama</th><th className="px-3 text-right">Nave</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">
-                {rows.map((v) => (
-                  <tr key={v.id} onClick={() => setSel(v.source_type ? null : v)} onDoubleClick={() => !v.source_type && edit(v)} title={v.source_type ? 'Posted by Auction Release - change it there' : undefined} className={clsx('cursor-pointer hover:bg-navy-50/60', sel?.id === v.id && 'bg-cream-200')}>
-                    <td className="px-3 py-1.5 font-semibold">{v.voucher_no}</td><td className="px-3">{v.voucher_type === 'RECEIPT' ? 'Jama' : v.voucher_type === 'PAYMENT' ? 'Nave' : v.voucher_type}</td>
-                    <td className="max-w-72 truncate px-3">{v.source_type ? 'Auction' : v.account || v.lines_text}</td><td className="px-3">{v.narration}</td><td className="px-3 text-xs">{v.mode || (/Cash/.test(v.lines_text) ? 'Cash' : 'Bank')}</td>
-                    <td className="num px-3 text-right text-emerald-700">{v.voucher_type === 'RECEIPT' ? amount(v.amount) : ''}</td><td className="num px-3 text-right text-rose-600">{v.voucher_type === 'PAYMENT' ? amount(v.amount) : ''}</td>
-                  </tr>
-                ))}
-                {!rows.length && <tr><td colSpan={7} className="py-16 text-center text-ink-400">No vouchers for this date</td></tr>}
-              </tbody>
-              <tfoot className="bg-cream-100 font-bold"><tr><td colSpan={5} className="px-3 py-2">Total (vouchers)</td><td className="num px-3 text-right text-emerald-700">{amount(jama)}</td><td className="num px-3 text-right text-rose-600">{amount(nave)}</td></tr></tfoot>
-            </table>
+          <div className="card flex min-h-64 flex-col overflow-hidden xl:min-h-0 xl:flex-1">
+            <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 dark:border-ink-800"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" /><p className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">Vouchers - {dayjs(d).format('DD/MM/YYYY')}</p><span className="ml-auto text-[11px] text-ink-500">Click = select · double-click = edit</span></div>
+            <div className="min-h-0 flex-1 overflow-auto">
+              <table className="w-full text-[12px]">
+                <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="px-3 py-2 text-left">V. No</th><th className="px-3 text-left">Type</th><th className="px-3 text-left">Account</th><th className="px-3 text-left">Narration</th><th className="px-3 text-left">Mode</th><th className="px-3 text-right">Jama</th><th className="px-3 text-right">Nave</th></tr></thead>
+                <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+                  {rows.map((v) => (
+                    <tr key={v.id} onClick={() => setSel(v.source_type ? null : v)} onDoubleClick={() => !v.source_type && edit(v)} title={v.source_type ? 'Posted by Auction Release - change it there' : undefined} className={clsx('cursor-pointer', sel?.id === v.id ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+                      <td className="px-3 py-1.5 font-semibold"><span className="flex items-center gap-1.5">{sel?.id === v.id && dot()}{v.voucher_no}</span></td>
+                      <td className="px-3"><span className={clsx('rounded-sm px-1.5 py-0.5 text-[10px] font-bold uppercase', v.voucher_type === 'RECEIPT' ? 'bg-emerald-100 text-emerald-800' : v.voucher_type === 'PAYMENT' ? 'bg-rose-100 text-rose-700' : 'bg-ink-100 text-ink-700')}>{v.voucher_type === 'RECEIPT' ? 'Jama' : v.voucher_type === 'PAYMENT' ? 'Nave' : v.voucher_type}</span></td>
+                      <td className="max-w-64 truncate px-3">{v.source_type ? 'Auction' : v.account || v.lines_text}</td><td className="max-w-64 truncate px-3 text-ink-600 dark:text-ink-300">{v.narration}</td><td className="px-3 text-[11px]">{v.mode || (/Cash/.test(v.lines_text) ? 'Cash' : 'Bank')}</td>
+                      <td className="num px-3 text-right text-emerald-700">{v.voucher_type === 'RECEIPT' ? amount(v.amount) : ''}</td><td className="num px-3 text-right text-rose-600">{v.voucher_type === 'PAYMENT' ? amount(v.amount) : ''}</td>
+                    </tr>
+                  ))}
+                  {!rows.length && <tr><td colSpan={7} className="py-12 text-center text-ink-400">No vouchers for this date</td></tr>}
+                </tbody>
+                <tfoot className="sticky bottom-0 border-t-2 border-amber-400 bg-amber-50 font-bold text-amber-950 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-100"><tr><td colSpan={5} className="px-3 py-1.5 text-[11px] tracking-wider uppercase">Total (vouchers)</td><td className="num px-3 text-right text-emerald-700">{amount(jama)}</td><td className="num px-3 text-right text-rose-600">{amount(nave)}</td></tr></tfoot>
+              </table>
+            </div>
           </div>
-          <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
+          <PageActions>
             <Button variant="outline" icon={Pencil} disabled={!sel} onClick={() => edit(sel)}>Edit (F3)</Button>
-            <Button variant="outline" icon={Trash2} disabled={!sel || !can('acc_voucher', 'delete')} onClick={() => setDel(sel)}>Delete (Del)</Button>
+            <Button variant="soft-danger" icon={Trash2} disabled={!sel || !can('acc_voucher', 'delete')} onClick={() => setDel(sel)}>Delete (Del)</Button>
             <Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button>
-            <Button variant="outline" icon={BookOpen} onClick={() => window.location.assign('/accounts/ledger')}>Account Ledger</Button>
+            <Button variant="outline" icon={BookOpen} onClick={() => navigate('/accounts/ledger')}>Account Ledger</Button>
             <ExitButton />
-          </div>
+          </PageActions>
         </div>
       </div>
       <VoucherDrawer open={journal} onClose={() => { setJournal(false); list.refetch(); }} />

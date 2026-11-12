@@ -33,6 +33,7 @@ const COLUMNS = [
   ['customers', 'occupation_place', 'VARCHAR(120) NULL'],
   ['auction_sales', 'sale_date', 'DATE NULL'],
   ['auction_sales', 'sale_voucher_id', 'INT NULL'],
+  ['users', 'appearance', 'TEXT NULL'], // per-user look: accent colour, font, text size ...
 ];
 
 const TABLES = `

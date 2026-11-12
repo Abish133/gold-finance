@@ -24,12 +24,19 @@ export function CompanyForm({ embedded }) {
   const save = useMutation({ mutationFn: (v) => api.put('/admin/company', v), onSuccess: () => { toast.success('Company saved'); qc.invalidateQueries({ queryKey: ['/admin/company'] }); }, onError: (e) => toast.error(e.message) });
   if (isLoading) return <Spinner />;
   return (
-    <div className="animate-rise">
-      {embedded ? <div className="mb-3 flex justify-end"><Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save (F2)</Button></div>
+    <div className={embedded ? 'dense flex w-full flex-col gap-2 lg:h-full' : 'animate-rise'}>
+      {embedded ? <div className="flex shrink-0 items-center justify-between gap-2"><p className="text-[11px] text-ink-500">Printed on every bill, receipt and notice</p><Button variant="gold" className="h-8 text-[12px]" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save (F2)</Button></div>
         : <PageHeader icon={Building} title="Company Information" subtitle="Printed on every bill, receipt and notice" actions={<Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate(v))}>Save</Button>} />}
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <Card><FormFields fields={FIELDS} form={form} cols={3} /></Card>
-        <Card title="Logo"><ImageCapture label="Company logo" value={data?.logo_path} upload={async (f) => { const r = await api.upload('/admin/company/logo', f); qc.invalidateQueries({ queryKey: ['/admin/company'] }); return r.data.logo_path; }} /></Card>
+      <div className={embedded ? 'grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_300px]' : 'grid gap-6 lg:grid-cols-[1fr_280px]'}>
+        {embedded ? (
+          <div className="overflow-y-auto rounded-md border border-ink-200 p-3 lg:min-h-0 dark:border-ink-800"><FormFields fields={FIELDS} form={form} cols={3} dense /></div>
+        ) : <Card><FormFields fields={FIELDS} form={form} cols={3} /></Card>}
+        {embedded ? (
+          /* logo box stretches to the full height of the drawer */
+          <div className="flex min-h-64 flex-col rounded-md border border-ink-200 p-3 lg:min-h-0 dark:border-ink-800">
+            <ImageCapture label="Company logo" className="flex min-h-0 flex-1 flex-col" aspect="aspect-square lg:aspect-auto lg:flex-1" value={data?.logo_path} upload={async (f) => { const r = await api.upload('/admin/company/logo', f); qc.invalidateQueries({ queryKey: ['/admin/company'] }); return r.data.logo_path; }} />
+          </div>
+        ) : <Card title="Logo"><ImageCapture label="Company logo" value={data?.logo_path} upload={async (f) => { const r = await api.upload('/admin/company/logo', f); qc.invalidateQueries({ queryKey: ['/admin/company'] }); return r.data.logo_path; }} /></Card>}
       </div>
     </div>
   );

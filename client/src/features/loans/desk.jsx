@@ -7,53 +7,58 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ScanLine, LogOut, Plus, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet } from 'lucide-react';
+import { ScanLine, LogOut, Plus, Search, ChevronDown, Hash, Scale, MinusCircle, Weight, MessageSquare, Gem, Coins, IndianRupee, Tag, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, Badge, Button, Drawer, Field, Input, Select, Spinner, StatusBadge, DataTable } from '@/components/ui';
 import { compressImage } from '@/components/ui/ImageCapture';
 import { PhotoBox } from '@/components/common/PhotoBox';
+import { ImagePreview } from '@/components/common/ImagePreview';
 import { useFetch, useLookups } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { money, amount, date, weight, n, round2, round3, inWords } from '@/lib/format';
+import { PageActions } from '@/components/common/PageActions';
 
 /* ------------------------------------------------------------------ layout */
 export function DeskScreen({ title, subtitle, tiles = [], left, center, right, footerLeft, footerRight, hints = [], headerExtra, cols = 'xl:grid-cols-[360px_1fr_380px]' }) {
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold sm:text-2xl">{title}</h1>
-          {subtitle && <p className="text-sm text-navy-100">{subtitle}</p>}
+    /* fit-screen: on desktop the whole counter fits the window; each column scrolls on its own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3">
+          <h1 className="text-lg font-bold whitespace-nowrap">{title}</h1>
+          {subtitle && <p className="hidden truncate text-[12px] text-white/60 lg:block">{subtitle}</p>}
         </div>
         {headerExtra}
-        {tiles.map((t) => (
-          <div key={t.label} className={clsx('min-w-28 rounded-md px-4 py-1.5 text-center', t.gold ? 'bg-white text-ink-900' : 'bg-white/10')}>
-            <p className="text-[11px] font-bold tracking-wide uppercase opacity-90">{t.label}</p>
-            <p className="num text-sm font-bold">{t.value ?? '-'}</p>
+        {tiles.length > 0 && (
+          <div className="flex overflow-hidden rounded-md border border-white/15">
+            {tiles.map((t) => (
+              <div key={t.label} className={clsx('flex items-baseline gap-2 border-l border-white/15 px-3 py-1 first:border-l-0', t.gold && 'bg-white text-ink-900')}>
+                <span className={clsx('text-[10px] font-semibold tracking-wider uppercase', t.gold ? 'text-ink-500' : 'text-white/55')}>{t.label}</span>
+                <span className="num text-[13px] font-bold">{t.value ?? '-'}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </section>
-      <div className={clsx('grid items-stretch gap-3 xl:min-h-[calc(100vh-20.5rem)]', cols)}>
+      <div className={clsx('grid items-stretch gap-2 xl:min-h-0 xl:flex-1', cols)}>
         {left && <div className="desk-col">{left}</div>}
         <div className="desk-col min-w-0">{center}</div>
         {right && <div className="desk-col">{right}</div>}
       </div>
-      <div className="card flex flex-wrap items-center gap-2 px-3 py-2">
-        {footerLeft}
-        <div className="ml-auto flex flex-wrap gap-2">{footerRight}</div>
-      </div>
-      {hints.length > 0 && <p className="px-1 text-xs text-ink-500">{hints.map(([k, l]) => <span key={k} className="mr-4 whitespace-nowrap"><kbd className="font-semibold text-navy-700">{k}</kbd> {l}</span>)}</p>}
+      {/* actions sit in the header bar above; shortcuts under its "Keys" button */}
+      <PageActions keys={hints}>{footerLeft}{footerRight}</PageActions>
     </div>
   );
 }
 
 export function Panel({ title, actions, children, className, bodyClassName }) {
   return (
-    <section className={clsx('card flex flex-col overflow-hidden', className)}>
-      <header className="navy-gradient flex items-center gap-2 px-4 py-2 text-sm font-bold tracking-wide text-white uppercase">
+    <section className={clsx('flex flex-col overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900', className)}>
+      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white">
+        <span aria-hidden className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />
         <span className="flex-1 truncate">{title}</span>{actions}
       </header>
-      <div className={clsx('flex-1 p-4', bodyClassName)}>{children}</div>
+      <div className={clsx('flex-1 p-3', bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -70,10 +75,12 @@ export const rupees = (v) => (n(v) ? `Rupees ${inWords(v).replace(/ Rupees Only$
 
 export function BigTotal({ label, value, tone = 'navy', words = true }) {
   return (
-    <div className={clsx('rounded-md px-4 py-3 text-white', tone === 'green' ? 'bg-emerald-700' : 'navy-gradient')}>
-      <p className="text-xs font-bold tracking-wide uppercase opacity-90">{label}</p>
-      <p className="num mt-1 text-3xl font-extrabold">{money(value)}</p>
-      {words && n(value) > 0 && <p className="mt-1 text-xs opacity-80">{rupees(value)}</p>}
+    <div className={clsx('rounded-md px-3 py-2 text-white', tone === 'green' ? 'bg-emerald-700' : 'navy-gradient')}>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[10px] font-bold tracking-wider uppercase opacity-70">{label}</p>
+        <p className="num text-2xl font-extrabold">{money(value)}</p>
+      </div>
+      {words && n(value) > 0 && <p className="mt-0.5 text-right text-[11px] opacity-70">{rupees(value)}</p>}
     </div>
   );
 }
@@ -92,15 +99,15 @@ export const INTEREST_TYPES = [{ value: 'COMPOUND', label: 'Compound Interest' }
 export function LoanHead({ loan, prefix = 'Loan', chips, cells = [] }) {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 border-b border-ink-200 px-4 py-2.5">
-        <p className="flex-1 text-base font-bold text-navy-900 uppercase dark:text-white">
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-200 px-3 py-2 dark:border-ink-800">
+        <p className="flex-1 text-[14px] font-bold text-navy-900 uppercase dark:text-white">
           {loan ? [`${prefix} ${loan.bill_no}`, loan.manual_bill_no && `Bill Book ${loan.manual_bill_no}`, loan.loan_on || loan.metal_name].filter(Boolean).join(' · ') : `${prefix} -`}
         </p>
         {loan && chips}
       </div>
       <div className="grid border-b border-ink-200" style={{ gridTemplateColumns: `repeat(${cells.length || 1}, minmax(0, 1fr))` }}>
         {cells.map(([k, v]) => (
-          <div key={k} className="border-r border-ink-200 px-4 py-2 last:border-r-0"><p className="label">{k}</p><p className="num font-bold text-navy-900 dark:text-white">{loan ? v : '-'}</p></div>
+          <div key={k} className="border-r border-ink-200 px-3 py-1.5 last:border-r-0 dark:border-ink-800"><p className="label">{k}</p><p className="num text-[13px] font-bold text-navy-900 dark:text-white">{loan ? v : '-'}</p></div>
         ))}
       </div>
     </>
@@ -116,8 +123,30 @@ export const ItemsSummary = ({ items = [], label = 'Total', valueKey = 'value' }
 ) : null);
 
 export const GoldButton = ({ children, ...p }) => (
-  <Button {...p} size="lg" className="h-14 w-full rounded-md !bg-ink-900 text-lg !text-white hover:!bg-ink-700 border-0">{children}</Button>
+  <Button {...p} size="lg" className="h-11 w-full rounded-md border-0 !bg-ink-900 text-base !text-white hover:!bg-ink-700 disabled:!bg-ink-300 dark:!bg-white dark:!text-ink-900">{children}</Button>
 );
+
+/* ------------------------------------------------------------------ auto / manual search */
+/** Remembered per box on this computer: true = search as you type, false = only Enter. */
+export function useAutoMode(key, initial = true) {
+  const [auto, setAuto] = useState(() => { try { const v = localStorage.getItem(`gf.auto.${key}`); return v == null ? initial : v === '1'; } catch { return initial; } });
+  const set = (v) => { setAuto(v); try { localStorage.setItem(`gf.auto.${key}`, v ? '1' : '0'); } catch { /* private window */ } };
+  return [auto, set];
+}
+
+/** Small "Auto | Manual" switch shown next to a search box. */
+export function AutoManualSwitch({ value, onChange, className }) {
+  return (
+    <div className={clsx('flex shrink-0 overflow-hidden rounded-md border border-ink-200 text-[10px] font-bold tracking-wider dark:border-ink-700', className)} title="Auto = searches as you type · Manual = press Enter">
+      {[[true, 'Auto'], [false, 'Manual']].map(([v, t]) => (
+        <button key={t} type="button" onClick={() => onChange(v)}
+          className={clsx('flex items-center gap-1 px-2 py-0.5 uppercase transition', value === v ? 'bg-emerald-600 text-white' : 'text-ink-500 hover:bg-ink-50 dark:hover:bg-ink-800')}>
+          {value === v && v && <span className="size-1.5 animate-pulse rounded-full bg-white" />}{t}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ keys */
 export function useKeys(map, deps = []) {
@@ -147,25 +176,61 @@ export function LoanFinder({ onLoad, loading, autoFocus = true, label = 'Find lo
   const [q, setQ] = useState('');
   const [list, setList] = useState(null);
   const input = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [miss, setMiss] = useState(false);
+  const lastLoaded = useRef(null);
+  // Auto = loads as you type, Manual = only Enter / scan. Remembered on this computer.
+  const [auto, setAuto] = useState(() => { try { return localStorage.getItem('gf.finderAuto') !== '0'; } catch { return true; } });
+  const toggleAuto = (v) => { setAuto(v); try { localStorage.setItem('gf.finderAuto', v ? '1' : '0'); } catch { /* private window */ } input.current?.focus(); };
   useEffect(() => { if (autoFocus) input.current?.focus(); }, [autoFocus]);
-  const find = async () => {
+  // quiet = typed (auto) lookup: no "not found" toast, never re-loads the loan already shown
+  const find = async (quiet = false) => {
     const v = q.trim();
     if (!v) return;
+    setBusy(true);
     try {
       const r = await api.get('/loans/find', { q: v, by });
-      if (!r.data.length) toast.error('No loan found');
-      else if (r.data.length === 1) { onLoad(r.data[0].id); setList(null); } else setList(r.data);
-    } catch (e) { toast.error(e.message); }
+      setMiss(!r.data.length);
+      if (!r.data.length) { if (!quiet) toast.error('No loan found'); setList(null); }
+      else if (r.data.length === 1) {
+        if (!quiet || lastLoaded.current !== r.data[0].id) { lastLoaded.current = r.data[0].id; onLoad(r.data[0].id); }
+        setList(null);
+      } else setList(r.data);
+    } catch (e) { if (!quiet) toast.error(e.message); } finally { setBusy(false); }
   };
+  // auto fetch: looks the number up once typing pauses (Enter still loads at once)
+  useEffect(() => {
+    setMiss(false);
+    if (!q.trim()) { setList(null); return undefined; }
+    if (!auto) return undefined;
+    const t = setTimeout(() => find(true), 550);
+    return () => clearTimeout(t);
+  }, [q, by, auto]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Panel title={`${label} · ${by === 'loan' ? 'Loan no' : 'Bill book no'}`}>
-      <div className="mb-2 grid grid-cols-2 gap-1">
+    <Panel title={`${label} · ${by === 'loan' ? 'Loan no' : 'Bill book no'}`}
+      actions={(
+        <div className="flex overflow-hidden rounded-md border border-ink-200 text-[10px] font-bold tracking-wider normal-case dark:border-ink-700" title="Auto = loads as you type · Manual = press Enter">
+          {[[true, 'Auto'], [false, 'Manual']].map(([v, t]) => (
+            <button key={t} type="button" onClick={() => toggleAuto(v)}
+              className={clsx('flex items-center gap-1 px-2 py-0.5 uppercase transition', auto === v ? 'bg-emerald-600 text-white' : 'text-ink-500 hover:bg-ink-50 dark:hover:bg-ink-800')}>
+              {auto === v && v && <span className="size-1.5 animate-pulse rounded-full bg-white" />}{t}
+            </button>
+          ))}
+        </div>
+      )}>
+      <div className="mb-2 grid grid-cols-2">
         {[['loan', 'Loan No'], ['bill', 'Bill Book No (F3)']].map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setBy(k)} className={clsx('rounded-md border px-2 py-1.5 text-sm font-semibold', by === k ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 text-ink-600')}>{l}</button>
+          <button key={k} type="button" onClick={() => { setBy(k); input.current?.focus(); }}
+            className={clsx('-ml-px flex h-8 items-center justify-center gap-1.5 border px-2 text-[12px] font-semibold first:ml-0 first:rounded-l-md last:rounded-r-md',
+              by === k ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800')}>
+            {by === k && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}{l}
+          </button>
         ))}
       </div>
-      <Input ref={input} data-finder value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && find()} className="h-12 bg-gold-50 text-lg font-bold" placeholder="Type or scan" />
-      <p className="mt-1 text-xs text-ink-500"><ScanLine className="mr-1 inline size-3.5" />Enter = load · barcode scan works</p>
+      <Input ref={input} data-finder prefix={<ScanLine className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && find()} className={clsx('!h-10 text-base font-bold', miss && '!border-rose-300')} placeholder="Type or scan" />
+      <p className={clsx('mt-1 text-[11px]', miss ? 'text-rose-600' : 'text-ink-400')}>
+        {busy ? 'Looking up…' : miss ? `No loan "${q.trim()}" in this branch` : auto ? 'Loads as you type · Enter · barcode scan works' : 'Press Enter to load · barcode scan works'}
+      </p>
       {loading && <Spinner className="py-2" />}
       {list && (
         <div className="mt-2 space-y-1">
@@ -187,35 +252,58 @@ export { PhotoBox };
 /** Customer fields from a loan record. */
 export const loanCustomer = (l) => (l ? { ...l, id: l.customer_id, title: l.customer_title, name: l.customer_name, phone: l.customer_phone, photo: l.customer_photo || l.customer_photo_master, status: l.customer_status || 'ACTIVE' } : null);
 
-export function CustomerCard({ customer, rows = [], extra, onLedger }) {
+export function CustomerCard({ customer, rows = [], extra, onLedger, onNew, emptyText = 'No customer selected' }) {
   const c = customer;
   // desktop: 5-43, Main Road, Kappiyarai, Nagercoil - 629157
   const addr = c && [[c.door_no, c.street, c.area, c.city].filter(Boolean).join(', '), c.pincode].filter(Boolean).join(' - ');
+  if (!c) {
+    /* empty state uses the full width of the panel */
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-ink-300 bg-ink-50 px-4 py-6 text-center dark:border-ink-700 dark:bg-ink-800/50">
+        <span className="grid size-12 place-items-center rounded-md bg-white text-ink-400 ring-1 ring-ink-200 dark:bg-ink-900 dark:ring-ink-700"><UserRound className="size-6" strokeWidth={1.5} /></span>
+        <p className="text-[13px] font-semibold text-ink-600 dark:text-ink-300">{emptyText}</p>
+        <p className="text-[11px] text-ink-400">Search by mobile, name, A/c no or loan no above</p>
+        {onNew && <Button size="sm" variant="outline" icon={Plus} onClick={onNew}>New customer (F1)</Button>}
+      </div>
+    );
+  }
   return (
     <div>
-      <div className="flex gap-3">
-        <PhotoBox src={c?.photo || c?.customer_photo_master} />
-        {c && (
-          <div className="min-w-0 flex-1 text-sm">
-            <p className="text-base leading-snug font-bold text-navy-900 dark:text-white">{c.title ? `${c.title} ` : ''}{c.name || c.customer_name}{c.relation_name ? ` ${c.relation_type || ''} ${c.relation_name}` : ''}</p>
-            {addr && <p className="mt-1 text-ink-600">{addr}</p>}
-            <p className="mt-2 font-bold">{c.phone || c.customer_phone}</p>
-            {c.id_proof_type && <p className="text-xs text-ink-500">{c.id_proof_type}{c.id_proof_no ? `  ${c.id_proof_no}` : ''}</p>}
+      {/* photo stretches to the full height of the details beside it; click to preview */}
+      <div className="flex items-stretch gap-3">
+        <ImagePreview src={c.photo || c.customer_photo_master} title={`${c.name || c.customer_name} · A/c ${c.customer_no}`}
+          className="min-h-28 w-24 shrink-0 rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+          {(c.photo || c.customer_photo_master)
+            ? <img src={c.photo || c.customer_photo_master} alt="" className="size-full object-cover" />
+            : <span className="grid size-full place-items-center text-center text-ink-400"><span><UserRound className="mx-auto size-8" strokeWidth={1.25} /><span className="mt-1 block px-1 text-[9px] leading-tight font-bold uppercase">Photo not available</span></span></span>}
+        </ImagePreview>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] leading-snug font-bold text-navy-900 dark:text-white">{c.title ? `${c.title} ` : ''}{c.name || c.customer_name}</p>
+          {c.relation_name && <p className="text-[12px] text-ink-500">{c.relation_type || ''} {c.relation_name}</p>}
+          <p className="num mt-1 text-[13px] font-bold">{c.phone || c.customer_phone}</p>
+          {addr && <p className="mt-0.5 line-clamp-2 text-[12px] text-ink-600 dark:text-ink-400">{addr}</p>}
+          {c.id_proof_type && <p className="text-[11px] text-ink-500">{c.id_proof_type}{c.id_proof_no ? `  ${c.id_proof_no}` : ''}</p>}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className="rounded bg-navy-50 px-2 py-0.5 text-[11px] font-bold text-navy-900 dark:bg-ink-800 dark:text-white">A/C {c.customer_no}</span>
+            <span className={clsx('rounded px-2 py-0.5 text-[11px] font-bold', c.status === 'BLOCKED' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{c.status || 'ACTIVE'}</span>
           </div>
-        )}
+        </div>
       </div>
-      {c && (
-        <div className="mt-2 flex gap-2">
-          <span className="rounded bg-navy-50 px-6 py-1 text-xs font-bold text-navy-900 dark:bg-ink-800 dark:text-white">A/C {c.customer_no}</span>
-          <span className={clsx('rounded px-4 py-1 text-xs font-bold', c.status === 'BLOCKED' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700')}>{c.status || 'ACTIVE'}</span>
+      {rows.length > 0 && (
+        <div className="mt-2.5 grid overflow-hidden rounded-md border border-ink-200 dark:border-ink-800">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex items-center justify-between gap-3 border-ink-100 px-2.5 py-1.5 text-[13px] not-last:border-b dark:border-ink-800">
+              <span className="text-ink-500">{k}</span><span className="num font-semibold text-navy-900 dark:text-white">{v ?? '-'}</span>
+            </div>
+          ))}
         </div>
       )}
-      {rows.length > 0 && <div className="mt-3 space-y-0.5">{rows.map(([k, v]) => <Line key={k} label={k} value={c ? v ?? '-' : '-'} tone="text-ink-600" />)}</div>}
       {extra}
-      {onLedger && c && <Button size="sm" variant="outline" icon={BookUser} className="mt-3" onClick={onLedger}>Ledger (F5)</Button>}
+      {onLedger && <Button size="sm" variant="outline" icon={BookUser} className="mt-2 w-full" onClick={onLedger}>Customer ledger (F5)</Button>}
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ pay / receive step */
 const PAY_MODES = [['CASH', '1 · Cash', 'notes'], ['UPI', '2 · Online', 'UPI / NEFT'], ['CARD', '3 · Card', 'debit / credit'], ['CHEQUE', '4 · Cheque', 'no. + bank']];
@@ -257,7 +345,7 @@ export function PayDrawer({ open, onClose, title, subtitle, total, direction = '
   };
   return (
     <Drawer open={open} onClose={onClose} size="lg" icon={Wallet} title={title} subtitle={subtitle}
-      footer={<><Button variant="outline" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" loading={loading} disabled={Math.abs(balance) > 0.009} onClick={confirm}>{confirmLabel}</Button></>}>
+      footer={<><Button variant="soft-danger" onClick={onClose}>Cancel (Esc)</Button><Button variant="gold" loading={loading} disabled={Math.abs(balance) > 0.009} onClick={confirm}>{confirmLabel}</Button></>}>
       <div className="space-y-4" onKeyDown={onKey}>
         <div className="flex items-end justify-between rounded-md bg-ink-50 px-4 py-3 dark:bg-ink-800">
           <span className="text-xs font-bold text-ink-600 uppercase">{direction === 'pay' ? 'Amount to pay' : 'Amount to receive'}</span>
@@ -319,23 +407,25 @@ export function ItemPhotoPanel({ value, onChange, customerId, readOnly }) {
     if (r.data.path) onChange(r.data.path); else toast.info('No earlier photo for this customer');
   };
   return (
-    <Panel title="Item photo" actions={value && <button type="button" onClick={() => setBig(true)} title="Enlarge"><Expand className="size-4" /></button>}>
-      <div className={clsx('grid gap-3', !readOnly && 'grid-cols-[1fr_130px]')}>
-        <button type="button" onClick={() => value && setBig(true)} className="grid aspect-[4/3] place-items-center overflow-hidden rounded-md border border-ink-200 bg-ink-50">
-          {value ? <img src={value} alt="" className="size-full object-cover" /> : <span className="text-sm text-ink-400">Image not available</span>}
-        </button>
-        {!readOnly && (
-          <div className="grid content-start gap-1.5">
-            <Button size="sm" variant="outline" icon={Camera} onClick={() => setCam(true)}>Camera (F7)</Button>
-            <Button size="sm" variant="outline" icon={ImagePlus} onClick={() => fileRef.current?.click()}>Browse</Button>
-            <Button size="sm" variant="outline" icon={History} onClick={oldPhoto}>Old (F8)</Button>
-            <Button size="sm" variant="outline" icon={Trash2} onClick={() => onChange(null)}>Remove</Button>
-          </div>
+    <Panel title="Item photo" bodyClassName="flex flex-col gap-2" actions={value && <button type="button" onClick={() => setBig(true)} title="Enlarge"><Expand className="size-4" /></button>}>
+      {/* the photo takes all the room the panel has; buttons sit in one row under it */}
+      <button type="button" onClick={() => value && setBig(true)}
+        className="grid min-h-32 flex-1 place-items-center overflow-hidden rounded-md border border-dashed border-ink-300 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+        {value ? <img src={value} alt="" className="size-full object-contain" /> : (
+          <span className="flex flex-col items-center gap-1.5 text-[12px] text-ink-400"><ImagePlus className="size-7" strokeWidth={1.5} />No photo<span className="text-[11px]">F7 camera · F8 last photo</span></span>
         )}
-      </div>
+      </button>
+      {!readOnly && (
+        <div className="grid shrink-0 grid-cols-4 gap-1 [&_button]:h-8 [&_button]:px-1 [&_button]:text-[12px]">
+          <Button size="sm" variant="outline" icon={Camera} onClick={() => setCam(true)}>Camera</Button>
+          <Button size="sm" variant="outline" icon={ImagePlus} onClick={() => fileRef.current?.click()}>Browse</Button>
+          <Button size="sm" variant="outline" icon={History} onClick={oldPhoto}>Old</Button>
+          <Button size="sm" variant="soft-danger" icon={Trash2} disabled={!value} onClick={() => onChange(null)}>Remove</Button>
+        </div>
+      )}
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { e.target.files?.[0] && upload(e.target.files[0]); e.target.value = ''; }} />
       <CameraDrawer open={cam} onClose={() => setCam(false)} onCapture={upload} />
-      <Drawer open={big} onClose={() => setBig(false)} size="xl" title="Item photo">{value && <img src={value} alt="" className="w-full rounded-md" />}</Drawer>
+      <Drawer open={big} onClose={() => setBig(false)} size="xl" title="Item photo" bodyClassName="flex min-h-0 bg-ink-950 !p-2">{value && <img src={value} alt="" className="min-h-0 w-full flex-1 rounded-md object-contain" />}</Drawer>
       <PhotoHotkeys enabled={!readOnly} onCamera={() => setCam(true)} onOld={oldPhoto} />
     </Panel>
   );
@@ -358,13 +448,23 @@ function CameraDrawer({ open, onClose, onCapture }) {
   }, [open, onClose]);
   const snap = () => {
     const v = video.current;
+    if (!v?.videoWidth) return;
     const c = Object.assign(document.createElement('canvas'), { width: v.videoWidth, height: v.videoHeight });
     c.getContext('2d').drawImage(v, 0, 0);
     c.toBlob((b) => { onCapture(new File([b], 'cam.jpg', { type: 'image/jpeg' })); onClose(); }, 'image/jpeg', 0.85);
   };
+  // Enter captures while the camera is open (the video itself never has focus)
+  useEffect(() => {
+    if (!open) return undefined;
+    const h = (e) => { if (e.key === 'Enter') { e.preventDefault(); snap(); } };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
   return (
-    <Drawer open={open} onClose={onClose} size="lg" title="Camera" icon={Camera} footer={<Button variant="gold" onClick={snap}>Capture (Enter)</Button>}>
-      <video ref={video} autoPlay playsInline muted className="aspect-video w-full rounded-md bg-ink-900" onKeyDown={(e) => e.key === 'Enter' && snap()} />
+    <Drawer open={open} onClose={onClose} size="lg" title="Camera" icon={Camera} bodyClassName="flex min-h-0 bg-ink-950 !p-2"
+      footer={<Button variant="gold" icon={Camera} onClick={snap}>Capture (Enter)</Button>}>
+      {/* fills the drawer; contain = shows exactly the frame that will be saved */}
+      <video ref={video} autoPlay playsInline muted className="min-h-0 w-full flex-1 rounded-md object-contain" />
     </Drawer>
   );
 }
@@ -387,10 +487,72 @@ export const computeItem = (it, rates) => {
 };
 
 /** Item entry row (desktop: Item (F3 new), Pcs, Gross, Less, Net auto, Remark, Purity, Metal, Value, Add Item). */
+/**
+ * Type-to-search item box. Arrow keys + Enter pick, Esc closes.
+ * No match? the last row offers to add what was typed as a new item.
+ */
+function ItemPicker({ items, value, onPick, onNew, inputRef, onDone }) {
+  const [q, setQ] = useState(value || '');
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const listRef = useRef(null);
+  useEffect(() => { setQ(value || ''); }, [value]);
+  const term = q.trim().toLowerCase();
+  const list = !term || term === (value || '').toLowerCase() ? items
+    : items.filter((x) => x.name.toLowerCase().includes(term) || (x.local_name || '').toLowerCase().includes(term));
+  const exact = items.some((x) => x.name.toLowerCase() === term);
+  const rows = term && !exact ? [...list, { add: true }] : list;
+  useEffect(() => { setHi(0); }, [q]);
+  useEffect(() => { listRef.current?.children[hi]?.scrollIntoView({ block: 'nearest' }); }, [hi]);
+  const choose = (r) => {
+    if (!r) return;
+    if (r.add) { setOpen(false); onNew(q.trim()); return; }
+    onPick(r); setQ(r.name); setOpen(false); onDone?.();
+  };
+  const keys = (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi((h) => Math.min(rows.length - 1, h + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(0, h - 1)); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (open && rows.length) choose(rows[hi]); else if (value) onDone?.(); else setOpen(true); }
+    else if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false); setQ(value || ''); }
+  };
+  return (
+    <div className="relative flex gap-1">
+      <div className="relative flex-1">
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-400" />
+        <input ref={inputRef} className="input pr-7 pl-8" value={q} placeholder="Search item…" autoComplete="off"
+          onChange={(e) => { setQ(e.target.value); setOpen(true); if (!e.target.value) onPick(null); }}
+          onFocus={(e) => { e.target.select(); setOpen(true); }}
+          onBlur={() => setTimeout(() => { setOpen(false); setQ(value || ''); }, 120)}
+          onKeyDown={keys} />
+        <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-3.5 -translate-y-1/2 text-ink-400" />
+        {open && rows.length > 0 && (
+          <ul ref={listRef} className="absolute inset-x-0 top-full z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-ink-200 bg-white py-1 text-[13px] dark:border-ink-700 dark:bg-ink-900">
+            {rows.map((r, i) => (
+              <li key={r.add ? '__add' : r.id}>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => choose(r)} onMouseEnter={() => setHi(i)}
+                  className={clsx('flex w-full items-center gap-2 px-2.5 py-1.5 text-left', i === hi && 'bg-ink-100 dark:bg-ink-800', r.add && 'border-t border-ink-100 font-semibold text-emerald-700 dark:border-ink-800 dark:text-emerald-400')}>
+                  {r.add ? <><Plus className="size-3.5" />Add “{q.trim()}” as new item</> : (
+                    <><span className="flex-1 truncate font-medium">{r.name}</span>{r.local_name && <span className="truncate text-[11px] text-ink-400">{r.local_name}</span>}{r.name === value && <Check className="size-3.5 text-emerald-600" />}</>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <button type="button" onClick={() => onNew('')} title="Add new item name (F3)"
+        className="grid size-9 shrink-0 place-items-center rounded-md border border-emerald-300 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <Plus className="size-4" strokeWidth={2.5} />
+      </button>
+    </div>
+  );
+}
+
 export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
   const [it, setIt] = useState(blankItem(loanOn === 'SILVER' ? 'SILVER' : 'GOLD'));
   const [newName, setNewName] = useState(null);
   const first = useRef(null);
+  const pcsRef = useRef(null);
   useEffect(() => { if (editing) setIt(editing); }, [editing]);
   useEffect(() => { setIt((x) => ({ ...x, metal: loanOn === 'MIX' ? x.metal : loanOn, purity: loanOn === 'SILVER' && x.metal !== 'SILVER' ? 92.5 : x.purity })); }, [loanOn]);
   const c = computeItem(it, rates);
@@ -407,39 +569,39 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
   };
   const enter = (e) => e.key === 'Enter' && (e.preventDefault(), add());
   const saveNew = async () => {
-    try { const r = await api.post('/masters/items/quick', { name: newName }); lookups.items.push(r.data); setIt({ ...it, item_name: r.data.name, item_id: r.data.id }); setNewName(null); } catch (e) { toast.error(e.message); }
+    try { const r = await api.post('/masters/items/quick', { name: newName }); lookups.items.push(r.data); setIt({ ...it, item_name: r.data.name, item_id: r.data.id }); setNewName(null); setTimeout(() => pcsRef.current?.focus(), 50); } catch (e) { toast.error(e.message); }
   };
   useKeys({ f3: () => setNewName('') }, []);
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_70px_1fr_1fr_1fr]">
-        <Field label="Item (F3 new)">
-          <select ref={first} className="input" value={it.item_name} onChange={(e) => { const m = items.find((x) => x.name === e.target.value); setIt({ ...it, item_name: e.target.value, item_id: m?.id || null }); }}>
-            <option value="" />
-            {items.map((x) => <option key={x.id} value={x.name}>{x.name}{x.local_name ? ` - ${x.local_name}` : ''}</option>)}
-          </select>
-        </Field>
-        <Field label="Pcs"><Input type="number" min="1" value={it.pcs} onChange={(e) => setIt({ ...it, pcs: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Gross wt (g)"><Input type="number" step="0.001" value={it.gross_wt} onChange={(e) => setIt({ ...it, gross_wt: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Less wt"><Input type="number" step="0.001" value={it.stone_wt} onChange={(e) => setIt({ ...it, stone_wt: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Net wt (auto)"><Input readOnly value={c.net_wt ? weight(c.net_wt) : ''} className="bg-ink-50" /></Field>
+        <div>
+          <span className="label">Item <span className="normal-case text-ink-400">· type to search · F3 / + new</span></span>
+          <ItemPicker items={items} value={it.item_name} inputRef={first} onDone={() => pcsRef.current?.focus()}
+            onPick={(m) => setIt({ ...it, item_name: m?.name || '', item_id: m?.id || null })}
+            onNew={(name) => setNewName(name)} />
+        </div>
+        <Field label="Pcs"><Input ref={pcsRef} prefix={<Hash className="size-3.5" />} type="number" min="1" value={it.pcs} onChange={(e) => setIt({ ...it, pcs: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Gross wt (g)"><Input prefix={<Scale className="size-3.5" />} type="number" step="0.001" value={it.gross_wt} onChange={(e) => setIt({ ...it, gross_wt: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Less wt"><Input prefix={<MinusCircle className="size-3.5" />} type="number" step="0.001" value={it.stone_wt} onChange={(e) => setIt({ ...it, stone_wt: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Net wt (auto)"><Input prefix={<Weight className="size-3.5" />} readOnly value={c.net_wt ? weight(c.net_wt) : ''} className="bg-ink-50" /></Field>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">
-        <Field label="Remark"><Input value={it.remarks} onChange={(e) => setIt({ ...it, remarks: e.target.value })} onKeyDown={enter} placeholder="Hallmark, damage, seal…" /></Field>
+        <Field label="Remark"><Input prefix={<MessageSquare className="size-3.5" />} value={it.remarks} onChange={(e) => setIt({ ...it, remarks: e.target.value })} onKeyDown={enter} placeholder="Hallmark, damage, seal…" /></Field>
         <Field label="Purity %">
-          <Input type="number" step="0.01" list={`pur-${metalCode}`} value={it.purity} onChange={(e) => setIt({ ...it, purity: e.target.value })} onKeyDown={enter} />
+          <Input prefix={<Gem className="size-3.5" />} type="number" step="0.01" list={`pur-${metalCode}`} value={it.purity} onChange={(e) => setIt({ ...it, purity: e.target.value })} onKeyDown={enter} />
           <datalist id={`pur-${metalCode}`}>{purities.map((p) => <option key={p.id} value={p.purity}>{p.name}</option>)}</datalist>
         </Field>
         <Field label="Metal">
           {loanOn === 'MIX'
-            ? <Select value={it.metal} onChange={(e) => setIt({ ...it, metal: e.target.value, purity: e.target.value === 'SILVER' ? 92.5 : 91.6 })} options={['GOLD', 'SILVER']} />
-            : <Input readOnly value={metalCode} className="bg-ink-50" />}
+            ? <Select prefix={<Coins className="size-3.5" />} value={it.metal} onChange={(e) => setIt({ ...it, metal: e.target.value, purity: e.target.value === 'SILVER' ? 92.5 : 91.6 })} options={['GOLD', 'SILVER']} />
+            : <Input prefix={<Coins className="size-3.5" />} readOnly value={metalCode} className="bg-ink-50" />}
         </Field>
-        <Field label="Value"><Input readOnly value={c.value ? amount(c.value) : ''} className="bg-ink-50" /></Field>
+        <Field label="Value"><Input prefix={<IndianRupee className="size-3.5" />} readOnly value={c.value ? amount(c.value) : ''} className="bg-ink-50" /></Field>
         <Button onClick={add} className="h-10">{editing ? 'Update item' : 'Add item'}</Button>
       </div>
       <Drawer open={newName !== null} onClose={() => setNewName(null)} size="sm" title="New item name" footer={<Button variant="gold" onClick={saveNew}>Save item</Button>}>
-        <Field label="Item name"><Input autoFocus value={newName || ''} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNew()} /></Field>
+        <Field label="Item name"><Input prefix={<Tag className="size-3.5" />} autoFocus value={newName || ''} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNew()} /></Field>
       </Drawer>
     </div>
   );
@@ -448,20 +610,20 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
 /** Items grid with totals (#, Item, Metal, Pcs, Gross, Less, Net, Purity, Fine, Value). */
 export function ItemsTable({ items, onRemove, onEdit, valueLabel = 'Value', showValue = true }) {
   const t = items.reduce((s, i) => ({ pcs: s.pcs + n(i.pcs), g: s.g + n(i.gross_wt), l: s.l + n(i.stone_wt), net: s.net + n(i.net_wt), f: s.f + n(i.fine_wt), v: s.v + n(i.value) }), { pcs: 0, g: 0, l: 0, net: 0, f: 0, v: 0 });
-  const th = 'px-2 py-2 text-right font-bold';
+  const th = 'px-2 py-1.5 text-right font-semibold';
   return (
-    <div className="overflow-x-auto rounded-md border border-ink-300">
-      <table className="w-full min-w-[700px] text-sm">
-        <thead className="navy-gradient text-white"><tr>
-          <th className="w-8 px-2 py-2 text-left">#</th><th className="px-2 py-2 text-left">Item</th><th className="px-2 py-2 text-left">Metal</th>
+    <div className="overflow-x-auto rounded-md border border-ink-200 dark:border-ink-800">
+      <table className="w-full min-w-[700px] text-[13px]">
+        <thead className="navy-gradient text-[11px] tracking-wider text-white uppercase"><tr>
+          <th className="w-8 px-2 py-1.5 text-left font-semibold">#</th><th className="px-2 py-1.5 text-left font-semibold">Item</th><th className="px-2 py-1.5 text-left font-semibold">Metal</th>
           <th className={th}>Pcs</th><th className={th}>Gross</th><th className={th}>Less</th><th className={th}>Net</th><th className={th}>Purity</th><th className={th}>Fine wt</th>
           {showValue && <th className={th}>{valueLabel}</th>}{(onRemove || onEdit) && <th className="w-16" />}
         </tr></thead>
-        <tbody className="divide-y divide-ink-200">
-          {!items.length && <tr><td colSpan={11} className="py-10 text-center text-ink-400">No items yet</td></tr>}
+        <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+          {!items.length && <tr><td colSpan={11} className="py-6 text-center text-[12px] text-ink-400">No items yet - add one above</td></tr>}
           {items.map((i, k) => (
-            <tr key={i.key || i.id || k} className="hover:bg-navy-50/50" onDoubleClick={() => onEdit?.(i)}>
-              <td className="px-2 py-1.5">{k + 1}</td><td className="px-2 py-1.5 font-semibold">{i.item_name}{i.remarks ? <span className="ml-1 text-xs font-normal text-ink-400">({i.remarks})</span> : null}</td>
+            <tr key={i.key || i.id || k} className="hover:bg-ink-50 dark:hover:bg-ink-800/50" onDoubleClick={() => onEdit?.(i)}>
+              <td className="px-2 py-1">{k + 1}</td><td className="px-2 py-1.5 font-semibold">{i.item_name}{i.remarks ? <span className="ml-1 text-xs font-normal text-ink-400">({i.remarks})</span> : null}</td>
               <td className="px-2 py-1.5">{i.metal || i.metal_code || ''}</td>
               <td className="num px-2 text-right">{i.pcs}</td><td className="num px-2 text-right">{weight(i.gross_wt)}</td><td className="num px-2 text-right">{weight(i.stone_wt)}</td>
               <td className="num px-2 text-right font-semibold">{weight(i.net_wt)}</td><td className="num px-2 text-right">{n(i.purity)}</td><td className="num px-2 text-right">{weight(i.fine_wt)}</td>
@@ -470,8 +632,8 @@ export function ItemsTable({ items, onRemove, onEdit, valueLabel = 'Value', show
             </tr>
           ))}
         </tbody>
-        <tfoot className="bg-navy-800 text-white"><tr className="font-bold">
-          <td colSpan={3} className="px-2 py-2">Total ({items.length})</td><td className="num px-2 text-right">{t.pcs}</td><td className="num px-2 text-right">{weight(t.g)}</td>
+        <tfoot className="border-t-2 border-amber-400 bg-amber-50 text-amber-950 dark:border-amber-600 dark:bg-amber-950/40 dark:text-amber-100"><tr className="font-bold">
+          <td colSpan={3} className="px-2 py-1.5">Total ({items.length})</td><td className="num px-2 text-right">{t.pcs}</td><td className="num px-2 text-right">{weight(t.g)}</td>
           <td className="num px-2 text-right">{weight(t.l)}</td><td className="num px-2 text-right">{weight(t.net)}</td><td /><td className="num px-2 text-right">{weight(t.f)}</td>
           {showValue && <td className="num px-2 text-right">{amount(t.v)}</td>}{(onRemove || onEdit) && <td />}
         </tr></tfoot>
@@ -482,18 +644,42 @@ export function ItemsTable({ items, onRemove, onEdit, valueLabel = 'Value', show
 
 /* ------------------------------------------------------------------ LTV bar */
 export function LtvBar({ value, max = 75, safe, warn, suffix = '' }) {
-  const pct = Math.min(100, n(value));
-  const s = n(safe) || max * 0.9;
-  const w = n(warn) || max;
-  const tone = pct > Math.max(w, max) ? 'bg-rose-600' : pct > s ? 'bg-amber-500' : 'bg-emerald-600';
+  const v = n(value);
+  const s = Math.min(n(safe) || max * 0.9, max);       // green up to here
+  const limit = Math.max(n(warn) || max, max);         // amber up to here, red beyond
+  const level = !v ? 'none' : v > limit ? 'over' : v > s ? 'near' : 'safe';
+  const tone = {
+    none: { bar: '', text: 'text-ink-400', tag: 'bg-ink-100 text-ink-500', word: 'No items' },
+    safe: { bar: 'from-emerald-500 to-emerald-600', text: 'text-emerald-700', tag: 'bg-emerald-50 text-emerald-700', word: 'Safe' },
+    near: { bar: 'from-amber-400 to-amber-500', text: 'text-amber-700', tag: 'bg-amber-50 text-amber-800', word: 'Near limit' },
+    over: { bar: 'from-rose-500 to-rose-600', text: 'text-rose-600', tag: 'bg-rose-50 text-rose-700', word: 'Over limit' },
+  }[level];
+  const scale = Math.max(100, limit + 10);              // keep room to show "over"
+  const at = (x) => `${Math.min(100, (x / scale) * 100)}%`;
   return (
-    <div>
-      <div className="flex justify-between text-xs text-ink-600"><span>Loan to value</span><b className={clsx('num', n(value) > Math.max(n(warn) || max, max) ? 'text-rose-600' : n(value) > (n(safe) || max * 0.9) ? 'text-amber-600' : 'text-emerald-700')}>{value ? `${n(value).toFixed(1)}%${suffix ? ` ${suffix}` : ''}` : '-'}</b></div>
-      <div className="relative mt-1 h-2 rounded-full bg-ink-200"><div className={clsx('h-2 rounded-full transition-all', tone)} style={{ width: `${pct}%` }} />
-        <div className="absolute top-[-3px] h-3.5 w-0.5 bg-navy-900" style={{ left: `${Math.min(100, max)}%` }} title={`Scheme limit ${max}%`} /></div>
+    <div className="rounded-md border border-ink-200 px-2.5 py-2 dark:border-ink-800">
+      <div className="flex items-center gap-2 text-[11px]">
+        <span className="font-semibold tracking-wider text-ink-500 uppercase">Loan to value</span>
+        <span className={clsx('rounded-sm px-1.5 py-px text-[10px] font-bold', tone.tag)}>{tone.word}</span>
+        <b className={clsx('num ml-auto text-[13px]', tone.text)}>{v ? `${v.toFixed(1)}%${suffix ? ` ${suffix}` : ''}` : '-'}</b>
+      </div>
+      <div className="relative mt-2 h-2.5 overflow-hidden rounded-sm bg-ink-100 dark:bg-ink-800">
+        {/* faint zones: safe / near / over */}
+        <div className="absolute inset-y-0 left-0 bg-emerald-500/15" style={{ width: at(s) }} />
+        <div className="absolute inset-y-0 bg-amber-500/20" style={{ left: at(s), width: `calc(${at(limit)} - ${at(s)})` }} />
+        <div className="absolute inset-y-0 right-0 bg-rose-500/15" style={{ left: at(limit) }} />
+        {/* actual value */}
+        {v > 0 && <div className={clsx('absolute inset-y-0 left-0 rounded-sm bg-gradient-to-r transition-all duration-300', tone.bar)} style={{ width: at(v) }} />}
+      </div>
+      <div className="relative mt-0.5 h-3 text-[9px] font-semibold text-ink-400">
+        <span className="absolute left-0">0</span>
+        <span className="absolute -translate-x-1/2" style={{ left: at(s) }}>{Math.round(s)}%</span>
+        <span className="absolute -translate-x-1/2 text-navy-900 dark:text-white" style={{ left: at(limit) }} title={`Scheme limit ${max}%`}>▲ {Math.round(limit)}%</span>
+      </div>
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ admin approval */
 /**
@@ -528,15 +714,15 @@ export function useApproval() {
 /* ------------------------------------------------------------------ payments received grid */
 const PAY_WORD = { CASH: 'Cash', UPI: 'UPI', BANK: 'Bank', CARD: 'Card', CHEQUE: 'Cheque' };
 const TXN_LABEL = { INTEREST: 'Interest', PART_PAYMENT: 'Part Amount', TOPUP: 'Top-up', RELEASE: 'Release', RENEWAL: 'Re-loan', AUCTION: 'Auction' };
-export function PaymentsGrid({ transactions = [], loan, advanceMode = 'at loan' }) {
+export function PaymentsGrid({ transactions = [], loan, advanceMode = 'at loan', className }) {
   const adv = loan && n(loan.advance_interest) ? [{ id: 'adv', txn_date: loan.loan_date, txn_type: 'ADVANCE', months_paid: loan.advance_months || 1, total_amount: loan.advance_interest, payments: [{ mode: advanceMode }] }] : [];
   const rows = [...adv, ...transactions.filter((t) => !t.is_void && t.txn_type !== 'DISBURSE')];
   return (
-    <div className="overflow-hidden rounded-md border border-ink-300">
-      <table className="w-full text-sm">
-        <thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Type</th><th className="px-3 py-2 text-right">Months</th><th className="px-3 py-2 text-right">Amount</th><th className="px-3 py-2 text-left">Mode</th></tr></thead>
-        <tbody className="divide-y divide-ink-200">
-          {!rows.length && <tr><td colSpan={5} className="py-6 text-center text-ink-400">No payments yet</td></tr>}
+    <div className={clsx('overflow-auto rounded-md border border-ink-200 dark:border-ink-800', className)}>
+      <table className="w-full text-[13px]">
+        <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="px-3 py-1.5 text-left font-semibold">Date</th><th className="px-3 text-left font-semibold">Type</th><th className="px-3 text-right font-semibold">Months</th><th className="px-3 text-right font-semibold">Amount</th><th className="px-3 text-left font-semibold">Mode</th></tr></thead>
+        <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+          {!rows.length && <tr><td colSpan={5} className="py-6 text-center text-[12px] text-ink-400">No payments yet</td></tr>}
           {rows.map((t) => (
             <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}</td>
               <td className="num px-3 text-right">{amount(t.total_amount)}</td><td className="px-3">{(t.payments || []).map((p) => (p.amount ? <span key={p.id || p.mode} className="mr-1 rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-700">{PAY_WORD[p.mode] || p.mode} ₹{amount(p.amount).replace('.00', '')}</span> : p.mode))}</td></tr>

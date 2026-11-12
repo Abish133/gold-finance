@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { bookStatus } from '@/lib/loanStatus';
 import { User, Pencil, FilePlus2, Phone, MessageCircle, Printer } from 'lucide-react';
-import { Avatar, Badge, Button, DataTable, Drawer, KeyValue, Spinner, Stat, StatusBadge, Tabs } from '@/components/ui';
+import clsx from 'clsx';
+import { Button, DataTable, Drawer, Spinner, StatusBadge, Tabs } from '@/components/ui';
+import { ImagePreview } from '@/components/common/ImagePreview';
 import { DocumentsPanel } from '@/components/common/DocumentsPanel';
 import { DetailsSheet } from '@/features/print/LoanEstimate';
 import { printElement } from '@/lib/print';
@@ -31,6 +33,7 @@ export function CustomerDetailDrawer({ id, onClose, onEdit }) {
 
   return (
     <Drawer open={!!id} onClose={onClose} size="xl" icon={User} title={c ? c.name : 'Customer'} subtitle={c ? `Customer #${c.customer_no} · ${c.branch_name}` : ''}
+      bodyClassName="flex !px-4 !py-3 sm:!overflow-hidden"
       footer={c && (
         <>
           <Button variant="outline" icon={Printer} onClick={printDetails}>Print details</Button>
@@ -41,53 +44,70 @@ export function CustomerDetailDrawer({ id, onClose, onEdit }) {
         </>
       )}>
       {isLoading || !c ? <Spinner /> : (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-start gap-5">
-            <Avatar src={c.photo} name={c.name} size="xl" />
+        <div className="flex min-h-0 w-full flex-col gap-2.5">
+          {/* profile */}
+          <div className="flex shrink-0 items-stretch gap-3">
+            <ImagePreview src={c.photo} title={`${c.name} · #${c.customer_no}`} className="w-24 shrink-0 self-stretch rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+              {c.photo ? <img src={c.photo} alt="" className="size-full object-cover" /> : <span className="grid size-full min-h-24 place-items-center text-2xl font-bold text-ink-400">{(c.name || '?').charAt(0)}</span>}
+            </ImagePreview>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-xl font-bold">{c.title} {c.name}</h3>
+                <h3 className="text-lg font-bold text-navy-900 dark:text-white">{c.title} {c.name}</h3>
                 <StatusBadge status={c.status} />
+                {c.relation_name && <span className="text-[12px] text-ink-500">{c.relation_type} {c.relation_name}</span>}
               </div>
-              {c.relation_name && <p className="text-sm text-ink-500">{c.relation_type} {c.relation_name}</p>}
-              {c.status === 'BLOCKED' && <Badge tone="red" className="mt-2">Blocked: {c.block_reason}</Badge>}
-              <div className="mt-4"><KeyValue cols={3} items={[
-                ['Mobile', c.phone], ['Alternate', c.alt_phone], ['ID proof', c.id_proof_type ? `${c.id_proof_type}: ${c.id_proof_no || ''}` : null],
-                ['Address', address], ['Nominee', c.nominee_name ? `${c.nominee_name} (${c.nominee_relation || ''})` : null], ['Customer since', date(since)],
-              ]} /></div>
+              {c.status === 'BLOCKED' && <p className="mt-1 rounded-md border-l-2 border-rose-600 bg-rose-50 px-2 py-1 text-[12px] text-rose-700">Blocked: {c.block_reason}</p>}
+              <div className="mt-1.5 grid overflow-hidden rounded-md border border-ink-200 text-[12px] sm:grid-cols-3 dark:border-ink-800">
+                {[['Mobile', c.phone], ['Alternate', c.alt_phone], ['ID proof', c.id_proof_type ? `${c.id_proof_type}: ${c.id_proof_no || ''}` : null],
+                  ['Address', address], ['Nominee', c.nominee_name ? `${c.nominee_name} (${c.nominee_relation || ''})` : null], ['Customer since', date(since)]].map(([k, v]) => (
+                  <div key={k} className="min-w-0 border-r border-b border-ink-100 px-2.5 py-1 dark:border-ink-800">
+                    <p className="text-[10px] font-semibold tracking-wider text-ink-400 uppercase">{k}</p>
+                    <p className="truncate font-semibold text-navy-900 dark:text-white" title={v || ''}>{v || '-'}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-4">
-            <Stat label="Open loans" value={t.open_loans || 0} />
-            <Stat label="Outstanding" value={compact(t.outstanding)} tone="blue" />
-            <Stat label="Gold held" value={grams(t.gold_in_custody)} tone="gold" />
-            <Stat label="Interest paid" value={compact(t.interest_paid)} tone="green" />
+
+          {/* figures */}
+          <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 sm:grid-cols-4 dark:border-ink-800">
+            {[['Open loans', t.open_loans || 0, 'bg-navy-900 dark:bg-white'], ['Outstanding', compact(t.outstanding), 'bg-blue-600'], ['Gold held', grams(t.gold_in_custody), 'bg-amber-500'], ['Interest paid', compact(t.interest_paid), 'bg-emerald-600']].map(([l, v, bar]) => (
+              <div key={l} className="relative border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800">
+                <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+                <p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p>
+                <p className="num text-lg leading-tight font-bold text-navy-900 dark:text-white">{v}</p>
+              </div>
+            ))}
           </div>
-          <Tabs value={tab} onChange={setTab} tabs={[{ value: 'loans', label: 'Loans', count: data.loans.length }, { value: 'docs', label: 'Documents' }]} />
-          {tab === 'docs' ? <DocumentsPanel owner="customer" id={c.id} canEdit={can('customers', 'edit')} /> : <DataTable
-            dense
-            columns={[
-              { key: 'bill_no', label: 'Loan no', render: (r) => <span className="font-semibold">#{r.bill_no}</span> },
-              { key: 'loan_date', label: 'Date', type: 'date' },
-              { key: 'item_summary', label: 'Items', render: (r) => <span className="uppercase">{r.items_text || r.item_summary}</span> },
-              { key: 'net_wt', label: 'Net wt', type: 'weight' },
-              { key: 'principal', label: 'Loan', type: 'money' },
-              { key: 'current_principal', label: 'Balance', type: 'money' },
-              { key: 'status', label: 'Status', render: (r) => bookStatus(r) },
-            ]}
-            rows={data.loans}
-            onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}
-          />}
-          {[c.doc_front, c.doc_back, c.signature].some(Boolean) && (
-            <div className="grid grid-cols-3 gap-3">
-              {[['ID front', c.doc_front], ['ID back', c.doc_back], ['Signature', c.signature]].filter(([, v]) => v).map(([k, v]) => (
-                <a key={k} href={v} target="_blank" rel="noreferrer" className="block">
-                  <p className="label">{k}</p><img src={v} alt={k} className="aspect-[16/10] w-full rounded-xl object-cover" />
-                </a>
-              ))}
-            </div>
+
+          <Tabs value={tab} onChange={setTab} className="shrink-0" tabs={[{ value: 'loans', label: 'Loans', count: data.loans.length }, { value: 'docs', label: 'Documents' }]} />
+          {tab === 'docs' ? <div className="min-h-0 flex-1 overflow-y-auto"><DocumentsPanel owner="customer" id={c.id} canEdit={can('customers', 'edit')} /></div> : (
+            /* loans - fills the drawer, rows scroll */
+            <DataTable
+              fill
+              columns={[
+                { key: 'bill_no', label: 'Loan no', render: (r) => <span className="font-semibold">#{r.bill_no}</span> },
+                { key: 'loan_date', label: 'Date', type: 'date' },
+                { key: 'item_summary', label: 'Items', render: (r) => <span className="block max-w-56 truncate uppercase" title={r.items_text || r.item_summary}>{r.items_text || r.item_summary}</span> },
+                { key: 'net_wt', label: 'Net wt', type: 'weight' },
+                { key: 'principal', label: 'Loan', type: 'money' },
+                { key: 'current_principal', label: 'Balance', type: 'money' },
+                { key: 'status', label: 'Status', render: (r) => <span className="rounded-sm bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold uppercase dark:bg-ink-800">{bookStatus(r)}</span> },
+              ]}
+              rows={data.loans}
+              onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}
+            />
           )}
-          <p className="text-xs text-ink-400">Total lent so far {money(t.total_lent)} across {t.total_loans} loans.</p>
+
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
+            {[['ID front', c.doc_front], ['ID back', c.doc_back], ['Signature', c.signature]].filter(([, v]) => v).map(([k, v]) => (
+              <div key={k} className="flex items-center gap-1.5">
+                <ImagePreview src={v} title={`${k} · ${c.name}`} className="h-9 w-14 rounded-sm border border-ink-200 dark:border-ink-700"><img src={v} alt={k} className="size-full object-cover" /></ImagePreview>
+                <span className="text-[11px] text-ink-500">{k}</span>
+              </div>
+            ))}
+            <p className="ml-auto text-[11px] text-ink-400">Total lent so far {money(t.total_lent)} across {t.total_loans} loans · click a loan to open it</p>
+          </div>
         </div>
       )}
     </Drawer>

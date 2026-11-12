@@ -62,82 +62,97 @@ export default function DayReportPage({ mode = 'report' }) {
       toast.success(`Day ${dayjs(q.to).format('DD/MM/YYYY')} closed. Billing date is now ${dayjs(nextDay).format('DD/MM/YYYY')}`);
       ['/desk/billing-date', '/desk/day-report', '/accounts/day-close', '/dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       // desktop: Metal Rate Update opens for the new billing date
-      setWorkDate(nextDay); navigate(`/masters/rates?date=${nextDay}`);
+      setWorkDate(nextDay); navigate(`/masters?tab=rates&date=${nextDay}`);
     } catch (e) { toast.error(e.message); } finally { setClosing(false); }
   };
   useKeys({ f5: () => setQ(r), f8: () => refetch(), f6: () => setCount(true), f10: () => (isEnd ? closeDay() : navigate('/settings/day-end')), f9: print, 'ctrl+p': print, 'ctrl+e': () => exportCsv('day-report', cols, data?.accounts || []) }, [r, q, data, printFirst, isEnd]);
 
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex flex-wrap items-center gap-3 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">{isEnd ? 'Day End' : 'Day Report'}</h1><p className="text-sm text-navy-100">{isEnd ? 'Check everything and close the day' : 'Accounts summary, cash update and print'}</p></div>
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-white p-1.5 text-ink-800">
-          <span className="px-1 text-xs">From</span><Input type="date" className="h-9 w-40" value={r.from} onChange={(e) => setR({ ...r, from: e.target.value })} />
-          <span className="px-1 text-xs">To</span><Input type="date" className="h-9 w-40" value={r.to} onChange={(e) => setR({ ...r, to: e.target.value })} />
-          <Button size="sm" icon={Search} onClick={() => setQ(r)}>Show (F5)</Button>
-          <Button size="sm" variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F8)</Button>
-          <Button size="sm" variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
-          <Button size="sm" variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('day-report', cols, data?.accounts || [])}>Excel (Ctrl+E)</Button>
+    /* fit-screen: the page fits the window; the accounts table and the tally panel scroll on their own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3">
+          <h1 className="text-lg font-bold whitespace-nowrap">{isEnd ? 'Day End' : 'Day Report'}</h1>
+          <p className="hidden truncate text-[12px] text-white/60 lg:block">{isEnd ? 'Check everything and close the day' : 'Accounts summary, cash update and print'}</p>
         </div>
-        <div className={clsx('rounded-md px-4 py-1.5 text-center', data?.dayClosed ? 'bg-rose-600' : 'bg-white/10')}><p className="font-bold">{dayjs(q.to).format('DD/MM/YYYY')}</p><p className="text-xs">{data?.dayClosed ? 'Closed' : 'Open'}</p></div>
+        <div className="flex overflow-hidden rounded-md border border-white/15">
+          <div className="flex items-baseline gap-2 px-3 py-1"><span className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">Day</span><span className="num text-[13px] font-bold">{dayjs(q.to).format('DD/MM/YYYY (ddd)')}</span></div>
+          <span className={clsx('flex items-center px-2.5 text-[11px] font-bold uppercase', data?.dayClosed ? 'bg-rose-600' : 'bg-emerald-600')}>{data?.dayClosed ? 'Closed' : 'Open'}</span>
+        </div>
       </section>
-      <div className="grid items-start gap-3 xl:grid-cols-[1fr_380px]">
-        <div className="space-y-3">
-          <div className="card overflow-hidden">
-            <div className="flex justify-between px-4 py-2 text-sm"><b className="text-ink-600 uppercase">Accounts</b><b>{dayjs(q.to).format('DD/MM/YYYY (dddd)')}</b></div>
-            <table className="w-full text-sm">
-              <thead className="navy-gradient text-white"><tr><th className="w-20 px-3 py-2 text-left">A/c No</th><th className="px-3 text-left">A/c Name</th><th className="px-3 text-right">Jama (Received)</th><th className="px-3 text-right">Nave (Paid)</th></tr></thead>
-              <tbody className="divide-y divide-ink-200">
-                <tr className="bg-cream-100 font-semibold"><td /><td className="px-3 py-1.5">Opening Balance {data?.lastClosed ? `(after Day End ${dayjs(data.lastClosed).format('DD/MM/YYYY')})` : '(no earlier Day End found)'}</td><td className="num px-3 text-right">{amount(data?.opening)}</td><td /></tr>
+      <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+        <div><p className="label">From</p><Input type="date" className="!h-8 w-36 text-[13px]" value={r.from} onChange={(e) => setR({ ...r, from: e.target.value })} /></div>
+        <div><p className="label">To</p><Input type="date" className="!h-8 w-36 text-[13px]" value={r.to} onChange={(e) => setR({ ...r, to: e.target.value })} /></div>
+        <Button icon={Search} onClick={() => setQ(r)}>Show (F5)</Button>
+        <span className="flex-1" />
+        <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F8)</Button>
+        <Button variant="outline" icon={FileDown} onClick={print}>PDF (Ctrl+P)</Button>
+        <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('day-report', cols, data?.accounts || [])}>Excel (Ctrl+E)</Button>
+      </div>
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_340px]">
+        <div className="flex min-w-0 flex-col gap-2 xl:min-h-0">
+          {/* accounts - header and totals stay while rows scroll */}
+          <div className="min-h-64 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+            <table className="w-full text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="w-20 px-3 py-1.5 text-left font-semibold">A/c No</th><th className="px-3 text-left font-semibold">A/c Name · {dayjs(q.to).format('DD/MM/YYYY (dddd)')}</th><th className="px-3 text-right font-semibold">Jama (Received)</th><th className="px-3 text-right font-semibold">Nave (Paid)</th></tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+                <tr className="bg-sky-50 font-semibold dark:bg-sky-950/30"><td /><td className="px-3 py-1">Opening Balance {data?.lastClosed ? `(after Day End ${dayjs(data.lastClosed).format('DD/MM/YYYY')})` : '(no earlier Day End found)'}</td><td className="num px-3 text-right">{amount(data?.opening)}</td><td /></tr>
                 {(data?.accounts || []).map((a) => (
-                  <tr key={`${a.id}-${a.name}`} className={a.muted ? 'text-ink-400' : ''}><td className="px-3 py-1.5">{a.id}</td><td className="px-3">{a.name}</td><td className="num px-3 text-right">{amount(a.jama)}</td><td className="num px-3 text-right">{amount(a.nave)}</td></tr>
+                  <tr key={`${a.id}-${a.name}`} className={clsx('hover:bg-ink-50 dark:hover:bg-ink-800/50', a.muted && 'text-ink-400')}><td className="num px-3 py-1">{a.id}</td><td className="px-3">{a.name}</td><td className="num px-3 text-right">{amount(a.jama)}</td><td className="num px-3 text-right">{amount(a.nave)}</td></tr>
                 ))}
-                {!data?.accounts?.length && <tr><td colSpan={4} className="py-10 text-center text-ink-400">No cash entries in this period</td></tr>}
+                {!data?.accounts?.length && <tr><td colSpan={4} className="py-10 text-center text-[12px] text-ink-400">No cash entries in this period</td></tr>}
               </tbody>
-              <tfoot className="navy-gradient text-white">
+              <tfoot className="sticky bottom-0 z-10 border-t-2 border-amber-400 bg-amber-50 text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100">
                 <tr className="font-semibold"><td /><td className="px-3 py-1">Total</td><td className="num px-3 text-right">{amount(n(data?.jama) + n(data?.opening))}</td><td className="num px-3 text-right">{amount(data?.nave)}</td></tr>
                 <tr className="font-semibold"><td /><td className="px-3 py-1">Closing Balance (Pote Baki)</td><td /><td className="num px-3 text-right">{amount(data?.closing)}</td></tr>
-                <tr className="font-bold"><td /><td className="px-3 py-1.5">Grand Total</td><td className="num px-3 text-right">{amount(n(data?.jama) + n(data?.opening))}</td><td className="num px-3 text-right">{amount(n(data?.nave) + n(data?.closing))}</td></tr>
+                <tr className="border-t border-amber-300 font-bold dark:border-amber-800"><td /><td className="px-3 py-1">Grand Total</td><td className="num px-3 text-right">{amount(n(data?.jama) + n(data?.opening))}</td><td className="num px-3 text-right">{amount(n(data?.nave) + n(data?.closing))}</td></tr>
               </tfoot>
             </table>
           </div>
-          <div className="card space-y-2 p-4 text-sm">
-            <p className="text-xs font-bold text-ink-600 uppercase">How the money came / went (from payment mode entries)</p>
-            {[['RECEIVED', 'Received from customers (part payment / interest / release)'], ['PAID', 'Paid to customers (new loans / top-up)']].map(([dir, label]) => (
-              <div key={dir}><p className="text-ink-600">{label}</p><div className="mt-1 flex flex-wrap gap-1.5">{MODE.map((m) => <span key={m} className="rounded bg-ink-100 px-2 py-0.5 text-xs">{m.charAt(0) + m.slice(1).toLowerCase()} {amount(modeAmt(dir, m))}</span>)}</div></div>
+          {/* how the money came / went - one slim strip */}
+          <div className="grid shrink-0 gap-2 rounded-md border border-ink-200 bg-white px-3 py-2 text-[12px] sm:grid-cols-2 dark:border-ink-800 dark:bg-ink-900">
+            {[['RECEIVED', 'Received from customers', 'bg-emerald-600'], ['PAID', 'Paid to customers', 'bg-rose-600']].map(([dir, label, bar]) => (
+              <div key={dir} className="min-w-0">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-ink-500 uppercase"><span className={clsx('h-3 w-0.5 rounded-sm', bar)} />{label}</p>
+                <div className="mt-1 flex flex-wrap gap-1">{MODE.map((m) => (
+                  <span key={m} className={clsx('num rounded-sm px-1.5 py-0.5 text-[11px]', n(modeAmt(dir, m)) ? 'bg-ink-100 font-semibold text-navy-900 dark:bg-ink-800 dark:text-white' : 'bg-ink-50 text-ink-400 dark:bg-ink-800/40')}>{m.charAt(0) + m.slice(1).toLowerCase()} {amount(modeAmt(dir, m))}</span>
+                ))}</div>
+              </div>
             ))}
           </div>
         </div>
-        <div className="card space-y-3 p-4">
-          <p className="text-xs font-bold text-ink-600 uppercase">Cash tally</p>
+        <div className="flex flex-col gap-2 overflow-y-auto rounded-md border border-ink-200 bg-white p-3 text-[13px] xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+          <p className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Cash tally</p>
+          <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:border-b [&>div]:border-dashed [&>div]:border-ink-200 [&>div]:py-0.5 [&>div]:text-[13px] [&>div:last-child]:border-0 dark:[&>div]:border-ink-700">
           <Line label="Pote Baki (cash)" value={amount(t?.poteBaki ?? t?.cashInDrawer)} />
           <Line label="− Online / Card / Cheque received" value={amount(t?.onlineReceived)} tone="text-ink-500" />
           <Line label="+ Online / Card / Cheque paid" value={amount(t?.onlinePaid)} tone="text-ink-500" />
           <Line bold label="Cash should be in drawer" value={amount(t?.cashInDrawer)} />
-          <div className="flex items-center justify-between rounded-md bg-cream-100 px-3 py-2">
-            <div><p className="text-xs font-bold text-ink-600 uppercase">Counted cash {dayjs(q.to).format('DD/MM/YYYY')}</p><p className="text-lg font-bold">{t?.counted != null ? amount(t.counted) : 'Not counted'}</p></div>
-            <Button variant="outline" icon={Coins} onClick={() => setCount(true)}>Count Cash (F6)</Button>
           </div>
-          <div className={clsx('rounded-md p-3 text-center text-sm font-bold', t?.counted == null ? 'bg-rose-100 text-rose-700' : Math.abs(t.countDiff) < 0.01 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>
-            {t?.counted == null ? <>CASH NOT COUNTED<p className="text-xs font-normal">Press F6 and count the drawer.</p></> : Math.abs(t.countDiff) < 0.01 ? 'CASH TALLIED' : `${t.countDiff > 0 ? 'EXCESS' : 'SHORTAGE'} ${amount(Math.abs(t.countDiff))}`}
+          <div className="flex items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1.5 dark:border-sky-900 dark:bg-sky-950/30">
+            <div className="min-w-0"><p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">Counted cash</p><p className="num text-base font-bold">{t?.counted != null ? amount(t.counted) : 'Not counted'}</p></div>
+            <Button className="h-8 border-0 !bg-sky-600 text-[12px] !text-white hover:!bg-sky-700" icon={Coins} onClick={() => setCount(true)}>Count Cash (F6)</Button>
           </div>
-          <div className="flex items-center justify-between text-sm"><b className="text-xs text-ink-600 uppercase">Day End</b><span className={clsx('rounded px-2 py-0.5 text-xs font-bold', data?.dayClosed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>{data?.dayClosed ? 'Closed' : 'Not closed'}</span></div>
+          <div className={clsx('flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-[13px] font-bold', t?.counted == null ? 'border-rose-200 bg-rose-50 text-rose-700' : Math.abs(t.countDiff) < 0.01 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800')}>
+            {t?.counted == null ? <><X className="size-4" />CASH NOT COUNTED <span className="font-normal">· press F6</span></> : Math.abs(t.countDiff) < 0.01 ? <><Check className="size-4" />CASH TALLIED</> : `${t.countDiff > 0 ? 'EXCESS' : 'SHORTAGE'} ${amount(Math.abs(t.countDiff))}`}
+          </div>
+          <div className="flex items-center justify-between"><b className="text-[10px] tracking-wider text-ink-500 uppercase">Day End</b><span className={clsx('rounded px-2 py-0.5 text-xs font-bold', data?.dayClosed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>{data?.dayClosed ? 'Closed' : 'Not closed'}</span></div>
           {isEnd ? (
-            <div className="space-y-1.5 text-sm">
+            <div className="flex flex-1 flex-col gap-1.5">
               {[[rateOk, 'Gold / Silver rate entered'], [t?.counted != null, 'Cash counted (F6)', 'Cash not counted (F6)'], [t?.counted != null && Math.abs(t.countDiff) < 0.01, 'Cash tally', 'Cash not tally (Close Day will offer Day Report)']].map(([ok, yes, no]) => (
                 <p key={yes} className={clsx('flex items-center gap-2', ok ? 'text-emerald-700' : 'text-rose-600')}>{ok ? <Check className="size-4" /> : <X className="size-4" />}{ok ? yes : no || yes}</p>
               ))}
               <p className="text-ink-600">Account posting: {(data?.accounts || []).filter((a) => a.post && (n(a.jama) || n(a.nave))).length} rows will be written</p>
               <div className="flex items-center justify-between"><span>New billing date</span><b className="num">{dayjs(nextDay).format('DD/MM/YYYY')}</b></div>
               <Checkbox checked={printFirst} onChange={setPrintFirst} label="Print Day Report before closing" />
-              {can('day_close', 'add') && <Button variant="outline" size="lg" className="h-12 w-full border-emerald-600 bg-amber-50 text-emerald-800" icon={CalendarCheck} loading={closing} disabled={data?.dayClosed}
+              {can('day_close', 'add') && <Button variant="gold" className="mt-auto h-10 w-full" icon={CalendarCheck} loading={closing} disabled={data?.dayClosed}
                 onClick={closeDay}>{data?.dayClosed ? 'Day already closed' : `Close Day & Move to ${dayjs(nextDay).format('DD/MM/YYYY')} (F10)`}</Button>}
             </div>
           ) : (<>
-            <p className="rounded-md bg-cream-100 p-3 text-xs text-ink-700">Update entries and count the cash (F6) here. When everything is correct, press Go to Day End.</p>
-            <Button variant="outline" size="lg" className="h-12 w-full border-emerald-600 text-emerald-700" icon={CalendarCheck} onClick={() => navigate('/settings/day-end')}>Go to Day End (F10)</Button>
+            <p className="rounded-md bg-ink-50 px-2.5 py-1.5 text-[12px] text-ink-600 dark:bg-ink-800/50 dark:text-ink-300">Update entries and count the cash (F6) here. When everything is correct, press Go to Day End.</p>
+            <Button variant="gold" className="mt-auto h-10 w-full" icon={CalendarCheck} onClick={() => navigate('/settings/day-end')}>Go to Day End (F10)</Button>
           </>)}
-          <div className="grid grid-cols-2 gap-2"><Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button><ExitButton /></div>
+          <div className="grid grid-cols-2 gap-1.5 [&_button]:h-8 [&_button]:w-full [&_button]:text-[12px]"><Button variant="outline" icon={Printer} onClick={print}>Print (F9)</Button><ExitButton /></div>
         </div>
       </div>
       <ConfirmDrawer open={sure} onClose={() => setSure(false)} onConfirm={() => closeDay('ok')} tone="primary" loading={closing} confirmText="Yes, close the day"

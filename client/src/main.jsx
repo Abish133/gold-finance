@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/context/AuthContext';
 import { router } from '@/router';
 import '@/styles/index.css';
+import { applyAppearance } from '@/lib/appearance';
 
 const Devtools = import.meta.env.DEV ? lazy(() => import('@tanstack/react-query-devtools').then((m) => ({ default: m.ReactQueryDevtools }))) : () => null;
 
@@ -21,6 +22,7 @@ const queryClient = new QueryClient({
 });
 
 if (localStorage.getItem('gf.theme') === 'dark') document.documentElement.classList.add('dark');
+applyAppearance(); // accent colour, font, text size chosen on the Appearance screen
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

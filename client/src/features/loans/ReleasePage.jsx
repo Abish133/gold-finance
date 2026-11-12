@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, FileText, Printer } from 'lucide-react';
+import { Plus, FileText, Printer, ScanLine } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import { Button, Checkbox, Field, Input, Badge } from '@/components/ui';
@@ -63,10 +63,14 @@ export default function ReleasePage() {
         released_by_other: other.enabled ? other : null, payments, approval: ap,
       }));
       setPay(false);
-      toast.success(`Released · Release no ${r.data.loan.loan.release_no}`);
+      const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1);
+      toast.success(`Released · Release no ${r.data.loan.loan.release_no}`, {
+        duration: 8000,
+        action: last ? { label: 'Print receipt', onClick: () => printTxn(r.data.loan, last) } : undefined,
+        cancel: { label: 'Open loan', onClick: () => navigate(`/loans/counter?loan=${r.data.loan.loan.id}`) },
+      });
       ['/loans', '/dashboard', '/dashboard/status', '/loans/next-number'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
       refresh();
-      const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1);
       if (last && settings?.PRINT_AFTER_RELEASE !== '0') printTxn(r.data.loan, last);
       whatsappAfterSave(settings, 'RELEASE', r.data.loan, last);
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }
@@ -92,26 +96,27 @@ export default function ReleasePage() {
               cells={[['Loan date', l && date(l.loan_date)], ['Loan amount', l && money(l.principal)], [`Interest · ${l ? (l.interest_type === 'COMPOUND' ? 'Compound' : 'Flat') : ''}`, l && `${n(l.interest_rate)}% ${l.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}`],
                 ['Running', l && (() => { const m = dayjs(d).diff(dayjs(l.loan_date), 'month'); return `${m} m ${dayjs(d).diff(dayjs(l.loan_date).add(m, 'month'), 'day')} d`; })()]]} />
             <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">#</th><th className="px-3 py-2 text-left">Item</th><th className="px-3 py-2 text-left">Metal</th><th className="px-3 py-2 text-right">Pcs</th><th className="px-3 py-2 text-right">Gross</th><th className="px-3 py-2 text-right">Net wt</th><th className="px-3 py-2 text-right">Purity</th><th className="px-3 py-2 text-right">Value today</th></tr></thead>
-                <tbody className="divide-y divide-ink-200">
+              <table className="w-full text-[13px]">
+                <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="w-8 px-3 py-1.5 text-left font-semibold">#</th><th className="px-3 text-left font-semibold">Item</th><th className="px-3 text-left font-semibold">Metal</th><th className="px-3 text-right font-semibold">Pcs</th><th className="px-3 text-right font-semibold">Gross</th><th className="px-3 text-right font-semibold">Net wt</th><th className="px-3 text-right font-semibold">Purity</th><th className="px-3 text-right font-semibold">Value today</th></tr></thead>
+                <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                   {(full?.items || []).map((i, k) => (
                     <tr key={i.id}><td className="px-3 py-1.5">{k + 1}</td><td className="px-3 font-semibold uppercase">{i.item_name}</td><td className="px-3"><Chip tone="gold">{i.metal_code || l.loan_on}</Chip></td><td className="num px-3 text-right">{i.pcs}</td>
                       <td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity).toFixed(2)}</td><td className="num px-3 text-right">{amount(i.value)}</td></tr>
                   ))}
-                  {!full && <tr><td colSpan={8} className="py-16 text-center text-ink-400">Enter a loan number to load</td></tr>}
+                  {!full && <tr><td colSpan={8} className="py-10 text-center text-[13px] text-ink-400"><ScanLine className="mx-auto mb-1.5 size-5" />Enter or scan a loan number on the left to load it</td></tr>}
                 </tbody>
               </table>
             </div>
             <ItemsSummary items={full?.items} />
           </Panel>
-          <Panel title={`Payments already received${full ? ` · ${(full.transactions || []).filter((t) => !t.is_void && t.txn_type !== 'DISBURSE').length + (n(l?.advance_interest) ? 1 : 0)}` : ''}`} bodyClassName="p-0"><PaymentsGrid transactions={full?.transactions} loan={l} /></Panel>
+          <Panel title={`Payments already received${full ? ` · ${(full.transactions || []).filter((t) => !t.is_void && t.txn_type !== 'DISBURSE').length + (n(l?.advance_interest) ? 1 : 0)}` : ''}`} bodyClassName="flex min-h-36 flex-col p-2"><PaymentsGrid className="min-h-0 flex-1" transactions={full?.transactions} loan={l} /></Panel>
           {l && !open && <div className="rounded-md bg-cream-200 p-3 text-sm">This loan is <b>{l.status.toLowerCase()}</b>{l.close_date ? ` on ${date(l.close_date)}` : ''}{l.release_no ? ` · Release no ${l.release_no}` : ''}.</div>}
         </>}
         right={(
-          <Panel title={`Settlement${c ? ` · as on ${dayjs(d).format('DD/MM/YYYY')}` : ''}`}>
-            <div className="space-y-1">
+          <Panel title={`Settlement${c ? ` · as on ${dayjs(d).format('DD/MM/YYYY')}` : ''}`} bodyClassName="flex flex-col gap-2">
+            <div className="flex flex-1 flex-col gap-1.5">
               {settings?.ALLOW_BACKDATE_BILLING === '1' && <Field label="Release date"><Input type="date" max={today()} value={d} onChange={(e) => setD(e.target.value)} /></Field>}
+              <div className="flex min-h-40 flex-1 flex-col justify-evenly rounded-md border border-ink-200 bg-ink-50/50 px-2.5 py-1 dark:border-ink-800 dark:bg-ink-800/30 [&>div]:py-0.5 [&>div]:text-[13px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700">
               <Line label="Loan amount" value={c ? amount(round2(c.principalOutstanding + partPaid)) : '-'} />
               <Line label={`Interest${c ? ` · ${c.monthsDue} month${c.monthsDue > 1 ? 's' : ''}` : ''}`} value={c ? amount(c.totalInterest) : '-'} />
               {/* desktop: info only - day-wise interest at the System Control default rate (% p.m.) for the actual days */}
@@ -120,12 +125,16 @@ export default function ReleasePage() {
               <Line minus label="Advance interest" value={l ? amount(l.advance_interest) : '-'} />
               <Line minus label="Interest already paid" value={amount(paidInterest)} />
               <Line minus label="Part amount paid" value={amount(partPaid)} />
-              <div className="space-y-2 border-t border-ink-200 pt-2">
-                <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-sm"><span>Against ticket charge</span><Input type="number" value={v.ticket_charge} onChange={(e) => setV({ ...v, ticket_charge: e.target.value })} /></div>
-                <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-sm"><span>Post / other charge</span><Input type="number" value={v.post_charge} onChange={(e) => setV({ ...v, post_charge: e.target.value })} /></div>
-                <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-sm"><span>Discount {limit ? `(admin > ₹${limit})` : ''}</span><Input type="number" value={v.discount} onChange={(e) => setV({ ...v, discount: e.target.value })} /></div>
+              </div>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Against ticket charge</span><Input type="number" value={v.ticket_charge} onChange={(e) => setV({ ...v, ticket_charge: e.target.value })} /></div>
+                <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Post / other charge</span><Input type="number" value={v.post_charge} onChange={(e) => setV({ ...v, post_charge: e.target.value })} /></div>
+                <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Discount {limit ? `(admin > ₹${limit})` : ''}</span><Input type="number" value={v.discount} onChange={(e) => setV({ ...v, discount: e.target.value })} /></div>
               </div>
               <Checkbox className="pt-1" checked={v.unable} onChange={(x) => setV({ ...v, unable: x })} label="Customer unable to release (sign only)" />
+            </div>
+            {/* pinned to the bottom of the panel */}
+            <div className="mt-auto space-y-2 pt-1">
               <BigTotal label="Total to receive" value={total} />
               <GoldButton disabled={!open || saving} loading={saving && !pay} onClick={start}>Release Loan (F2)</GoldButton>
               {l?.bank_pledge_id && <Badge tone="violet">Jewels are in bank - release from bank first</Badge>}
@@ -133,7 +142,7 @@ export default function ReleasePage() {
           </Panel>
         )}
         footerLeft={<>
-          <Button variant="outline" icon={Plus} onClick={clear}>New / Clear (Ctrl+N)</Button>
+          <Button variant="soft-danger" icon={Plus} onClick={clear}>New / Clear (Ctrl+N)</Button>
           <Button variant="outline" icon={FileText} disabled={!l} onClick={() => setDetails(true)}>Loan Details (F7)</Button>
           {l && !open && full.transactions.filter((t) => t.txn_type === 'RELEASE' && !t.is_void).map((t) => <Button key={t.id} variant="outline" icon={Printer} onClick={() => printTxn(full, t)}>Reprint release</Button>)}
         </>}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Pencil, Trash2, Download } from 'lucide-react';
-import { Button, DataTable, Drawer, ConfirmDrawer, PageHeader, SearchInput } from '@/components/ui';
+import { Button, DataTable, Drawer, ConfirmDrawer, SearchInput } from '@/components/ui';
 import { FormFields } from '@/components/form/FormFields';
 import { useList, useSaveResource, useDeleteResource } from '@/hooks/useApi';
 import { useDebounce, useTableState } from '@/hooks/useUtils';
@@ -20,9 +20,10 @@ import { api } from '@/lib/api';
  */
 export function ResourcePage({
   title, subtitle, endpoint, screen, icon, columns, fields, defaults = {}, toPayload = (v) => v, fromRecord = (r) => r,
-  drawerSize = 'md', cols = 2, filters, extraParams, rowActions, headerActions, singular, canDelete = true, formExtra, onSaved,
+  drawerSize = 'md', cols = 2, filters, extraParams, rowActions, headerActions, singular, canDelete = true, formExtra, onSaved, top,
 }) {
   const { can } = useAuth();
+  const Icon = icon;
   const [state, set] = useTableState();
   const search = useDebounce(state.search);
   const params = { ...state, search, ...extraParams };
@@ -32,6 +33,11 @@ export function ResourcePage({
   const save = useSaveResource(endpoint, { onDone: (r) => { setEditing(null); onSaved?.(r); } });
   const del = useDeleteResource(endpoint, { onDone: () => setDeleting(null) });
   const form = useForm({ defaultValues: defaults });
+  const dirty = !!editing && form.formState.isDirty;
+  const [askDiscard, setAskDiscard] = useState(false);
+  useEffect(() => { setAskDiscard(false); }, [editing]);
+  // closing with unsaved changes asks once: the Cancel button turns into "Discard changes"
+  const closeEditor = () => { if (dirty && !askDiscard) { setAskDiscard(true); return; } setAskDiscard(false); setEditing(null); };
 
   useEffect(() => {
     if (editing) form.reset({ ...defaults, ...(editing.id ? fromRecord(editing) : {}) });
@@ -45,8 +51,8 @@ export function ResourcePage({
       render: (r) => (
         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           {rowActions?.(r)}
-          {can(screen, 'edit') && <Button size="icon" variant="ghost" onClick={() => setEditing(r)} aria-label="Edit"><Pencil className="size-4" /></Button>}
-          {canDelete && can(screen, 'delete') && <Button size="icon" variant="ghost" onClick={() => setDeleting(r)} aria-label="Delete"><Trash2 className="size-4 text-rose-500" /></Button>}
+          {can(screen, 'edit') && <Button size="icon" variant="ghost" className="size-7" title="Edit" onClick={() => setEditing(r)} aria-label="Edit"><Pencil className="size-3.5" /></Button>}
+          {canDelete && can(screen, 'delete') && <Button size="icon" variant="ghost" className="size-7 hover:!bg-rose-50" title="Delete" onClick={() => setDeleting(r)} aria-label="Delete"><Trash2 className="size-3.5 text-rose-500" /></Button>}
         </div>
       ),
     },
@@ -58,21 +64,26 @@ export function ResourcePage({
   };
 
   return (
-    <div className="animate-rise">
-      <PageHeader title={title} subtitle={subtitle} icon={icon} actions={(
-        <>
-          {headerActions}
-          {can(screen, 'export') && <Button variant="outline" icon={Download} onClick={doExport}>Export</Button>}
-          {can(screen, 'add') && <Button variant="gold" icon={Plus} onClick={() => setEditing({})}>Add {singular || title.replace(/s$/, '')}</Button>}
-        </>
-      )} />
+    /* fit-screen: the page fits the window; only the list scrolls */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        {icon && <Icon className="size-5 shrink-0 opacity-80" />}
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">{title}</h1>{subtitle && <p className="hidden truncate text-[12px] text-white/60 lg:block">{subtitle}</p>}</div>
+        {list.data?.meta && <div className="flex items-baseline gap-2 rounded-md border border-white/15 px-3 py-1"><span className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">Records</span><span className="num text-[13px] font-bold">{list.data.meta.total}</span></div>}
+      </section>
+      {top}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <SearchInput value={state.search} onChange={(v) => set({ search: v })} className="w-full sm:w-80" />
+      <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-ink-200 bg-white px-2 py-1.5 dark:border-ink-800 dark:bg-ink-900 [&_button]:h-8 [&_button]:text-[12px]">
+        <SearchInput value={state.search} onChange={(v) => set({ search: v })} className="w-full sm:w-72 [&_input]:!h-8 [&_input]:text-[13px]" placeholder={`Search ${title.toLowerCase()}…`} />
         {filters?.(state, set)}
+        <span className="flex-1" />
+        {headerActions}
+        {can(screen, 'export') && <Button variant="outline" icon={Download} onClick={doExport}>Export</Button>}
+        {can(screen, 'add') && <Button variant="gold" icon={Plus} onClick={() => setEditing({})}>Add {singular || title.replace(/s$/, '')}</Button>}
       </div>
 
       <DataTable
+        fill
         columns={allColumns}
         rows={list.data?.data}
         loading={list.isLoading}
@@ -83,23 +94,28 @@ export function ResourcePage({
         onPage={(page) => set({ page })}
         onPageSize={(pageSize) => set({ pageSize })}
         onRowClick={can(screen, 'edit') ? (r) => setEditing(r) : undefined}
+        highlight={state.search}
       />
 
       <Drawer
         open={!!editing}
-        onClose={() => setEditing(null)}
+        onClose={closeEditor}
         title={editing?.id ? `Edit ${singular || title.replace(/s$/, '')}` : `New ${singular || title.replace(/s$/, '')}`}
         icon={icon}
         size={drawerSize}
+        bodyClassName="!px-4 !py-3"
         footer={(
           <>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            {dirty && !askDiscard && <span className="mr-auto flex items-center gap-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300"><span className="size-1.5 animate-pulse rounded-full bg-amber-500" />Unsaved changes</span>}
+            {askDiscard && <span className="mr-auto text-[12px] font-semibold text-rose-700 dark:text-rose-300">Close without saving?</span>}
+            {askDiscard && <Button variant="outline" onClick={() => setAskDiscard(false)}>Keep editing</Button>}
+            <Button variant="soft-danger" onClick={closeEditor}>{askDiscard ? 'Discard changes' : 'Cancel (Esc)'}</Button>
             <Button variant="gold" loading={save.isPending} onClick={form.handleSubmit((v) => save.mutate({ id: editing?.id, ...toPayload(v) }))}>Save</Button>
           </>
         )}
       >
-        <form onSubmit={form.handleSubmit((v) => save.mutate({ id: editing?.id, ...toPayload(v) }))}>
-          <FormFields fields={fields} form={form} cols={cols} />
+        <form className="dense" onSubmit={form.handleSubmit((v) => save.mutate({ id: editing?.id, ...toPayload(v) }))}>
+          <FormFields fields={fields} form={form} cols={cols} dense />
           {formExtra?.(form, editing)}
           <button type="submit" className="hidden" />
         </form>

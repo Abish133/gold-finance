@@ -15,6 +15,7 @@ import { printElement } from '@/lib/print';
 import { printTable } from '@/lib/printTable';
 import { date, money } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { ImagePreview } from '@/components/common/ImagePreview';
 
 function IdCards({ list, company }) {
   return (
@@ -63,24 +64,26 @@ export default function EmployeesPage() {
       toast.success('Login created'); setLogin(null);
     } catch (e) { toast.error(e.message); }
   };
-  useKeys({ f7: () => navigate('/masters/designations'), f4: idCards, f8: () => navigate('/employees/salary'), f5: () => navigate('/employees/attendance'), f11: salarySheet, f12: summary }, [company]);
+  useKeys({ f7: () => navigate('/masters?tab=designations'), f4: idCards, f8: () => navigate('/masters?tab=salary'), f5: () => navigate('/masters?tab=attendance'), f11: salarySheet, f12: summary }, [company]);
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-4">
-        {[['Employees', tiles?.total, 'all', 'border-t-navy-800 bg-cream-100'], ['Working', tiles?.working, 'currently working', 'border-t-emerald-600'], ['Left', tiles?.left_count, 'left / inactive', 'border-t-rose-600'], ['With login', tiles?.with_login, 'employees who can log in', 'border-t-gold-500']].map(([l, v, h, c]) => (
-          <div key={l} className={clsx('card border-t-4 px-4 py-3', c)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-2xl font-bold text-navy-900">{v || 0}</p><p className="text-[11px] text-ink-500">{h}</p></div>
+    /* contents: the list screen inside fills the window by itself */
+    <div className="contents">
+      <ResourcePage top={(
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {[['Employees', tiles?.total, 'all', 'bg-navy-900 dark:bg-white'], ['Working', tiles?.working, 'currently working', 'bg-emerald-600'], ['Left', tiles?.left_count, 'left / inactive', 'bg-rose-600'], ['With login', tiles?.with_login, 'employees who can log in', 'bg-amber-500']].map(([l, v, h, c]) => (
+          <div key={l} className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800"><span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', c)} /><p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p><p className="flex items-baseline gap-2"><span className="num text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v || 0}</span><span className="truncate text-[10px] text-ink-500">{h}</span></p></div>
         ))}
       </div>
-      <ResourcePage
-        title="Employee Master" singular="Employee" endpoint="/employees" screen="employees" icon={UserCog} drawerSize="xl" cols={3}
+      )}
+        title="Employee Master" singular="Employee" endpoint="/employees" screen="employees" icon={UserCog} drawerSize="xl" cols={4}
         subtitle="Staff details, photo, salary and status" defaults={{ status: 'ACTIVE', title: 'Mr' }}
         filters={(s, set) => <Segmented value={s.status || ''} onChange={(v) => set({ status: v })} options={[{ value: '', label: 'All' }, { value: 'ACTIVE', label: 'Working' }, { value: 'LEFT', label: 'Left' }]} />}
         headerActions={<>
-          <Button variant="outline" icon={Briefcase} onClick={() => navigate('/masters/designations')}>Designations (F7)</Button>
+          <Button variant="outline" icon={Briefcase} onClick={() => navigate('/masters?tab=designations')}>Designations (F7)</Button>
           <Button variant="outline" icon={IdCard} onClick={idCards}>ID Card (F4)</Button>
-          <Button variant="outline" icon={BadgeIndianRupee} onClick={() => navigate('/employees/salary')}>Salary (F8)</Button>
-          <Button variant="outline" icon={CalendarCheck} onClick={() => navigate('/employees/attendance')}>Attendance (F5)</Button>
+          <Button variant="outline" icon={BadgeIndianRupee} onClick={() => navigate('/masters?tab=salary')}>Salary (F8)</Button>
+          <Button variant="outline" icon={CalendarCheck} onClick={() => navigate('/masters?tab=attendance')}>Attendance (F5)</Button>
           <Button variant="outline" icon={FileText} onClick={salarySheet}>Salary Sheet (F11)</Button>
           <Button variant="outline" icon={Users} onClick={summary}>Staff Summary (F12)</Button>
         </>}
@@ -101,7 +104,7 @@ export default function EmployeesPage() {
           { name: 'relation_name', label: 'Relation name' }, { name: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female', 'Other'] },
           { name: 'dob', label: 'Date of birth', type: 'date' }, { name: 'marital_status', label: 'Marital status', type: 'select', options: ['Single', 'Married'] },
           { name: 'phone', label: 'Mobile' }, { name: 'email', label: 'Email', type: 'email' },
-          { name: 'address', label: 'Address', type: 'textarea', span: 'full', rows: 2 },
+          { name: 'address', label: 'Address', type: 'textarea', span: 2, rows: 1 },
           { type: 'section', name: 's2', label: 'Job' },
           { name: 'designation_id', label: 'Designation', type: 'async-select', endpoint: '/masters/designations' },
           { name: 'department', label: 'Department' }, { name: 'doj', label: 'Date of joining', type: 'date' },
@@ -113,7 +116,7 @@ export default function EmployeesPage() {
           { name: 'status', label: 'Status', type: 'select', options: [{ value: 'ACTIVE', label: 'Working' }, { value: 'LEFT', label: 'Left' }], placeholder: undefined },
           { name: 'left_date', label: 'Left on', type: 'date', show: (v) => v.status === 'LEFT' },
           { name: 'left_reason', label: 'Reason for leaving', show: (v) => v.status === 'LEFT' },
-          { name: 'remarks', label: 'Remarks', type: 'textarea', span: 'full', rows: 2 },
+          { name: 'remarks', label: 'Remarks', type: 'textarea', span: 2, rows: 1 },
         ]}
       />
       <EmployeeFile emp={file} onClose={() => setFile(null)} company={company} canEdit={can('employees', 'edit')} />
@@ -143,15 +146,32 @@ function EmployeeFile({ emp, onClose, company, canEdit }) {
   ]} tables={[{ title: 'Salary history', rows: salary, columns: cols }]} />, { title: 'Employee details' });
   return (
     <Drawer open={!!emp} onClose={onClose} size="lg" icon={FolderOpen} title={emp ? `${emp.name} · ${emp.emp_code}` : ''} subtitle={emp?.designation}
-      footer={emp && <Button variant="outline" icon={Printer} onClick={print}>Print full details</Button>}>
+      bodyClassName="flex !px-3 !py-2.5 sm:!overflow-hidden"
+      footer={emp && <>
+        <p className="mr-auto text-[12px] text-ink-500">Total paid <b className="num text-navy-900 dark:text-white">{money(hist.data?.totalPaid || 0)}</b></p>
+        <Button variant="soft-danger" onClick={onClose}>Close (Esc)</Button>
+        <Button variant="outline" icon={Printer} onClick={print}>Print full details</Button>
+      </>}>
       {emp && (
-        <div className="space-y-3">
-          <Tabs value={tab} onChange={setTab} tabs={[{ value: 'salary', label: 'Salary history', count: salary.length }, { value: 'docs', label: 'Documents' }]} />
-          {tab === 'docs' ? <DocumentsPanel owner="employee" id={emp.id} canEdit={canEdit} /> : (
-            <>
-              <p className="text-sm">Total paid: <b>{money(hist.data?.totalPaid || 0)}</b></p>
-              <DataTable dense loading={hist.isLoading} rows={salary} columns={cols.map(([key, label, render]) => ({ key, label, render }))} />
-            </>
+        <div className="flex min-h-0 w-full flex-col gap-2">
+          {/* profile */}
+          <div className="flex shrink-0 items-stretch gap-2.5">
+            <ImagePreview src={emp.photo} title={emp.name} className="w-20 shrink-0 self-stretch rounded-md border border-ink-200 bg-ink-50 dark:border-ink-700 dark:bg-ink-800">
+              {emp.photo ? <img src={emp.photo} alt="" className="size-full object-cover" /> : <span className="grid size-full min-h-20 place-items-center text-lg font-bold text-ink-400">{(emp.name || '?').slice(0, 2).toUpperCase()}</span>}
+            </ImagePreview>
+            <div className="grid min-w-0 flex-1 grid-cols-2 overflow-hidden rounded-md border border-ink-200 text-[12px] sm:grid-cols-3 dark:border-ink-800">
+              {[['Mobile', emp.phone], ['Joined', emp.doj && date(emp.doj)], ['Salary / month', money(emp.salary)], ['Department', emp.department], ['Status', emp.status === 'ACTIVE' ? 'Working' : emp.status], ['Bank a/c', emp.bank_account]].map(([k, v]) => (
+                <div key={k} className="min-w-0 border-r border-b border-ink-100 px-2.5 py-1 dark:border-ink-800">
+                  <p className="text-[10px] font-semibold tracking-wider text-ink-400 uppercase">{k}</p>
+                  <p className={clsx('num truncate font-bold', k === 'Status' && emp.status !== 'ACTIVE' ? 'text-rose-600' : 'text-navy-900 dark:text-white')}>{v || '-'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Tabs value={tab} onChange={setTab} className="shrink-0" tabs={[{ value: 'salary', label: 'Salary history', count: salary.length }, { value: 'docs', label: 'Documents' }]} />
+          {tab === 'docs' ? <div className="min-h-0 flex-1 overflow-y-auto"><DocumentsPanel owner="employee" id={emp.id} canEdit={canEdit} /></div> : (
+            <DataTable fill loading={hist.isLoading} rows={salary} columns={cols.map(([key, label, render]) => ({ key, label, render, ...(key === 'net_pay' ? { className: 'font-bold' } : {}) }))}
+              empty={<p className="py-10 text-center text-[12px] text-ink-400">No salary paid yet</p>} />
           )}
         </div>
       )}

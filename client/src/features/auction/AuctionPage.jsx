@@ -14,6 +14,7 @@ import { exportCsv } from '@/lib/exporters';
 import { NoticeLetters } from '@/features/print/NoticeLetter';
 import { amount, date, n, today, weight } from '@/lib/format';
 import { useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'bill_no', label: 'Loan No' }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'age', label: 'Age' }, { key: 'customer_name', label: 'Customer' },
@@ -126,65 +127,75 @@ export default function AuctionPage() {
   useKeys({ f5: show, f6: () => notice('FIRST', 'POST'), f7: () => notice('FINAL', 'REGISTERED'), f9: auctionList, f10: () => postList('List of Certificate of Post', false), f11: () => postList('List of Registered Post', true),
     'ctrl+a': () => setSel(rows.map((r) => r.id)), 'ctrl+d': () => setSel([]), 'ctrl+w': whatsapp, 'ctrl+e': () => exportCsv('auction-list', cols, rows), f2: clear, escape: () => navigate('/') }, [f, rows, sel, auction, split]);
 
-  const seg = (k, opts) => <div className="flex gap-1">{opts.map(([v, l]) => <button key={String(v)} type="button" onClick={() => setF({ ...f, [k]: v, ...(k === 'older' ? { to: dayjs(bd || undefined).subtract(v, 'month').format('YYYY-MM-DD') } : {}) })} className={clsx('h-10 rounded-md border px-4 text-sm font-semibold', f[k] === v ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800 dark:bg-ink-900 dark:text-white')}>{l}</button>)}</div>;
-  const tile = (label, v, h, cls) => <div className={clsx('card border-t-4 px-4 py-3', cls)}><p className="text-xs font-bold text-ink-600 uppercase">{label}</p><p className="num text-2xl font-bold">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>;
+  const seg = (k, opts) => <div className="flex">{opts.map(([v, l]) => <button key={String(v)} type="button" onClick={() => setF({ ...f, [k]: v, ...(k === 'older' ? { to: dayjs(bd || undefined).subtract(v, 'month').format('YYYY-MM-DD') } : {}) })} className={clsx('-ml-px flex h-8 items-center gap-1.5 border px-2.5 text-[12px] font-semibold whitespace-nowrap first:ml-0 first:rounded-l-md last:rounded-r-md', f[k] === v ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300')}>{f[k] === v && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}{l}</button>)}</div>;
+  const tile = (label, v, h, bar) => (
+    <div className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800">
+      <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+      <p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{label}</p>
+      <p className="num truncate text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v}</p><p className="truncate text-[10px] text-ink-500">{h}</p>
+    </div>
+  );
   const pr = (label, fn, pdf) => (
-    <div className="flex gap-2"><Button variant="outline" size="lg" className="flex-1 justify-start" icon={pdf ? List : Printer} onClick={fn}>{label}</Button>
-      <Button variant="outline" size="lg" title="Print" onClick={fn}>{pdf ? <FileDown className="size-4 text-rose-600" /> : <Printer className="size-4" />}</Button></div>
+    <Button variant="outline" className="h-9 w-full justify-start text-[13px]" icon={pdf ? List : Printer} onClick={fn}>
+      <span className="flex-1 text-left">{label}</span>{pdf ? <FileDown className="size-4 text-rose-600" /> : <Printer className="size-4 text-ink-400" />}
+    </Button>
   );
 
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Auction List &amp; Notices</h1><p className="text-sm text-navy-100">Unreleased loans pledged between the selected dates - print notices, auction list and post lists</p></section>
-      <div className="card flex flex-wrap items-end gap-4 px-4 py-3">
-        <Field label="Pledged from"><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Field>
-        <Field label="To"><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
+    /* fit-screen: the page fits the window; the loan list and the side panel scroll on their own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Auction List &amp; Notices</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Unreleased loans pledged between the selected dates - print notices, auction list and post lists</p></div>
+      </section>
+      <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900">
+        <Field label="Pledged from"><Input type="date" className="!h-8 w-36 text-[13px]" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Field>
+        <Field label="To"><Input type="date" className="!h-8 w-36 text-[13px]" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
         <div><p className="label">Older than</p>{seg('older', [[6, '6 months'], [9, '9 months'], [12, '12 months']])}</div>
         <div><p className="label">Metal</p>{seg('metal', [['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']])}</div>
         <div><p className="label">Include</p>{seg('include', [['bank', 'In shop + Bank'], ['', 'In shop only']])}</div>
-        <Button className="ml-auto" size="lg" variant="outline" icon={Search} loading={busy} onClick={() => show()}>Show (F5)</Button>
+        <Button className="ml-auto h-8" icon={Search} loading={busy} onClick={() => show()}>Show (F5)</Button>
       </div>
-      <div className="grid items-start gap-3 xl:grid-cols-[1fr_380px]">
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-5">
-            {tile('Loans in list', rows.length, `${chosen.length} ticked for printing`, 'border-t-navy-800')}
-            {tile('Gold', `Rs ${amount(sum(by('GOLD'), 'loan_amount'))}`, `${by('GOLD').length} loans · ${weight(sum(by('GOLD'), 'net_wt'))} g`, 'border-t-amber-600')}
-            {tile('Silver', `Rs ${amount(sum(by('SILVER'), 'loan_amount'))}`, `${by('SILVER').length} loans · ${weight(sum(by('SILVER'), 'net_wt'))} g`, 'border-t-ink-400')}
-            {tile('Mix', `Rs ${amount(sum(by('MIX'), 'loan_amount'))}`, `${by('MIX').length} loans · ${weight(sum(by('MIX'), 'net_wt'))} g`, 'border-t-violet-600')}
-            <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Total loan amount</p><p className="num text-2xl font-bold">Rs {amount(sum(rows, 'loan_amount'))}</p><p className="text-[11px]">{multi ? `${multi} customer${multi > 1 ? 's have' : ' has'} more than 1 loan` : 'No customer has more than one loan'}</p></div>
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_320px]">
+        <div className="flex min-w-0 flex-col gap-2 xl:min-h-0">
+          <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-5 dark:border-ink-800 dark:bg-ink-900">
+            {tile('Loans in list', rows.length, `${chosen.length} ticked for printing`, 'bg-navy-800')}
+            {tile('Gold', `Rs ${amount(sum(by('GOLD'), 'loan_amount'))}`, `${by('GOLD').length} loans · ${weight(sum(by('GOLD'), 'net_wt'))} g`, 'bg-amber-600')}
+            {tile('Silver', `Rs ${amount(sum(by('SILVER'), 'loan_amount'))}`, `${by('SILVER').length} loans · ${weight(sum(by('SILVER'), 'net_wt'))} g`, 'bg-ink-400')}
+            {tile('Mix', `Rs ${amount(sum(by('MIX'), 'loan_amount'))}`, `${by('MIX').length} loans · ${weight(sum(by('MIX'), 'net_wt'))} g`, 'bg-violet-600')}
+            <div className="navy-gradient min-w-0 px-3 py-1.5 text-white"><p className="text-[10px] font-bold tracking-wider uppercase opacity-70">Total loan amount</p><p className="num truncate text-[15px] leading-tight font-bold">₹{amount(sum(rows, 'loan_amount'))}</p><p className="truncate text-[10px] opacity-70">{multi ? `${multi} customer${multi > 1 ? 's have' : ' has'} more than 1 loan` : 'No customer has more than one loan'}</p></div>
           </div>
-          <div className="card overflow-auto">
-            <table className="w-full min-w-[1000px] text-sm">
-              <thead className="navy-gradient text-white"><tr><th className="w-10 px-2 py-2"><input type="checkbox" checked={rows.length > 0 && sel.length === rows.length} onChange={(e) => setSel(e.target.checked ? rows.map((r) => r.id) : [])} /></th>
-                {cols.map((c) => <th key={c.key} className={clsx('px-2 py-2', ['money', 'weight'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
-              <tbody className="divide-y divide-ink-200 dark:divide-ink-700">
-                {!rows.length && <tr><td colSpan={11} className="py-20 text-center text-ink-400">{shown ? 'No unreleased loans in these dates' : 'Choose the dates and press Show (F5)'}</td></tr>}
+          <div className="min-h-64 flex-1 overflow-auto rounded-md border border-ink-200 bg-white xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+            <table className="w-full min-w-[1000px] text-[12px]">
+              <thead className="navy-gradient sticky top-0 z-10 text-[10px] tracking-wider text-white uppercase"><tr><th className="w-10 px-2 py-1.5"><input type="checkbox" checked={rows.length > 0 && sel.length === rows.length} onChange={(e) => setSel(e.target.checked ? rows.map((r) => r.id) : [])} /></th>
+                {cols.map((c) => <th key={c.key} className={clsx('px-2 py-1.5 font-semibold', ['money', 'weight'].includes(c.type) ? 'text-right' : 'text-left')}>{c.label}</th>)}</tr></thead>
+              <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
+                {!rows.length && <tr><td colSpan={11} className="py-12 text-center text-[12px] text-ink-400">{shown ? 'No unreleased loans in these dates' : 'Choose the dates and press Show (F5)'}</td></tr>}
                 {rows.map((r) => (
-                  <tr key={r.id} onClick={() => toggle(r.id)} className={clsx('cursor-pointer', sel.includes(r.id) && 'bg-navy-50/70 dark:bg-ink-800')}>
-                    <td className="px-2 py-1.5 text-center"><input type="checkbox" checked={sel.includes(r.id)} readOnly /></td>
+                  <tr key={r.id} onClick={() => toggle(r.id)} className={clsx('cursor-pointer', sel.includes(r.id) ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+                    <td className={clsx('border-l-2 px-2 py-1 text-center', sel.includes(r.id) ? 'border-emerald-600' : 'border-transparent')}><input type="checkbox" className="size-3.5 accent-emerald-600" checked={sel.includes(r.id)} readOnly /></td>
                     <td className="px-2 font-semibold">{r.bill_no}{r.bank_pledge_id ? <span className="ml-1 text-[10px] font-bold text-violet-700">BANK</span> : ''}</td><td className="px-2">{date(r.loan_date)}</td><td className="px-2">{r.age}</td>
                     <td className="px-2"><b>{r.customer_name}</b>{custCount[r.customer_id] > 1 && <span className="ml-1 rounded bg-rose-50 px-1 text-[9px] font-bold text-rose-700">{custCount[r.customer_id]} LOANS</span>}<span className="block text-[11px] text-ink-500">{r.relation_name ? `${r.relation_type || ''} ${r.relation_name} · ` : ''}{r.customer_phone}{r.notices ? ` · ${r.notices} notice(s), last ${date(r.last_notice)}` : ''}</span></td>
-                    <td className="px-2">{r.items_upper}</td><td className="px-2">{r.loan_on}</td><td className="num px-2 text-right">{weight(r.gross_wt)}</td><td className="num px-2 text-right">{weight(r.stone_wt)}</td>
+                    <td className="max-w-48 truncate px-2" title={r.items_upper}>{r.items_upper}</td><td className="px-2">{r.loan_on}</td><td className="num px-2 text-right">{weight(r.gross_wt)}</td><td className="num px-2 text-right">{weight(r.stone_wt)}</td>
                     <td className="num px-2 text-right">{weight(r.net_wt)}</td><td className="num px-2 text-right">{amount(r.loan_amount)}</td>
                   </tr>
                 ))}
               </tbody>
-              {rows.length > 0 && <tfoot className="navy-gradient text-xs font-bold text-white"><tr><td colSpan={4} /><td className="px-2 py-2">Total - {rows.length} loans</td><td colSpan={2} /><td className="num px-2 text-right">{weight(sum(rows, 'gross_wt'))}</td><td className="num px-2 text-right">{weight(sum(rows, 'stone_wt'))}</td><td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'loan_amount'))}</td></tr></tfoot>}
+              {rows.length > 0 && <tfoot className="sticky bottom-0 z-10 border-t-2 border-amber-400 bg-amber-50 text-[12px] font-bold text-amber-950 dark:border-amber-600 dark:bg-amber-950/60 dark:text-amber-100"><tr><td colSpan={4} /><td className="px-2 py-1.5">Total - {rows.length} loans</td><td colSpan={2} /><td className="num px-2 text-right">{weight(sum(rows, 'gross_wt'))}</td><td className="num px-2 text-right">{weight(sum(rows, 'stone_wt'))}</td><td className="num px-2 text-right">{weight(sum(rows, 'net_wt'))}</td><td className="num px-2 text-right">{amount(sum(rows, 'loan_amount'))}</td></tr></tfoot>}
             </table>
           </div>
         </div>
-        <div className="space-y-3">
-          <div className="card space-y-3 p-4">
-            <p className="text-sm font-bold text-amber-700 uppercase">Notices to customers</p>
+        <div className="flex flex-col gap-2 overflow-y-auto rounded-md border border-ink-200 bg-white p-3 xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Notices to customers</p>
             {pr('First Notice (F6)', () => notice('FIRST', 'POST'))}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               <Field label="Auction date"><Input type="date" value={auction.date} onChange={(e) => setAuction({ ...auction, date: e.target.value })} /></Field>
               <Field label="Time"><Input type="time" value={auction.time} onChange={(e) => setAuction({ ...auction, time: e.target.value })} /></Field>
             </div>
             {pr('Registered Notice (F7)', () => notice('FINAL', 'REGISTERED'))}
           </div>
-          <div className="card space-y-3 p-4">
-            <p className="text-sm font-bold text-amber-700 uppercase">Lists</p>
+          <div className="space-y-2 border-t border-ink-100 pt-2.5 dark:border-ink-800">
+            <p className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />Lists</p>
             {pr('Auction List (F9)', auctionList)}
             <Field label="Post split amount (Rs)" hint="Loans below this amount go in the Certificate of Post list, the rest in the Registered Post list"><Input type="number" value={split} onChange={(e) => setSplit(e.target.value)} /></Field>
             {pr('Cert. of Post List (F10)', () => postList('List of Certificate of Post', false), true)}
@@ -192,17 +203,16 @@ export default function AuctionPage() {
           </div>
         </div>
       </div>
-      <div className="card flex flex-wrap items-center gap-2 px-3 py-2">
+      <PageActions keys="F5 = show · Space or click = tick / untick loan · Ctrl+A = tick all · Ctrl+D = untick all · F9 = auction list · Ctrl+W = WhatsApp / SMS · Ctrl+E = Excel · F2 = clear · Esc = exit">
         <Button variant="outline" icon={CheckSquare} onClick={() => setSel(rows.map((r) => r.id))}>Select All (Ctrl+A)</Button>
         <Button variant="outline" icon={Eraser} onClick={() => setSel([])}>Clear All (Ctrl+D)</Button>
-        <p className="mx-2 text-sm text-ink-500">Only ticked loans are printed. Released loans are never shown.</p>
+        <p className="mx-1 hidden text-[11px] text-ink-500 lg:block">Only ticked loans are printed. Released loans are never shown.</p>
         <span className="flex-1" />
         <Button className="!bg-emerald-700 !text-white" icon={MessageCircle} onClick={whatsapp}>WhatsApp / SMS (Ctrl+W)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auction-list', cols, rows)}>Excel (Ctrl+E)</Button>
-        <Button variant="outline" icon={Eraser} onClick={clear}>Clear (F2)</Button>
-        <Button variant="outline" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
-      </div>
-      <p className="px-1 text-xs text-ink-500">F5 = show · Space or click = tick / untick loan · Ctrl+A = tick all · Ctrl+D = untick all · F9 = auction list · Ctrl+W = WhatsApp / SMS · Ctrl+E = Excel · F2 = clear · Esc = exit</p>
+        <Button variant="soft-danger" icon={Eraser} onClick={clear}>Clear (F2)</Button>
+        <Button variant="soft-danger" icon={LogOut} onClick={() => navigate('/')}>Exit (Esc)</Button>
+      </PageActions>
     </div>
   );
 }

@@ -15,11 +15,12 @@ import { printElement } from '@/lib/print';
 import { PhotoReport, FormD } from '@/features/print/LoanEstimate';
 import { amount, n, today } from '@/lib/format';
 import { ExitButton, useKeys } from './desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const fyStart = () => (dayjs(today()).month() >= 3 ? dayjs(today()).month(3).date(1) : dayjs(today()).subtract(1, 'year').month(3).date(1)).format('YYYY-MM-DD');
 const QUICK = { today: () => [today(), today()], month: () => [dayjs(today()).startOf('month').format('YYYY-MM-DD'), today()], year: () => [fyStart(), today()], all: () => ['', ''] };
-const TILES = [['', 'Total loans', 'border-t-navy-700 bg-cream-100'], ['PENDING', 'Pending', 'border-t-navy-500'], ['RELEASED', 'Released', 'border-t-rose-600'],
-  ['IN_BANK', 'In bank', 'border-t-violet-600'], ['AUCTIONED', 'Auctioned', 'border-t-emerald-700'], ['CANCELLED', 'Cancelled', 'border-t-fuchsia-600']];
+const TILES = [['', 'Total loans', 'bg-navy-900 dark:bg-white'], ['PENDING', 'Pending', 'bg-blue-600'], ['RELEASED', 'Released', 'bg-rose-600'],
+  ['IN_BANK', 'In bank', 'bg-violet-600'], ['AUCTIONED', 'Auctioned', 'bg-emerald-600'], ['CANCELLED', 'Cancelled', 'bg-fuchsia-600']];
 const STATUS_PARAM = { PENDING: { status: 'OPEN', bank: '0' }, RELEASED: { status: 'CLOSED,RENEWED' }, IN_BANK: { status: 'OPEN', bank: '1' }, AUCTIONED: { status: 'AUCTIONED' }, CANCELLED: { status: 'CANCELLED' } };
 
 const STATUS_TONE = { Pending: 'bg-navy-700 text-white', Released: 'bg-rose-700 text-white', 'In Bank': 'bg-violet-700 text-white', Auctioned: 'bg-amber-600 text-white', Cancelled: 'bg-ink-500 text-white' };
@@ -72,39 +73,44 @@ export default function PledgeBookPage() {
   const excel = async () => exportCsv('pledge-book', cols.filter((c) => c.key !== 'sno'), await all());
   useKeys({ f5: () => list.refetch(), 'ctrl+r': () => list.refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': excel, f3: () => document.querySelector('#pb-search input')?.focus(), escape: () => navigate('/') }, [params]);
 
-  const seg = (val, cur, set, label) => <button type="button" onClick={() => set(val)} className={clsx('h-9 rounded-md border px-3 text-sm font-semibold', cur === val ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800')}>{label}</button>;
+  const seg = (val, cur, set, label) => <button key={val} type="button" onClick={() => set(val)} className={clsx('-ml-px flex h-8 items-center gap-1.5 border px-2.5 text-[12px] font-semibold whitespace-nowrap first:ml-0 first:rounded-l-md last:rounded-r-md', cur === val ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300')}>{cur === val && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}{label}</button>;
 
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient flex items-center gap-4 rounded-md px-5 py-3 text-white">
-        <div className="flex-1"><h1 className="text-2xl font-bold">Pledge Book</h1><p className="text-sm text-navy-100">Complete register of loans - pending, released, in bank, auctioned and cancelled</p></div>
-        <div className="rounded-md bg-white px-5 py-1.5 text-center text-ink-900"><p className="text-xs font-bold">LOANS</p><p className="font-bold">{totalCnt}</p></div>
+    /* fit-screen: the page fits the window; only the register scrolls */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Pledge Book</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Complete register of loans - pending, released, in bank, auctioned and cancelled</p></div>
+        <div className="flex items-baseline gap-2 rounded-md border border-white/15 px-3 py-1"><span className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">Loans</span><span className="num text-[13px] font-bold">{totalCnt}</span></div>
       </section>
-      <div className="card flex flex-wrap items-end gap-4 px-4 py-3">
-        <div><p className="label">Date on</p><div className="flex gap-1">{seg('loan', dateOn, setDateOn, 'Loan Date')}{seg('release', dateOn, setDateOn, 'Release Date')}</div></div>
-        <Field label="Pledged from"><Input type="date" value={from} onChange={(e) => setRange([e.target.value, to])} /></Field>
-        <Field label="To"><Input type="date" value={to} onChange={(e) => setRange([from, e.target.value])} /></Field>
-        <div><p className="label">Quick</p><div className="flex gap-1">{[['today', 'Today'], ['month', 'This Month'], ['year', 'A/c Year'], ['all', 'All Years']].map(([k, l]) => <button key={k} type="button" onClick={() => setRange(QUICK[k]())} className="h-9 rounded-md border border-ink-300 bg-white px-3 text-sm font-semibold text-navy-800 hover:bg-navy-50">{l}</button>)}</div></div>
-        <div><p className="label">Metal</p><div className="flex gap-1">{[['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']].map(([k, l]) => <span key={k}>{seg(k, metal, setMetal, l)}</span>)}</div></div>
-        <div><p className="label">Loan amount · from - to</p><div className="flex gap-1"><Input type="number" className="w-28" value={amt.from} onChange={(e) => setAmt({ ...amt, from: e.target.value })} /><Input type="number" className="w-28" value={amt.to} onChange={(e) => setAmt({ ...amt, to: e.target.value })} /></div></div>
-        <Button className="ml-auto" icon={RefreshCw} onClick={() => list.refetch()}>Load (F5)</Button>
-        <div id="pb-search" className="w-full"><SearchInput value={search} onChange={setSearch} className="max-w-md" placeholder="Search (F3) · loan / customer / item" /></div>
+      <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900">
+        <div><p className="label">Date on</p><div className="flex">{seg('loan', dateOn, setDateOn, 'Loan Date')}{seg('release', dateOn, setDateOn, 'Release Date')}</div></div>
+        <Field label="From"><Input type="date" className="!h-8 w-36 text-[13px]" value={from} onChange={(e) => setRange([e.target.value, to])} /></Field>
+        <Field label="To"><Input type="date" className="!h-8 w-36 text-[13px]" value={to} onChange={(e) => setRange([from, e.target.value])} /></Field>
+        <div><p className="label">Quick</p><div className="flex">{[['today', 'Today'], ['month', 'This Month'], ['year', 'A/c Year'], ['all', 'All Years']].map(([k, l]) => <button key={k} type="button" onClick={() => setRange(QUICK[k]())} className="-ml-px h-8 border border-ink-200 bg-white px-2.5 text-[12px] font-semibold whitespace-nowrap text-ink-600 first:ml-0 first:rounded-l-md last:rounded-r-md hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300">{l}</button>)}</div></div>
+        <div><p className="label">Metal</p><div className="flex">{[['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']].map(([k, l]) => seg(k, metal, setMetal, l))}</div></div>
+        <div><p className="label">Amount from - to</p><div className="flex gap-1"><Input type="number" className="!h-8 w-24 text-[13px]" value={amt.from} onChange={(e) => setAmt({ ...amt, from: e.target.value })} /><Input type="number" className="!h-8 w-24 text-[13px]" value={amt.to} onChange={(e) => setAmt({ ...amt, to: e.target.value })} /></div></div>
+        <div id="pb-search" className="min-w-52 flex-1"><p className="label">Search (F3)</p><SearchInput value={search} onChange={setSearch} className="[&_input]:!h-8 [&_input]:text-[13px]" placeholder="Loan / customer / item" /></div>
+        <Button className="h-8" icon={RefreshCw} onClick={() => list.refetch()}>Load (F5)</Button>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        {TILES.map(([k, label, cls]) => {
+      <div className="grid shrink-0 grid-cols-3 overflow-hidden rounded-md border border-ink-200 bg-white xl:grid-cols-6 dark:border-ink-800 dark:bg-ink-900">
+        {TILES.map(([k, label, bar]) => {
           const t = k ? tiles[k] : { cnt: totalCnt, amount: totalAmt };
           return (
-            <button key={k} type="button" onClick={() => setTile(k)} className={clsx('card border-t-4 px-4 py-3 text-left transition hover:shadow-md', cls, tile === k && 'ring-2 ring-navy-500')}>
-              <p className="text-xs font-bold text-ink-700 uppercase">{label}</p><p className="num text-2xl font-bold text-navy-900">{t?.cnt || 0}</p><p className="num text-xs text-ink-500">Rs. {amount(t?.amount || 0)}</p>
+            <button key={k} type="button" onClick={() => setTile(k)} className={clsx('relative border-ink-200 px-3 py-1.5 pl-4 text-left transition not-last:border-r dark:border-ink-800', tile === k ? 'bg-emerald-50/70 dark:bg-emerald-950/30' : 'hover:bg-ink-50 dark:hover:bg-ink-800/50')}>
+              <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+              <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-ink-500 uppercase">{label}{tile === k && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}</p>
+              <p className="flex items-baseline gap-2"><span className="num text-lg leading-tight font-bold text-navy-900 dark:text-white">{t?.cnt || 0}</span><span className="num truncate text-[11px] text-ink-500">₹{amount(t?.amount || 0)}</span></p>
             </button>
           );
         })}
       </div>
-      <DataTable dense columns={cols} rows={rows} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
+      <DataTable fill columns={cols} rows={rows} loading={list.isLoading} fetching={list.isFetching} meta={list.data?.meta}
         sort={page.sort} order={page.order} onSort={(sort, order) => setPage({ ...page, sort, order })} onPage={(p) => setPage({ ...page, page: p })} onPageSize={(s) => setPage({ ...page, pageSize: s, page: 1 })}
         onRowClick={(r) => navigate(`/loans/counter?loan=${r.id}`)}
         totals={rows.length ? { gross_wt: rows.reduce((s, r) => s + n(r.gross_wt), 0), net_wt: rows.reduce((s, r) => s + n(r.net_wt), 0), loan_amount: rows.reduce((s, r) => s + n(r.loan_amount), 0), market_value: rows.reduce((s, r) => s + n(r.market_value), 0) } : undefined} />
-      <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
+      <PageActions keys="F5 = load · F3 = search · click = loan details · Ctrl+R = refresh · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit">
+        
+        <span className="flex-1 2xl:hidden" />
         <Button variant="outline" icon={RefreshCw} onClick={() => list.refetch()}>Refresh (Ctrl+R)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
@@ -112,8 +118,7 @@ export default function PledgeBookPage() {
         <Button variant="outline" icon={Image} onClick={photos}>Photo Report</Button>
         <Button variant="outline" icon={ScrollText} onClick={formD}>Form D (TN)</Button>
         <ExitButton />
-      </div>
-      <p className="px-1 text-xs text-ink-500">F5 = load · F3 = search · Enter / double-click = loan details · Ctrl+R = refresh · F9 = print preview · Ctrl+P = PDF · Ctrl+E = Excel · Esc = exit</p>
+      </PageActions>
     </div>
   );
 }

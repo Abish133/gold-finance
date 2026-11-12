@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { RefreshCw, Eye, FileDown, FileSpreadsheet } from 'lucide-react';
+import { RefreshCw, Eye, FileDown, FileSpreadsheet, Search } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { Button, DataTable, Field, Input, Select } from '@/components/ui';
@@ -9,6 +9,7 @@ import { exportCsv } from '@/lib/exporters';
 import { printTable } from '@/lib/printTable';
 import { amount, date, n, weight, today } from '@/lib/format';
 import { ExitButton, Line, useKeys } from '@/features/loans/desk';
+import { PageActions } from '@/components/common/PageActions';
 
 const cols = [
   { key: 'bill_no', label: 'Loan', render: (r) => <b>{r.bill_no}</b> }, { key: 'loan_date', label: 'Pledged', type: 'date' }, { key: 'auction_date', label: 'Auctioned', type: 'date' },
@@ -34,53 +35,68 @@ export default function AuctionReportPage() {
   const sum = (k) => rows.reduce((s, r) => s + n(r[k]), 0);
   const preview = () => printTable({ title: `Auction Report ${date(q.from)} - ${date(q.to)}`, company, columns: cols, rows, totals: { net_wt: sum('net_wt'), principal_due: sum('principal_due'), interest_due: sum('interest_due'), total_due: sum('total_due'), sale_amount: sum('sale_amount'), report_pl: sum('report_pl') } });
   useKeys({ f5: () => setQ(f), f6: () => refetch(), f9: preview, 'ctrl+p': preview, 'ctrl+e': () => exportCsv('auction-report', cols, rows), escape: () => navigate('/') }, [f, rows]);
+  const plTotal = sum('report_pl');
   return (
-    <div className="animate-rise space-y-3">
-      <section className="navy-gradient rounded-md px-5 py-3 text-white"><h1 className="text-2xl font-bold">Auction Report</h1><p className="text-sm text-navy-100">Auctioned loans with dues, sale amount and profit / loss</p></section>
-      <div className="card flex flex-wrap items-end gap-3 px-4 py-3">
-        <Field label="Auction date (A/c year)" className="w-44"><Select value={years.find((y) => String(y.start_date).slice(0, 10) === f.from)?.id || ''} onChange={(e) => { const y = years.find((x) => String(x.id) === e.target.value); if (y) { const nf = { ...f, from: String(y.start_date).slice(0, 10), to: String(y.end_date).slice(0, 10) }; setF(nf); setQ(nf); } }} options={[{ value: '', label: 'Custom dates' }, ...years.map((y) => ({ value: y.id, label: y.name }))]} /></Field>
-        <Field label="From"><Input type="date" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Field>
-        <Field label="To"><Input type="date" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
+    /* fit-screen: the page fits the window; the list and the loan panel scroll on their own */
+    <div className="desk fit-screen animate-rise flex flex-col gap-2 xl:min-h-0 xl:flex-1">
+      <section className="navy-gradient flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 rounded-md px-4 py-2 text-white">
+        <div className="flex min-w-0 flex-1 items-baseline gap-3"><h1 className="text-lg font-bold whitespace-nowrap">Auction Report</h1><p className="hidden truncate text-[12px] text-white/60 lg:block">Auctioned loans with dues, sale amount and profit / loss</p></div>
+        <div className="flex items-baseline gap-2 rounded-md border border-white/15 px-3 py-1"><span className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">Period</span><span className="num text-[13px] font-bold">{date(q.from)} – {date(q.to)}</span></div>
+      </section>
+      <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 rounded-md border border-ink-200 bg-white px-3 py-2 dark:border-ink-800 dark:bg-ink-900">
+        <Field label="A/c year" className="w-40"><Select className="!h-8 text-[13px]" value={years.find((y) => String(y.start_date).slice(0, 10) === f.from)?.id || ''} onChange={(e) => { const y = years.find((x) => String(x.id) === e.target.value); if (y) { const nf = { ...f, from: String(y.start_date).slice(0, 10), to: String(y.end_date).slice(0, 10) }; setF(nf); setQ(nf); } }} options={[{ value: '', label: 'Custom dates' }, ...years.map((y) => ({ value: y.id, label: y.name }))]} /></Field>
+        <Field label="From"><Input type="date" className="!h-8 w-36 text-[13px]" value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></Field>
+        <Field label="To"><Input type="date" className="!h-8 w-36 text-[13px]" value={f.to} onChange={(e) => setF({ ...f, to: e.target.value })} /></Field>
         {[['metal', 'Metal', [['', 'All'], ['GOLD', 'Gold'], ['SILVER', 'Silver'], ['MIX', 'Mix']]], ['sale', 'Sale', [['', 'All'], ['sold', 'Sold'], ['not', 'Not sold']]]].map(([k, l, opts]) => (
-          <div key={k}><p className="label">{l}</p><div className="flex gap-1">{opts.map(([v, t]) => <button key={v} type="button" onClick={() => { const nf = { ...f, [k]: v }; setF(nf); setQ(nf); }} className={clsx('h-9 rounded-md border px-3 text-sm font-semibold', f[k] === v ? 'border-navy-200 bg-navy-50 text-navy-900' : 'border-ink-300 bg-white text-navy-800')}>{t}</button>)}</div></div>
+          <div key={k}><p className="label">{l}</p><div className="flex">{opts.map(([v, t]) => (
+            <button key={v} type="button" onClick={() => { const nf = { ...f, [k]: v }; setF(nf); setQ(nf); }}
+              className={clsx('-ml-px flex h-8 items-center gap-1.5 border px-2.5 text-[12px] font-semibold whitespace-nowrap first:ml-0 first:rounded-l-md last:rounded-r-md', f[k] === v ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300')}>
+              {f[k] === v && <span className="relative flex size-1.5" aria-hidden><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" /><span className="relative inline-flex size-1.5 rounded-full bg-emerald-600" /></span>}{t}
+            </button>
+          ))}</div></div>
         ))}
-        <Field label="Search"><Input className="w-64" value={f.search} onChange={(e) => setF({ ...f, search: e.target.value })} /></Field>
-        <Button className="ml-auto" onClick={() => setQ(f)}>Show (F5)</Button>
+        <div className="min-w-48 flex-1"><p className="label">Search</p><Input prefix={<Search className="size-3.5" />} className="!h-8 text-[13px]" placeholder="Loan / customer / buyer" value={f.search} onChange={(e) => setF({ ...f, search: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && setQ(f)} /></div>
+        <Button className="h-8" icon={Search} onClick={() => setQ(f)}>Show (F5)</Button>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        <div className="navy-gradient rounded-md px-4 py-3 text-white"><p className="text-xs font-bold uppercase">Loans auctioned</p><p className="num text-2xl font-bold">{rows.length}</p><p className="text-[11px]">{rows.filter((r) => r.sold).length} sold · {rows.filter((r) => !r.sold).length} not sold</p></div>
-        {[['Gold', `${weight(rows.filter((r) => r.loan_on !== 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, `${rows.filter((r) => r.loan_on !== 'SILVER').length} loans`, 'border-t-gold-500'],
-          ['Silver', `${weight(rows.filter((r) => r.loan_on === 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, `${rows.filter((r) => r.loan_on === 'SILVER').length} loans`, 'border-t-ink-400'],
-          ['Total due', amount(sum('total_due')), `loan ${amount(sum('principal_due'))} + int. ${amount(sum('interest_due'))}`, 'border-t-rose-600'],
-          ['Sale amount', amount(sum('sale_amount')), `for ${rows.filter((r) => r.sold).length} loan sold`, 'border-t-navy-700'],
-          ['Profit / loss', `${sum('report_pl') >= 0 ? '+' : '-'}${amount(Math.abs(sum('report_pl')))}`, 'sold loans only', 'border-t-emerald-700']].map(([l, v, h, c]) => (
-          <div key={l} className={clsx('card border-t-4 px-4 py-3', c)}><p className="text-xs font-bold text-ink-600 uppercase">{l}</p><p className="num text-xl font-bold text-navy-900">{v}</p><p className="text-[11px] text-ink-500">{h}</p></div>
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-md border border-ink-200 bg-white sm:grid-cols-3 xl:grid-cols-6 dark:border-ink-800 dark:bg-ink-900">
+        <div className="navy-gradient min-w-0 px-3 py-1.5 text-white"><p className="text-[10px] font-bold tracking-wider uppercase opacity-70">Loans auctioned</p><p className="num text-[15px] leading-tight font-bold">{rows.length}</p><p className="truncate text-[10px] opacity-70">{rows.filter((r) => r.sold).length} sold · {rows.filter((r) => !r.sold).length} not sold</p></div>
+        {[['Gold', `${weight(rows.filter((r) => r.loan_on !== 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, `${rows.filter((r) => r.loan_on !== 'SILVER').length} loans`, 'bg-amber-500'],
+          ['Silver', `${weight(rows.filter((r) => r.loan_on === 'SILVER').reduce((t, r) => t + n(r.net_wt), 0))} g`, `${rows.filter((r) => r.loan_on === 'SILVER').length} loans`, 'bg-ink-400'],
+          ['Total due', amount(sum('total_due')), `loan ${amount(sum('principal_due'))} + int. ${amount(sum('interest_due'))}`, 'bg-rose-600'],
+          ['Sale amount', amount(sum('sale_amount')), `for ${rows.filter((r) => r.sold).length} loans sold`, 'bg-blue-600'],
+          ['Profit / loss', `${plTotal >= 0 ? '+' : '-'}${amount(Math.abs(plTotal))}`, 'sold loans only', plTotal < 0 ? 'bg-rose-600' : 'bg-emerald-600']].map(([l, v, h, bar]) => (
+          <div key={l} className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800">
+            <span aria-hidden className={clsx('absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm', bar)} />
+            <p className="truncate text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p>
+            <p className={clsx('num truncate text-[15px] leading-tight font-bold', l === 'Profit / loss' ? (plTotal < 0 ? 'text-rose-600' : 'text-emerald-700') : 'text-navy-900 dark:text-white')}>{v}</p>
+            <p className="truncate text-[10px] text-ink-500">{h}</p>
+          </div>
         ))}
       </div>
-      <div className="grid items-start gap-3 xl:grid-cols-[1fr_300px]">
-        <DataTable dense rows={rows} columns={cols} loading={isFetching && !all.length} onRowClick={setSel} rowClassName={(r) => (sel?.id === r.id ? 'bg-cream-200' : '')} />
-        <div className="card space-y-1 p-4 text-sm">
-          <p className="text-xs font-bold text-gold-700 uppercase">{sel ? `Loan ${sel.bill_no} - ${sel.customer_name}` : 'Select a loan'}</p>
-          <Line label="Pledged" value={sel ? date(sel.loan_date) : '-'} /><Line label="Auctioned" value={sel ? date(sel.auction_date) : '-'} />
-          <Line label="ROI / Months" value={sel ? `${n(sel.interest_rate)}% · ${sel.months} m` : '-'} />
-          <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Notices</p>
-          <Line label="First notice" value={sel?.first_notice ? date(sel.first_notice) : '-'} /><Line label="Registered notice" value={sel?.registered_notice ? date(sel.registered_notice) : '-'} />
-          <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Due at auction</p>
-          <Line label="Loan amount" value={sel ? amount(sel.principal_due) : '-'} /><Line label="Interest" value={sel ? amount(sel.interest_due) : '-'} /><Line label="Charges / notices" value={sel ? amount(sel.charges) : '-'} />
-          <Line bold label="Total due" value={sel ? amount(sel.total_due) : '-'} />
-          <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Sale</p>
-          <Line label="Sold to" value={sel?.buyer_name || '-'} /><Line label="Sale amount" value={sel ? amount(sel.sale_amount) : '-'} />
-          <Line bold label="Profit / loss" value={sel ? amount(sel.report_pl) : '-'} tone={sel && n(sel.report_pl) < 0 ? 'text-rose-600' : 'text-emerald-700'} />
-          <p className="pt-2 text-xs font-bold text-ink-600 uppercase">Entry</p><Line label="Marked by" value={sel?.marked_by || '-'} /><Line label="Sale approved by" value={sel?.approved_by || '-'} />
+      <div className="grid items-stretch gap-2 xl:min-h-0 xl:flex-1 xl:grid-cols-[1fr_290px]">
+        <DataTable fill rows={rows} columns={cols} loading={isFetching && !all.length} onRowClick={setSel} rowClassName={(r) => (sel?.id === r.id ? '!bg-emerald-50 dark:!bg-emerald-950/30' : '')} />
+        <div className="flex flex-col gap-2 overflow-y-auto rounded-md border border-ink-200 bg-white p-3 xl:min-h-0 dark:border-ink-800 dark:bg-ink-900">
+          <p className="flex items-center gap-2 truncate text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white"><span className="h-3.5 w-0.5 shrink-0 rounded-sm bg-navy-900 dark:bg-white" />{sel ? `Loan ${sel.bill_no} · ${sel.customer_name}` : 'Select a loan'}</p>
+          {!sel ? <p className="grid flex-1 place-items-center text-center text-[12px] text-ink-400">Click a loan in the list to see its notices, dues and sale.</p> : (<>
+            <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[12px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700"><Line label="Pledged" value={date(sel.loan_date)} /><Line label="Auctioned" value={date(sel.auction_date)} /><Line label="ROI / Months" value={`${n(sel.interest_rate)}% · ${sel.months} m`} /></div>
+            <p className="-mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Notices</p>
+            <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[12px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700"><Line label="First notice" value={sel.first_notice ? date(sel.first_notice) : '-'} /><Line label="Registered notice" value={sel.registered_notice ? date(sel.registered_notice) : '-'} /></div>
+            <p className="-mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Due at auction</p>
+            <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[12px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700"><Line label="Loan amount" value={amount(sel.principal_due)} /><Line label="Interest" value={amount(sel.interest_due)} /><Line label="Charges / notices" value={amount(sel.charges)} /><Line bold label="Total due" value={amount(sel.total_due)} /></div>
+            <p className="-mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Sale</p>
+            <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[12px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700"><Line label="Sold to" value={sel.buyer_name || '-'} /><Line label="Sale amount" value={amount(sel.sale_amount)} /></div>
+            <div className={clsx('flex items-baseline justify-between rounded-md px-3 py-2', n(sel.report_pl) < 0 ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/30' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30')}><span className="text-[10px] font-bold tracking-wider uppercase">Profit / loss</span><span className="num text-lg font-extrabold">{amount(sel.report_pl)}</span></div>
+            <p className="mt-auto text-[11px] text-ink-500">Marked by <b>{sel.marked_by || '-'}</b> · sale approved by <b>{sel.approved_by || '-'}</b></p>
+          </>)}
         </div>
       </div>
-      <div className="card flex flex-wrap justify-end gap-2 px-3 py-2">
+      <PageActions>
         <Button variant="outline" icon={RefreshCw} onClick={() => refetch()}>Refresh (F6)</Button>
         <Button variant="outline" icon={Eye} onClick={preview}>Print Preview (F9)</Button>
         <Button variant="outline" icon={FileDown} onClick={preview}>PDF (Ctrl+P)</Button>
         <Button variant="outline" icon={FileSpreadsheet} onClick={() => exportCsv('auction-report', cols, rows)}>Excel (Ctrl+E)</Button>
         <ExitButton />
-      </div>
+      </PageActions>
     </div>
   );
 }

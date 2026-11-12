@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Maximize2, Minimize2 } from 'lucide-react';
 import clsx from 'clsx';
 import { Button } from './Button';
 
@@ -18,8 +18,19 @@ let openCount = 0;
  * Slide-in drawer from the right. Used everywhere instead of popups / modals.
  * Drawers stack naturally (each new one renders above the previous).
  */
+/* full-screen choice is remembered per drawer title (e.g. "New Customer" always opens full) */
+const maxKey = (title) => `gf.drawerMax.${typeof title === 'string' ? title : ''}`;
+const readMax = (title) => { try { return localStorage.getItem(maxKey(title)) === '1'; } catch { return false; } };
+
 export function Drawer({ open, onClose, title, subtitle, icon: Icon, size = 'md', footer, children, bodyClassName, closeOnOverlay = true }) {
   const panel = useRef(null);
+  const canMax = size !== 'sm';
+  const [max, setMax] = useState(() => canMax && readMax(title));
+  useEffect(() => { if (open) setMax(canMax && readMax(title)); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleMax = () => setMax((m) => {
+    try { localStorage.setItem(maxKey(title), m ? '0' : '1'); } catch { /* private window */ }
+    return !m;
+  });
   // latest onClose without re-running the open effect (an inline onClose changes every render,
   // which used to re-focus the first box while typing in another one)
   const closeRef = useRef(onClose);
@@ -54,7 +65,7 @@ export function Drawer({ open, onClose, title, subtitle, icon: Icon, size = 'md'
         data-drawer
         role="dialog"
         aria-modal="true"
-        className={clsx('relative flex h-full w-full animate-slide-in flex-col bg-white shadow-drawer dark:bg-ink-900', SIZES[size] || size)}
+        className={clsx('relative flex h-full w-full animate-slide-in flex-col bg-white shadow-drawer transition-[max-width] duration-200 dark:bg-ink-900', max ? 'max-w-full' : SIZES[size] || size)}
       >
         <header className="navy-gradient flex items-center gap-3 border-b-[3px] border-gold-500 px-5 py-3 text-white">
           {Icon && (
@@ -66,6 +77,12 @@ export function Drawer({ open, onClose, title, subtitle, icon: Icon, size = 'md'
             <h2 className="truncate text-base font-bold">{title}</h2>
             {subtitle && <p className="truncate text-xs text-navy-100">{subtitle}</p>}
           </div>
+          {canMax && (
+            <button type="button" onClick={toggleMax} aria-label={max ? 'Back to normal size' : 'Full screen'} title={max ? 'Back to normal size' : 'Full screen'}
+              className="grid size-8 place-items-center rounded-md text-white/80 hover:bg-white/15 hover:text-white">
+              {max ? <Minimize2 className="size-4.5" /> : <Maximize2 className="size-4.5" />}
+            </button>
+          )}
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-md text-white/80 hover:bg-white/15 hover:text-white"><X className="size-5" /></button>
         </header>
         <div className={clsx('flex-1 overflow-y-auto px-6 py-5', bodyClassName)}>{children}</div>
@@ -86,13 +103,19 @@ export function ConfirmDrawer({ open, onClose, onConfirm, title = 'Are you sure?
       size="sm"
       footer={(
         <>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="soft-danger" onClick={onClose}>Cancel</Button>
           <Button variant={tone === 'danger' ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>{confirmText}</Button>
         </>
       )}
     >
-      {message && <p className="text-sm leading-relaxed text-ink-600 dark:text-ink-300">{message}</p>}
-      {children}
+      <div className={clsx('mb-3 flex items-start gap-2.5 rounded-md border px-3 py-2.5', tone === 'danger' ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200')}>
+        <span aria-hidden className={clsx('mt-px grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white', tone === 'danger' ? 'bg-rose-600' : 'bg-amber-500')}>!</span>
+        <div className="min-w-0 text-[13px] leading-relaxed">
+          <p className="font-bold">{tone === 'danger' ? 'Please check before you confirm' : 'Please confirm'}</p>
+          {message && <p className="mt-0.5 opacity-90">{message}</p>}
+        </div>
+      </div>
+      {children && <div className="rounded-md border border-ink-200 p-3 text-[13px] dark:border-ink-700 [&_b]:text-navy-900 dark:[&_b]:text-white">{children}</div>}
     </Drawer>
   );
 }

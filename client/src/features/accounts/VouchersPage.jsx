@@ -25,7 +25,7 @@ export function VoucherDrawer({ open, onClose }) {
   const setLine = (i, p) => setF({ ...f, lines: f.lines.map((l, x) => (x === i ? { ...l, ...p } : l)) });
   return (
     <Drawer open={open} onClose={onClose} icon={Receipt} title="New voucher" size="lg"
-      footer={<><Button variant="outline" onClick={onClose}>Cancel</Button><Button variant="gold" loading={save.isPending} disabled={journal && (dr !== cr || !dr)} onClick={() => save.mutate()}>Save voucher</Button></>}>
+      footer={<><Button variant="soft-danger" onClick={onClose}>Cancel</Button><Button variant="gold" loading={save.isPending} disabled={journal && (dr !== cr || !dr)} onClick={() => save.mutate()}>Save voucher</Button></>}>
       <div className="space-y-4">
         <Segmented value={f.voucher_type} onChange={(v) => setF({ ...f, voucher_type: v })} options={[{ value: 'PAYMENT', label: 'Payment' }, { value: 'RECEIPT', label: 'Receipt' }, { value: 'JOURNAL', label: 'Journal' }, { value: 'CONTRA', label: 'Contra' }]} />
         <Field label="Date"><Input type="date" value={f.date} max={today()} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
