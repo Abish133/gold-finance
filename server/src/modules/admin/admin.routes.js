@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import dayjs from 'dayjs';
 import bcrypt from 'bcryptjs';
 import { query, queryOne, withTransaction } from '#config/db.js';
 import { permit, invalidateUserCache } from '#middleware/auth.js';
@@ -164,6 +165,52 @@ router.delete('/users/:id', permit('s_users', 'delete'), async (req, res) => {
   invalidateUserCache(target.id);
   audit(req, 'DISABLE', 'users', target.id);
   res.json({ ok: true });
+});
+
+/* ---------------- System health: read-only checks for the owner / admin ---------------- */
+router.get('/health', permit('s_system', 'view'), async (req, res) => {
+  const t = dayjs().format('YYYY-MM-DD');
+  const b = req.branchId || 0;
+  const st = await getSettings(b);
+  const [tables, msgs, rateToday, cashToday, lastClose, todayLoans, unprinted, activity] = await Promise.all([
+    query('SELECT table_name name, table_rows row_count, (data_length + index_length) size FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY size DESC'),
+    query("SELECT status, COUNT(*) c FROM message_queue WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY status"),
+    queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = :t', { t }),
+    b ? queryOne('SELECT total, difference FROM cash_denominations WHERE branch_id = :b AND count_date = :t', { b, t }) : null,
+    b ? queryOne('SELECT MAX(close_date) d FROM day_closes WHERE branch_id = :b', { b }) : null,
+    b ? queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id = :b AND loan_date = :t AND status <> 'CANCELLED'", { b, t }) : null,
+    b ? queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id = :b AND loan_date = :t AND status <> 'CANCELLED' AND sticker_printed_at IS NULL", { b, t }) : null,
+    query(`SELECT a.user_id, u.full_name, u.username, COUNT(*) actions, MAX(a.created_at) last_at,
+              SUM(a.action = 'LOGIN') logins, SUM(a.action IN ('DELETE','VOID','CANCEL') OR a.action LIKE '%VOID%') removals,
+              SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT a.entity ORDER BY a.entity SEPARATOR ', '), ', ', 6) areas
+             FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
+            WHERE a.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY a.user_id ORDER BY actions DESC LIMIT 20`),
+  ]);
+  // exact row counts (the table statistics above are estimates and can show 0)
+  const exact = {};
+  for (const tb of tables.slice(0, 12)) { const name = String(tb.name).replace(/[^a-z0-9_]/gi, ''); try { exact[tb.name] = (await queryOne('SELECT COUNT(*) c FROM ' + name)).c; } catch { /* skip */ } }
+  const backups = listBackupFiles();
+  const total = tables.reduce((x, r) => x + Number(r.size || 0), 0);
+  const mem = process.memoryUsage();
+  const failed = Number(msgs.find((m) => m.status === 'FAILED')?.c || 0);
+  const pending = Number(msgs.find((m) => m.status === 'PENDING')?.c || 0);
+  const backupAge = backups[0] ? dayjs().diff(dayjs(backups[0].created_at), 'hour') : null;
+  // Day End checklist for the selected branch (what is still open today)
+  const checklist = b ? [
+    { key: 'rate', ok: rateToday.c > 0, text: "Today's gold / silver rate entered", link: '/masters?tab=rates' },
+    { key: 'cash', ok: !!cashToday, text: cashToday ? `Cash counted (difference Rs. ${Number(cashToday.difference || 0).toFixed(2)})` : 'Cash count done today', link: '/accounts/denomination' },
+    { key: 'stickers', ok: !unprinted?.c, text: unprinted?.c ? `${unprinted.c} of ${todayLoans.c} new loans have no packet sticker printed` : 'Packet stickers printed for new loans', link: '/loans/stickers' },
+    { key: 'sms', ok: !failed, text: failed ? `${failed} SMS / WhatsApp failed this week` : 'No failed SMS / WhatsApp this week', link: '/settings/messages' },
+    { key: 'backup', ok: backupAge != null && backupAge < 24, text: backupAge == null ? 'No backup taken yet' : backupAge < 24 ? 'Backup taken in the last 24 hours' : `Last backup ${Math.round(backupAge / 24)} day(s) ago`, link: '/settings/backup' },
+    { key: 'dayend', ok: !!lastClose?.d && dayjs(t).diff(dayjs(lastClose.d), 'day') <= 1, text: lastClose?.d ? `Last Day End ${dayjs(lastClose.d).format('DD/MM/YYYY')}` : 'No Day End done yet', link: '/accounts/day-report' },
+  ] : [];
+  res.json({ data: {
+    server: { uptimeSec: Math.round(process.uptime()), node: process.version, memoryMb: Math.round(mem.rss / 1048576), time: new Date().toISOString(), mode: process.env.NODE_ENV || 'development' },
+    database: { totalMb: Math.round((total / 1048576) * 100) / 100, tables: tables.slice(0, 12).map((r) => ({ name: r.name, rows: Number(exact[r.name] ?? r.row_count ?? 0), kb: Math.round(Number(r.size || 0) / 1024) })) },
+    backups: { count: backups.length, latest: backups.slice(0, 3), ageHours: backupAge },
+    messages: { enabled: st.SMS_ENABLED === '1', provider: !!st.SMS_PROVIDER_URL, byStatus: msgs, failed, pending },
+    checklist, activity,
+  } });
 });
 
 /* ---------------- settings ---------------- */

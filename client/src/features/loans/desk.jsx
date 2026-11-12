@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ScanLine, LogOut, Plus, Search, ChevronDown, Hash, Scale, MinusCircle, Weight, MessageSquare, Gem, Coins, IndianRupee, Tag, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet } from 'lucide-react';
+import { ScanLine, LogOut, Plus, Search, ChevronDown, Hash, Scale, MinusCircle, Weight, MessageSquare, Gem, Coins, IndianRupee, Tag, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet, LayoutTemplate } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, Badge, Button, Drawer, Field, Input, Select, Spinner, StatusBadge, DataTable, Modal } from '@/components/ui';
 import { compressImage } from '@/components/ui/ImageCapture';
@@ -548,11 +548,40 @@ function ItemPicker({ items, value, onPick, onNew, inputRef, onDone }) {
   );
 }
 
-export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
+export function ItemEntry({ loanOn, rates, lookups, onAdd, editing, currentItems }) {
   const [it, setIt] = useState(blankItem(loanOn === 'SILVER' ? 'SILVER' : 'GOLD'));
   const [newName, setNewName] = useState(null);
   const first = useRef(null);
   const pcsRef = useRef(null);
+  const grossRef = useRef(null);
+  /* quick item templates: the rest of the chosen template waits here; each Add fills the next item */
+  const tpl = useFetch('/masters/item-templates', undefined, { staleTime: 60_000 });
+  const [queue, setQueue] = useState([]);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [tplName, setTplName] = useState(null);
+  const tplBox = useRef(null);
+  useEffect(() => {
+    if (!tplOpen) return undefined;
+    const close = (e) => { if (!tplBox.current?.contains(e.target)) setTplOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [tplOpen]);
+  const fromTpl = (t) => {
+    const metal = loanOn === 'MIX' ? (t.metal || 'GOLD') : loanOn === 'SILVER' ? 'SILVER' : 'GOLD';
+    return { ...blankItem(metal), item_name: t.item_name, item_id: t.item_id || null, pcs: t.pcs || 1, purity: t.purity || (metal === 'SILVER' ? 92.5 : 91.6), remarks: t.remarks || '' };
+  };
+  const applyTemplate = (t) => {
+    const [head, ...rest] = t.items;
+    setIt(fromTpl(head)); setQueue(rest); setTplOpen(false);
+    setTimeout(() => grossRef.current?.focus(), 30);
+    toast.message(`Template "${t.name}": weigh each item and press Enter - the next one fills in by itself`);
+  };
+  const saveTemplate = async () => {
+    const name = String(tplName || '').trim();
+    if (!name) return toast.error('Enter a name');
+    try { await api.post('/masters/item-templates', { name, items: (currentItems || []).map((x) => ({ item_id: x.item_id, item_name: x.item_name, pcs: x.pcs, metal: x.metal, purity: x.purity, remarks: x.remarks })) }); toast.success(`Template "${name}" saved`); setTplName(null); tpl.refetch?.(); } catch (e) { toast.error(e.message); }
+  };
+  const dropTemplate = async (t) => { try { await api.del(`/masters/item-templates/${t.id}`); toast.success('Template removed'); tpl.refetch?.(); } catch (e) { toast.error(e.message); } };
   useEffect(() => { if (editing) setIt(editing); }, [editing]);
   useEffect(() => { setIt((x) => ({ ...x, metal: loanOn === 'MIX' ? x.metal : loanOn, purity: loanOn === 'SILVER' && x.metal !== 'SILVER' ? 92.5 : x.purity })); }, [loanOn]);
   const c = computeItem(it, rates);
@@ -564,6 +593,12 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
     if (!(n(it.gross_wt) > 0)) return toast.error('Enter gross weight');
     if (n(it.stone_wt) >= n(it.gross_wt)) return toast.error('Less weight must be below gross weight');
     onAdd(c);
+    if (queue.length) {
+      const [head, ...rest] = queue;
+      setIt(fromTpl(head)); setQueue(rest);
+      setTimeout(() => grossRef.current?.focus(), 30);
+      return;
+    }
     setIt(blankItem(loanOn === 'SILVER' ? 'SILVER' : loanOn === 'MIX' ? it.metal : 'GOLD'));
     first.current?.focus();
   };
@@ -572,8 +607,44 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
     try { const r = await api.post('/masters/items/quick', { name: newName }); lookups.items.push(r.data); setIt({ ...it, item_name: r.data.name, item_id: r.data.id }); setNewName(null); setTimeout(() => pcsRef.current?.focus(), 50); } catch (e) { toast.error(e.message); }
   };
   useKeys({ f3: () => setNewName('') }, []);
+  const tplList = tpl.data || [];
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div ref={tplBox} className="relative">
+          <button type="button" onClick={() => setTplOpen((o) => !o)} className="flex h-7 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-2.5 text-[12px] font-semibold text-navy-800 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200">
+            <LayoutTemplate className="size-3.5" />Templates{tplList.length ? <span className="num rounded-sm bg-ink-100 px-1 text-[10px] dark:bg-ink-800">{tplList.length}</span> : null}<ChevronDown className="size-3 opacity-60" />
+          </button>
+          {tplOpen && (
+            <div className="absolute top-full left-0 z-30 mt-1 w-80 animate-drop overflow-hidden rounded-md border border-ink-200 bg-white text-[12px] dark:border-ink-700 dark:bg-ink-900">
+              <p className="border-b border-ink-100 px-3 py-1.5 text-[10px] font-bold tracking-wider text-ink-500 uppercase dark:border-ink-800">Item templates - names, pcs, purity (weights are weighed each time)</p>
+              <div className="max-h-64 overflow-y-auto py-1">
+                {tplList.map((t) => (
+                  <div key={t.id} className="group flex items-center gap-1 px-1">
+                    <button type="button" onClick={() => applyTemplate(t)} className="min-w-0 flex-1 rounded-md px-2 py-1.5 text-left hover:bg-ink-50 dark:hover:bg-ink-800">
+                      <span className="block truncate font-semibold text-navy-900 dark:text-white">{t.name}</span>
+                      <span className="block truncate text-[11px] text-ink-500">{t.items.map((x) => (x.pcs > 1 ? `${x.item_name} x${x.pcs}` : x.item_name)).join(', ')}</span>
+                    </button>
+                    <button type="button" title="Remove template" aria-label="Remove template" onClick={() => dropTemplate(t)} className="grid size-6 shrink-0 place-items-center rounded-md text-ink-400 opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"><X className="size-3.5" /></button>
+                  </div>
+                ))}
+                {!tplList.length && <p className="px-3 py-3 text-ink-400">No templates yet. Add items to a loan, then save them as a template.</p>}
+              </div>
+              {currentItems?.length > 0 && (
+                <button type="button" onClick={() => { setTplOpen(false); setTplName(''); }} className="flex w-full items-center gap-1.5 border-t border-ink-100 px-3 py-2 text-left font-semibold text-navy-800 hover:bg-ink-50 dark:border-ink-800 dark:text-ink-200 dark:hover:bg-ink-800">
+                  <Plus className="size-3.5" />Save these {currentItems.length} item{currentItems.length === 1 ? '' : 's'} as a template
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {queue.length > 0 && (
+          <span className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+            Next: <b className="truncate">{queue.map((x) => x.item_name).join(', ')}</b>
+            <button type="button" onClick={() => setQueue([])} className="font-semibold underline">Stop</button>
+          </span>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_70px_1fr_1fr_1fr]">
         <div>
           <span className="label">Item <span className="normal-case text-ink-400">· type to search · F3 / + new</span></span>
@@ -582,7 +653,7 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
             onNew={(name) => setNewName(name)} />
         </div>
         <Field label="Pcs"><Input ref={pcsRef} prefix={<Hash className="size-3.5" />} type="number" min="1" value={it.pcs} onChange={(e) => setIt({ ...it, pcs: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Gross wt (g)"><Input prefix={<Scale className="size-3.5" />} type="number" step="0.001" value={it.gross_wt} onChange={(e) => setIt({ ...it, gross_wt: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Gross wt (g)"><Input ref={grossRef} prefix={<Scale className="size-3.5" />} type="number" step="0.001" value={it.gross_wt} onChange={(e) => setIt({ ...it, gross_wt: e.target.value })} onKeyDown={enter} /></Field>
         <Field label="Less wt"><Input prefix={<MinusCircle className="size-3.5" />} type="number" step="0.001" value={it.stone_wt} onChange={(e) => setIt({ ...it, stone_wt: e.target.value })} onKeyDown={enter} /></Field>
         <Field label="Net wt (auto)"><Input prefix={<Weight className="size-3.5" />} readOnly value={c.net_wt ? weight(c.net_wt) : ''} className="bg-ink-50" /></Field>
       </div>
@@ -600,6 +671,10 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing }) {
         <Field label="Value"><Input prefix={<IndianRupee className="size-3.5" />} readOnly value={c.value ? amount(c.value) : ''} className="bg-ink-50" /></Field>
         <Button onClick={add} className="h-10">{editing ? 'Update item' : 'Add item'}</Button>
       </div>
+      <Modal open={tplName !== null} onClose={() => setTplName(null)} size="sm" icon={LayoutTemplate} title="Save as item template" subtitle={`${currentItems?.length || 0} items - names, pcs and purity (no weights)`}
+        footer={<Button variant="gold" onClick={saveTemplate}>Save template</Button>}>
+        <Field label="Template name"><Input autoFocus value={tplName || ''} placeholder="e.g. Chain + 2 rings" onChange={(e) => setTplName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveTemplate()} /></Field>
+      </Modal>
       <Modal open={newName !== null} onClose={() => setNewName(null)} size="sm" title="New item name" footer={<Button variant="gold" onClick={saveNew}>Save item</Button>}>
         <Field label="Item name"><Input prefix={<Tag className="size-3.5" />} autoFocus value={newName || ''} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveNew()} /></Field>
       </Modal>

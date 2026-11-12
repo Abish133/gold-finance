@@ -1,5 +1,5 @@
 import {
-  ChartNoAxesCombined, LayoutDashboard, Users, UserX, Merge, FilePlus2, History, BookOpen, HandCoins, Wallet, ArrowUpCircle, RefreshCcw, Unlock, Printer, Tag,
+  Activity, ChartNoAxesCombined, LayoutDashboard, Users, UserX, Merge, FilePlus2, History, BookOpen, HandCoins, Wallet, ArrowUpCircle, RefreshCcw, Unlock, Printer, Tag,
   Calculator, Landmark, Building2, Gavel, Boxes, ScanLine, BookText, Receipt, NotebookPen, Scale, Coins, Lock, BarChart3, UserCog, CalendarCheck,
   BadgeIndianRupee, Gem, TrendingUp, Layers, ListChecks, Briefcase, Building, Shield, KeyRound, Settings2, MessageSquare, ScrollText,
   DatabaseBackup, CalendarRange, UserPlus, Pencil, Trash, Files, Banknote, FileBarChart, Wrench, LifeBuoy, Keyboard, Info, CircleDollarSign, BookCheck, Lightbulb, Palette, Rocket,
@@ -140,6 +140,7 @@ export const MENUS = [
       { section: 'More' },
       { label: 'Branches', path: '/settings/branches', icon: Building2, screen: 's_branches' },
       { label: 'Appearance', hint: 'Colour, font, text size', path: '/settings/appearance', icon: Palette, screen: 's_company' },
+      { label: 'System Health', hint: 'Checklist, backups, messages, activity', path: '/settings/health', icon: Activity, screen: 's_system' },
       { label: 'Audit Trail', path: '/settings/audit', icon: ScrollText, screen: 's_audit' },
     ],
   },

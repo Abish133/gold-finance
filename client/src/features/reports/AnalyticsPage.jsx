@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ChartNoAxesCombined, Search, ArrowUpRight, ArrowDownRight, Minus, Table2, BarChart3 } from 'lucide-react';
+import { Bar, BarChart, Cell, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChartNoAxesCombined, FileSpreadsheet, Search, ArrowUpRight, ArrowDownRight, Minus, Table2, BarChart3 } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
-import { Input } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
+import { toast } from 'sonner';
+import { PageActions } from '@/components/common/PageActions';
+import { downloadWorkbook } from '@/lib/excelCharts';
 import { useFetch } from '@/hooks/useApi';
 import { amount, compact, grams, n, today } from '@/lib/format';
 import { isDarkMode } from '@/lib/appearance';
@@ -66,7 +69,7 @@ function Kpi({ label: l, value, sub, children }) {
 }
 
 /** chart card with a chart / table switch (the table is the accessible view of the same numbers) */
-function ChartCard({ title, sub, legend, table, className, children }) {
+function ChartCard({ title, sub, legend, table, className, children, xl }) {
   const [view, setView] = useState('chart');
   return (
     <section className={clsx('flex min-w-0 flex-col overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900', className)}>
@@ -81,7 +84,7 @@ function ChartCard({ title, sub, legend, table, className, children }) {
           </div>
         )}
       </header>
-      <div className="min-h-0 flex-1 p-2">{view === 'chart' || !table ? children : table}</div>
+      <div className="min-h-0 flex-1 p-2" data-xl={xl}>{view === 'chart' || !table ? children : table}</div>
     </section>
   );
 }
@@ -133,10 +136,63 @@ export default function AnalyticsPage() {
   const [q, setQ] = useState(f);
   const { data, isLoading, isFetching } = useFetch('/dashboard/analytics', { from: q.from, to: q.to, group: q.group === 'auto' ? undefined : q.group, metal: q.metal || undefined });
   const ins = useFetch('/dashboard/analytics/insights', { from: q.from, to: q.to, metal: q.metal || undefined });
+  const more = useFetch('/dashboard/analytics/more', { from: q.from, to: q.to, metal: q.metal || undefined });
   const pick = (k) => { const [a, b] = RANGES[k][1](); const nf = { ...f, from: a.format('YYYY-MM-DD'), to: b.format('YYYY-MM-DD') }; setRange(k); setF(nf); setQ(nf); };
   const setNow = (patch) => { const nf = { ...f, ...patch }; setF(nf); setQ(nf); };
 
   const d = data;
+  const [xlBusy, setXlBusy] = useState(false);
+  /* Excel: each table of the page, with its chart drawn as a picture beside it */
+  const excel = async () => {
+    if (!d) return;
+    setXlBusy(true);
+    try {
+      const el = (k) => document.querySelector(`[data-xl="${k}"]`);
+      const i = ins.data; const m = more.data;
+      const pct = (c, p) => (n(p) ? Math.round(((n(c) - n(p)) / Math.abs(n(p))) * 1000) / 10 : '');
+      const cur2 = d.current; const prv = d.previous;
+      const money2 = (key, label) => ({ key, label, money: true });
+      await downloadWorkbook(`analytics-${d.from}-to-${d.to}.xlsx`, {
+        title: 'Business Analytics',
+        subtitle: `${dayjs(d.from).format('DD MMM YYYY')} to ${dayjs(d.to).format('DD MMM YYYY')} · compared with ${dayjs(d.prevFrom).format('DD MMM YYYY')} to ${dayjs(d.prevTo).format('DD MMM YYYY')}${d.metal ? ` · ${METALS[d.metal]}` : ''}`,
+        sheets: [
+          { name: 'Summary', blocks: [{ title: 'This period vs before', columns: [{ key: 'k', label: 'Figure', width: 28 }, money2('c', 'This period'), money2('p', 'Before'), { key: 'x', label: 'Change %', num: true }],
+            rows: [['Loan amount given', cur2.lent, prv.lent], ['Loan amount recovered', cur2.recovered, prv.recovered], ['Interest collected', cur2.interest, prv.interest],
+              ['New loans', cur2.cnt, prv.cnt], ['Releases', cur2.releases, prv.releases], ['Average loan', cur2.avg_loan, prv.avg_loan]].map(([k, c, p]) => ({ k, c: n(c), p: n(p), x: pct(c, p) })) }] },
+          { name: 'Trend', blocks: [
+            { title: 'Loan amount given vs recovered', chart: el('given'), columns: [{ key: 'name', label: 'Period' }, money2('lent', 'Given'), money2('recovered', 'Recovered')], rows: series },
+            { title: 'Interest collected', chart: el('interest'), columns: [{ key: 'name', label: 'Period' }, money2('interest', 'Interest')], rows: series },
+            { title: 'New loans vs releases', chart: el('counts'), columns: [{ key: 'name', label: 'Period' }, { key: 'loans', label: 'New loans', num: true }, { key: 'releases', label: 'Releases', num: true }], rows: series },
+          ] },
+          { name: 'Loan book', blocks: [
+            { title: 'Open loans by age', columns: [{ key: 'age', label: 'Age' }, { key: 'loans', label: 'Loans', num: true }, money2('amount', 'Amount')], rows: d.ageing.map((r) => ({ ...r, age: AGE[r.bucket] })) },
+            { title: 'Loan sizes given', columns: [{ key: 'size', label: 'Loan amount' }, { key: 'loans', label: 'Loans', num: true }, money2('amount', 'Total')], rows: d.sizes.map((r) => ({ ...r, size: SIZE[r.bucket] })) },
+            { title: 'Open loans by metal', columns: [{ key: 'metal', label: 'Metal', value: (r) => METALS[r.metal] || r.metal }, { key: 'loans', label: 'Loans', num: true }, { key: 'net_wt', label: 'Weight (g)', num: true }, money2('outstanding', 'Outstanding')], rows: d.byMetal },
+            { title: 'Loan amount by scheme', columns: [{ key: 'name', label: 'Scheme' }, { key: 'loans', label: 'Loans', num: true }, money2('lent', 'Given')], rows: d.byScheme },
+            { title: 'Loan amount by branch', columns: [{ key: 'name', label: 'Branch' }, { key: 'loans', label: 'Loans', num: true }, money2('lent', 'Given')], rows: d.byBranch },
+          ] },
+          ...(i ? [{ name: 'Insights', blocks: [
+            { title: 'Loan book health (estimates)', columns: [{ key: 'k', label: 'Figure', width: 34 }, money2('v', 'Value')],
+              rows: [['Interest built up, not yet paid', i.book.accrued], ['Expected interest per month', i.book.monthly_run_rate], ['Metal value today', i.book.value_now], ['Metal value at loan time', i.book.value_at_loan],
+                ['Loans close to their value (count)', i.book.at_risk], ['Loans over their value (count)', i.book.underwater]].map(([k, v]) => ({ k, v: n(v) })) },
+            { title: 'Gold rate per gram', chart: el('rate-gold'), columns: [{ key: 'd', label: 'Date', value: (r) => dayjs(r.d).format('DD/MM/YYYY') }, money2('gold', 'Gold / g')], rows: i.goldTrend.filter((r) => r.gold != null) },
+            { title: 'Silver rate per gram', chart: el('rate-silver'), columns: [{ key: 'd', label: 'Date', value: (r) => dayjs(r.d).format('DD/MM/YYYY') }, money2('silver', 'Silver / g')], rows: i.goldTrend.filter((r) => r.silver != null) },
+            { title: 'Busiest days of the week', chart: el('weekday'), columns: [{ key: 'dow', label: 'Day', value: (r) => DOW[r.dow] }, { key: 'loans', label: 'Loans', num: true }, money2('lent', 'Amount')], rows: i.weekday },
+            { title: 'Top areas', columns: [{ key: 'area', label: 'Area' }, { key: 'loans', label: 'Loans', num: true }, money2('outstanding', 'Outstanding')], rows: i.areas },
+            { title: 'Loans to watch', columns: [{ key: 'bill_no', label: 'Loan' }, { key: 'customer_name', label: 'Customer' }, money2('current_principal', 'Loan'), money2('accrued', 'Interest'), money2('value_now', 'Value now'), { key: 'cover_pct', label: 'Used %', value: (r) => Math.round(n(r.cover_pct)) }], rows: i.risky },
+          ] }] : []),
+          ...(m ? [{ name: 'Plan & watch', blocks: [
+            { title: 'Next 30 days - loans reaching settle date', chart: el('next30'), columns: [{ key: 'd', label: 'Date', value: (r) => dayjs(r.d).format('DD/MM/YYYY') }, { key: 'loans', label: 'Loans', num: true }, money2('amount', 'Amount')], rows: m.forecast.dueNext },
+            { title: 'Cash count differences', chart: el('cash'), columns: [{ key: 'd', label: 'Date', value: (r) => dayjs(r.d).format('DD/MM/YYYY') }, { key: 'branch', label: 'Branch' }, money2('difference', 'Difference')], rows: m.cashVar },
+            { title: 'Best customers', columns: [{ key: 'name', label: 'Customer' }, { key: 'phone', label: 'Mobile' }, money2('interest_paid', 'Interest paid'), { key: 'on_time', label: 'Released on time', value: (r) => (n(r.releases) ? `${r.on_time} of ${r.releases}` : '') }], rows: m.bestCustomers },
+            { title: 'Branch league', columns: [{ key: 'name', label: 'Branch' }, money2('lent', 'Given'), money2('interest', 'Interest'), { key: 'open_loans', label: 'Open', num: true }, { key: 'overdue', label: 'Overdue', num: true }, money2('cash_diff', 'Cash diff')], rows: m.league },
+          ] }] : []),
+          { name: 'Top customers', blocks: [{ title: 'Top 10 customers by outstanding', columns: [{ key: 'name', label: 'Customer' }, { key: 'phone', label: 'Mobile' }, { key: 'loans', label: 'Loans', num: true }, { key: 'net_wt', label: 'Weight (g)', num: true }, money2('outstanding', 'Outstanding')], rows: d.topCustomers }] },
+        ],
+      });
+    } catch (e) { toast.error(e.message || 'Could not make the Excel file'); }
+    setXlBusy(false);
+  };
   const series = useMemo(() => (d?.series || []).map((r) => ({ ...r, name: label(r.k, d.group) })), [d]);
   const cur = d?.current || {}; const prev = d?.previous || {};
   const axis = { tickLine: false, axisLine: false, fontSize: 11, stroke: pal.axis };
@@ -149,6 +205,10 @@ export default function AnalyticsPage() {
         {d && <Chip label="Period" value={`${dayjs(d.from).format('DD MMM YY')} - ${dayjs(d.to).format('DD MMM YY')}`} />}
         {d && <Chip label="Compared with" value={`${dayjs(d.prevFrom).format('DD MMM YY')} - ${dayjs(d.prevTo).format('DD MMM YY')}`} />}
       </Head>
+
+      <PageActions keys="Excel: every table of this page with its chart as a picture">
+        <Button variant="outline" icon={FileSpreadsheet} loading={xlBusy} disabled={!d} onClick={excel}>Excel with charts</Button>
+      </PageActions>
 
       <FilterBar>
         <Toggle options={Object.entries(RANGES).map(([k, [l]]) => [k, l])} value={range} onChange={pick} />
@@ -175,7 +235,7 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="grid gap-2 lg:grid-cols-2">
-              <ChartCard title="Loan amount given vs recovered" sub={`per ${d.group}`} legend={[[pal.s1, 'Given'], [pal.s2, 'Recovered']]}
+              <ChartCard xl="given" title="Loan amount given vs recovered" sub={`per ${d.group}`} legend={[[pal.s1, 'Given'], [pal.s2, 'Recovered']]}
                 table={<MiniTable rows={series} cols={[{ key: 'name', label: 'Period' }, { key: 'lent', label: 'Given', right: true, render: (r) => amount(r.lent) }, { key: 'recovered', label: 'Recovered', right: true, render: (r) => amount(r.recovered) }]} />}>
                 <div className="h-60">
                   <ResponsiveContainer>
@@ -191,7 +251,7 @@ export default function AnalyticsPage() {
                 </div>
               </ChartCard>
 
-              <ChartCard title="Interest collected" sub={`per ${d.group} · advance + release + part payment`}
+              <ChartCard xl="interest" title="Interest collected" sub={`per ${d.group} · advance + release + part payment`}
                 table={<MiniTable rows={series} cols={[{ key: 'name', label: 'Period' }, { key: 'interest', label: 'Interest', right: true, render: (r) => amount(r.interest) }]} />}>
                 <div className="h-60">
                   <ResponsiveContainer>
@@ -206,7 +266,7 @@ export default function AnalyticsPage() {
                 </div>
               </ChartCard>
 
-              <ChartCard title="New loans vs releases" sub={`number of loans per ${d.group}`} legend={[[pal.s1, 'New loans'], [pal.s2, 'Releases']]}
+              <ChartCard xl="counts" title="New loans vs releases" sub={`number of loans per ${d.group}`} legend={[[pal.s1, 'New loans'], [pal.s2, 'Releases']]}
                 table={<MiniTable rows={series} cols={[{ key: 'name', label: 'Period' }, { key: 'loans', label: 'New loans', right: true }, { key: 'releases', label: 'Releases', right: true }]} />}>
                 <div className="h-60">
                   <ResponsiveContainer>
@@ -288,7 +348,7 @@ export default function AnalyticsPage() {
                       const first = rows[0]?.[mk]; const last = rows.at(-1)?.[mk];
                       const chg = first ? ((last - first) / first) * 100 : 0;
                       return (
-                        <ChartCard key={mk} title={`${nameM} rate in this period`} className={rateMetals.length === 1 ? 'lg:col-span-2' : ''}
+                        <ChartCard key={mk} xl={`rate-${mk}`} title={`${nameM} rate in this period`} className={rateMetals.length === 1 ? 'lg:col-span-2' : ''}
                           sub={rows.length ? `per gram · ₹${amount(first)} → ₹${amount(last)} (${chg > 0 ? '+' : ''}${chg.toFixed(1)}%)` : 'per gram'}
                           table={<MiniTable rows={rows} cols={[{ key: 'name', label: 'Date' }, { key: mk, label: `${nameM} / g`, right: true, render: (r) => amount(r[mk]) }]} />}>
                           {rows.length ? (
@@ -308,7 +368,7 @@ export default function AnalyticsPage() {
                       );
                     })}
 
-                    <ChartCard title="Busiest days of the week" sub="new loans given in this period"
+                    <ChartCard xl="weekday" title="Busiest days of the week" sub="new loans given in this period"
                       table={<MiniTable rows={week} cols={[{ key: 'name', label: 'Day' }, { key: 'loans', label: 'Loans', right: true }, { key: 'lent', label: 'Amount', right: true, render: (r) => amount(r.lent) }]} />}>
                       <div className="h-56">
                         <ResponsiveContainer>
@@ -333,6 +393,99 @@ export default function AnalyticsPage() {
                           { key: 'current_principal', label: 'Loan', right: true, render: (r) => amount(r.current_principal) }, { key: 'accrued', label: 'Interest', right: true, render: (r) => amount(r.accrued) },
                           { key: 'value_now', label: 'Value now', right: true, render: (r) => amount(r.value_now) },
                           { key: 'cover_pct', label: 'Used', right: true, render: (r) => { const [t, tone] = cover(n(r.cover_pct)); return <span className="whitespace-nowrap"><b className="num" style={{ color: tone ? pal[tone] : undefined }}>{Math.round(n(r.cover_pct))}%</b><span className="ml-1 text-[10px] text-ink-500">{t}</span></span>; } }]} />
+                    </ChartCard>
+                  </>
+                );
+              })()}
+
+
+              {/* ---------- plan & watch ---------- */}
+              {more.data && (() => {
+                const m = more.data;
+                const due = m.forecast.dueNext.map((r) => ({ name: dayjs(r.d).format('DD MMM'), loans: n(r.loans), amount: n(r.amount) }));
+                const dueAmt = due.reduce((x, r) => x + r.amount, 0); const dueCnt = due.reduce((x, r) => x + r.loans, 0);
+                const cash = m.cashVar.map((r) => ({ name: dayjs(r.d).format('DD MMM'), diff: n(r.difference), branch: r.branch }));
+                const w = m.watch;
+                const watchCount = w.voids.length + w.offHours.length + w.bigLoans.length + w.sameDay.length;
+                return (
+                  <>
+                    <ChartCard xl="next30" title="Next 30 days" sub={`after ${dayjs(q.to).format('DD MMM YYYY')} · ${dueCnt} loans reach their settle date (${money(dueAmt)}) · about ${money(m.forecast.interest_month)} interest builds up each month`}
+                      table={<MiniTable rows={due} cols={[{ key: 'name', label: 'Settle date' }, { key: 'loans', label: 'Loans', right: true }, { key: 'amount', label: 'Amount', right: true, render: (r) => amount(r.amount) }]} />}>
+                      {due.length ? (
+                        <div className="h-56">
+                          <ResponsiveContainer>
+                            <BarChart data={due} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                              <CartesianGrid vertical={false} stroke={pal.grid} />
+                              <XAxis dataKey="name" {...axis} minTickGap={16} />
+                              <YAxis {...axis} width={64} tickFormatter={money} />
+                              <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v, k, it) => [`₹${amount(v)} · ${it.payload.loans} loans`, 'Reaching settle date']} />
+                              <Bar dataKey="amount" name="Amount" fill={pal.s1} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : <p className="py-10 text-center text-[12px] text-ink-400">No open loan reaches its settle date in the next 30 days</p>}
+                    </ChartCard>
+
+                    <ChartCard xl="cash" title="Cash count differences" sub="each day's counted cash minus the books · above the line = excess, below = short"
+                      table={<MiniTable rows={cash} cols={[{ key: 'name', label: 'Date' }, { key: 'branch', label: 'Branch' }, { key: 'diff', label: 'Difference', right: true, render: (r) => <span>{r.diff > 0 ? '+' : ''}{amount(r.diff)} <span className="text-[10px] text-ink-500">{r.diff > 0 ? 'excess' : r.diff < 0 ? 'short' : 'tally'}</span></span> }]} />}>
+                      {cash.length ? (
+                        <div className="h-56">
+                          <ResponsiveContainer>
+                            <BarChart data={cash} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                              <CartesianGrid vertical={false} stroke={pal.grid} />
+                              <XAxis dataKey="name" {...axis} minTickGap={16} />
+                              <YAxis {...axis} width={64} tickFormatter={money} />
+                              <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v) => [`${v > 0 ? '+' : ''}₹${amount(v)} ${v > 0 ? '(excess)' : v < 0 ? '(short)' : '(tally)'}`, 'Difference']} />
+                              <Bar dataKey="diff" name="Difference" radius={[4, 4, 0, 0]} maxBarSize={28}>
+                                {cash.map((r, k) => <Cell key={k} fill={r.diff < 0 ? pal.crit : pal.warn} />)}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : <p className="py-10 text-center text-[12px] text-ink-400">No cash count in this period</p>}
+                    </ChartCard>
+
+                    <ChartCard title="Best customers" sub="most interest paid in this period · click to open">
+                      <MiniTable rows={m.bestCustomers} onRow={(r) => navigate(`/customers?view=${r.id}`)}
+                        cols={[{ key: 'name', label: 'Customer', render: (r) => <span className="font-semibold">{r.name}</span> }, { key: 'phone', label: 'Mobile' },
+                          { key: 'interest_paid', label: 'Interest paid', right: true, render: (r) => amount(r.interest_paid) },
+                          { key: 'releases', label: 'Released on time', right: true, render: (r) => (n(r.releases) ? `${r.on_time} of ${r.releases}` : '-') }]} />
+                    </ChartCard>
+
+                    {m.league.length > 0 && (
+                      <ChartCard title="Branch league" sub="this period · overdue and cash differences as on the end date">
+                        <MiniTable rows={m.league}
+                          cols={[{ key: 'name', label: 'Branch', render: (r) => <span className="font-semibold">{r.name}</span> }, { key: 'lent', label: 'Given', right: true, render: (r) => amount(r.lent) },
+                            { key: 'interest', label: 'Interest', right: true, render: (r) => amount(r.interest) }, { key: 'open_loans', label: 'Open', right: true },
+                            { key: 'overdue', label: 'Overdue', right: true, render: (r) => `${r.overdue} (${n(r.open_loans) ? Math.round((n(r.overdue) / n(r.open_loans)) * 100) : 0}%)` },
+                            { key: 'cash_diff', label: 'Cash diff', right: true, render: (r) => amount(r.cash_diff) }]} />
+                      </ChartCard>
+                    )}
+
+                    <ChartCard title="Unusual activity" sub={`${watchCount} item${watchCount === 1 ? '' : 's'} to look at in this period`} className="lg:col-span-2">
+                      {!watchCount ? <p className="py-6 text-center text-[12px] text-ink-400">Nothing unusual in this period</p> : (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {w.bigLoans.length > 0 && (
+                            <div><p className="mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Loans far above the customer's usual</p>
+                              <MiniTable rows={w.bigLoans} onRow={(r) => navigate(`/loans/counter?loan=${r.id}`)} cols={[{ key: 'bill_no', label: 'Loan', render: (r) => `#${r.bill_no}` }, { key: 'customer_name', label: 'Customer' },
+                                { key: 'principal', label: 'This loan', right: true, render: (r) => amount(r.principal) }, { key: 'avg_prev', label: 'Usual', right: true, render: (r) => amount(r.avg_prev) }]} /></div>
+                          )}
+                          {w.sameDay.length > 0 && (
+                            <div><p className="mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">3 or more loans for one customer in a day</p>
+                              <MiniTable rows={w.sameDay} onRow={(r) => navigate(`/customers?view=${r.id}`)} cols={[{ key: 'customer_name', label: 'Customer' }, { key: 'd', label: 'Date', render: (r) => dayjs(r.d).format('DD/MM/YYYY') },
+                                { key: 'loans', label: 'Loans', right: true }, { key: 'amount', label: 'Amount', right: true, render: (r) => amount(r.amount) }]} /></div>
+                          )}
+                          {w.voids.length > 0 && (
+                            <div><p className="mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Deletes, voids and cancels by user</p>
+                              <MiniTable rows={w.voids} cols={[{ key: 'full_name', label: 'User', render: (r) => r.full_name || 'System' }, { key: 'cnt', label: 'Count', right: true }, { key: 'last_at', label: 'Last', right: true, render: (r) => dayjs(r.last_at).format('DD/MM hh:mm A') }]} /></div>
+                          )}
+                          {w.offHours.length > 0 && (
+                            <div><p className="mb-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Logins before 7 AM or after 10 PM</p>
+                              <MiniTable rows={w.offHours} cols={[{ key: 'full_name', label: 'User', render: (r) => r.full_name || '-' }, { key: 'created_at', label: 'When', render: (r) => dayjs(r.created_at).format('DD/MM/YYYY hh:mm A') }, { key: 'ip', label: 'From' }]} /></div>
+                          )}
+                        </div>
+                      )}
+                      {!w.canSeeAudit && <p className="mt-2 text-[11px] text-ink-400">Deletes and login times are shown only to users who can open the User Log.</p>}
                     </ChartCard>
                   </>
                 );

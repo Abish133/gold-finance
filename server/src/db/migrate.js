@@ -37,6 +37,23 @@ const COLUMNS = [
 ];
 
 const TABLES = `
+CREATE TABLE IF NOT EXISTS item_templates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(80) NOT NULL,
+  items JSON NOT NULL,
+  created_by INT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS customer_links (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  customer_id INT NOT NULL,
+  token VARCHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  revoked TINYINT(1) NOT NULL DEFAULT 0,
+  views INT NOT NULL DEFAULT 0,
+  last_viewed_at DATETIME NULL,
+  created_by INT, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX ix_cl_customer (customer_id)
+) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS export_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
   branch_id INT NOT NULL,

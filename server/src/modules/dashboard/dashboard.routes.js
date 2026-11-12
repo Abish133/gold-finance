@@ -64,7 +64,17 @@ router.get('/status', async (req, res) => {
        (SELECT COUNT(*) FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type IN ('RELEASE', 'AUCTION')
           AND txn_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month_releases,
        (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date <= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)) unsettled_12m,
-       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN') open_loans`,
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN') open_loans,
+       (SELECT COALESCE(SUM(principal),0) FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND entry_type <> 'OLD'
+          AND loan_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month_lent,
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND entry_type <> 'OLD' AND loan_date = CURDATE()) today_loans,
+       (SELECT COALESCE(SUM(principal),0) FROM loans WHERE branch_id IN (:b) AND status <> 'CANCELLED' AND entry_type <> 'OLD' AND loan_date = CURDATE()) today_lent,
+       (SELECT COUNT(*) FROM loan_transactions WHERE branch_id IN (:b) AND is_void = 0 AND txn_type IN ('RELEASE', 'AUCTION') AND txn_date = CURDATE()) today_releases,
+       (SELECT COALESCE(SUM(current_principal),0) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN') outstanding,
+       (SELECT COALESCE(SUM(net_wt),0) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN') open_wt,
+       (SELECT COUNT(*) FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND due_date < CURDATE()) overdue,
+       (SELECT COUNT(*) FROM message_queue WHERE branch_id IN (:b) AND status = 'PENDING') sms_pending,
+       (SELECT COUNT(*) FROM message_queue WHERE branch_id IN (:b) AND status = 'FAILED' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) sms_failed`,
     { b },
   );
   res.json({ data: row });
@@ -111,6 +121,17 @@ router.get('/alerts', async (req, res) => {
     const last = listBackupFiles()[0];
     const age = last ? dayjs().diff(dayjs(last.created_at), 'day') : null;
     if (age == null || age >= warnDays) alerts.push({ type: 'warning', key: 'backup', text: last ? `No backup for ${age} days` : 'No backup taken yet', link: '/settings/backup' });
+  }
+  // gold-rate watch: loans whose loan + interest now uses most of the metal's value at today's rate
+  if (st.RATE_WATCH !== '0') {
+    try {
+      const t = dayjs().format('YYYY-MM-DD');
+      const r = await nowRates(t);
+      const w = await queryOne(`SELECT COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE} * 0.85),0) close_to,
+          COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE}),0) over_value ${RISK_FROM}`, { b, t, ...r });
+      if (Number(w.over_value)) alerts.push({ type: 'warning', key: 'ratewatch', text: `${w.over_value} loans are now worth less than the loan + interest at today's rate`, link: '/analytics' });
+      else if (Number(w.close_to)) alerts.push({ type: 'info', key: 'ratewatch', text: `${w.close_to} loans are close to the value of their gold at today's rate`, link: '/analytics' });
+    } catch { /* rates not set yet */ }
   }
   // desktop: the last year is over and not closed - remind to run Year End (YE..)
   if (st.YEAR_END_REMIND !== '0') {
@@ -267,4 +288,104 @@ router.get('/analytics/insights', permitAny(['dashboard', 'reports_summary']), a
   res.json({ data: { asOn: p.t, rates: { gold: nowGold, silver: nowSilver }, book, risky, weekday, areas, goldTrend, duration, custMix } });
 });
 
+/* ---------------- shared: open-loan risk figures (value today vs loan + interest built up) ---------------- */
+const nowRates = async (t) => {
+  const rates = await query(`SELECT m.code, r.market_rate * 100 / NULLIF(r.purity, 0) per_gram FROM metal_rates r JOIN metals m ON m.id = r.metal_id
+    WHERE r.id IN (SELECT MAX(id) FROM metal_rates WHERE rate_date <= :t GROUP BY metal_id)`, { t });
+  return { g: Number(rates.find((r) => r.code === 'GOLD')?.per_gram || 0), s: Number(rates.find((r) => r.code === 'SILVER')?.per_gram || 0) };
+};
+const RISK_VALUE = `(CASE WHEN l.loan_on = 'SILVER' THEN IF(l.silver_rate > 0 AND :s > 0, l.market_value * :s / l.silver_rate, l.market_value)
+                          ELSE IF(l.gold_rate > 0 AND :g > 0, l.market_value * :g / l.gold_rate, l.market_value) END)`;
+const RISK_ACCRUED = '(l.current_principal * l.interest_rate / 100 * GREATEST(0, DATEDIFF(:t, COALESCE(lp.last_paid, l.loan_date))) / 30)';
+const RISK_FROM = `FROM loans l LEFT JOIN (SELECT loan_id, MAX(txn_date) last_paid FROM loan_transactions WHERE is_void = 0 AND interest_amount > 0 GROUP BY loan_id) lp ON lp.loan_id = l.id
+                   WHERE l.branch_id IN (:b) AND l.status = 'OPEN'`;
+
+/* ---------------- Morning briefing: one call for the first screen of the day ---------------- */
+router.get('/briefing', permit('dashboard', 'view'), async (req, res) => {
+  const b = req.branchIds;
+  const t = dayjs().format('YYYY-MM-DD');
+  const r = await nowRates(t);
+  const q = { b, t, ...r };
+  const [due, overdue, risk, rateToday, lastCount, failed, yesterday] = await Promise.all([
+    queryOne("SELECT COUNT(*) c, COALESCE(SUM(current_principal),0) amt FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND due_date BETWEEN :t AND DATE_ADD(:t, INTERVAL 7 DAY)", q),
+    queryOne("SELECT COUNT(*) c, COALESCE(SUM(current_principal),0) amt FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND due_date < :t", q),
+    queryOne(`SELECT COALESCE(SUM(${RISK_ACCRUED}),0) accrued, COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE} * 0.85),0) at_risk,
+                COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE}),0) underwater ${RISK_FROM}`, q),
+    queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = :t', q),
+    queryOne('SELECT count_date, difference FROM cash_denominations WHERE branch_id IN (:b) ORDER BY count_date DESC LIMIT 1', q),
+    queryOne("SELECT COUNT(*) c FROM message_queue WHERE branch_id IN (:b) AND status = 'FAILED' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)", q),
+    daySummary(b, dayjs().subtract(1, 'day').format('YYYY-MM-DD')),
+  ]);
+  const last = listBackupFiles()[0];
+  const yt = yesterday.transactions || {};
+  res.json({ data: {
+    date: t, dueWeek: due, overdue, risk, rateEntered: rateToday.c > 0, lastCashCount: lastCount, failedMessages: failed.c,
+    backupAgeDays: last ? dayjs().diff(dayjs(last.created_at), 'day') : null,
+    yesterday: { loans: yesterday.loans.cnt, lent: yesterday.loans.principal, releases: Number(yt.RELEASE?.cnt || 0) + Number(yt.AUCTION?.cnt || 0),
+      interest: Number(yesterday.loans.advance_interest || 0) + Object.values(yt).reduce((x, v) => x + Number(v.interest || 0) + Number(v.penal || 0), 0), cash: yesterday.cash.closing },
+  } });
+});
+
+/* ---------------- Analytics extras: forecast, best customers, branch league, cash variance, unusual activity ---------------- */
+router.get('/analytics/more', permitAny(['dashboard', 'reports_summary']), async (req, res) => {
+  const b = req.branchIds;
+  const to = dayjs(req.query.to).isValid() ? dayjs(req.query.to) : dayjs();
+  const from = dayjs(req.query.from).isValid() ? dayjs(req.query.from) : to.startOf('month');
+  const metal = ['GOLD', 'SILVER', 'MIX'].includes(req.query.metal) ? req.query.metal : '';
+  const p = { b, f: from.format('YYYY-MM-DD'), t: to.format('YYYY-MM-DD'), metal };
+  const mf = "AND (:metal = '' OR l.loan_on = :metal)";
+  const audit = can(req.user, 's_audit', 'view');
+
+  const [forecast, dueNext, bestCustomers, league, cashVar, voids, offHours, bigLoans, sameDay] = await Promise.all([
+    // the next 30 days from the end date: interest that will build up, loans reaching their settle date
+    queryOne(`SELECT COALESCE(SUM(l.current_principal * l.interest_rate / 100),0) interest_month, COUNT(*) open_loans
+                FROM loans l WHERE l.branch_id IN (:b) AND l.status = 'OPEN' ${mf}`, p),
+    query(`SELECT DATE_FORMAT(l.due_date, '%Y-%m-%d') d, COUNT(*) loans, COALESCE(SUM(l.current_principal),0) amount FROM loans l
+            WHERE l.branch_id IN (:b) AND l.status = 'OPEN' AND l.due_date BETWEEN DATE_ADD(:t, INTERVAL 1 DAY) AND DATE_ADD(:t, INTERVAL 30 DAY) ${mf}
+            GROUP BY d ORDER BY d`, p),
+    // customers who paid the most interest in the period, with how they release
+    query(`SELECT c.id, c.name, c.phone, COALESCE(SUM(t.interest_amount + t.penal_amount),0) interest_paid, COUNT(DISTINCT l.id) loans,
+                  COALESCE(SUM(t.txn_type = 'RELEASE'),0) releases, COALESCE(SUM(t.txn_type = 'RELEASE' AND t.txn_date <= l.due_date),0) on_time
+             FROM loan_transactions t JOIN loans l ON l.id = t.loan_id JOIN customers c ON c.id = l.customer_id
+            WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t ${mf}
+            GROUP BY c.id HAVING interest_paid > 0 ORDER BY interest_paid DESC LIMIT 10`, p),
+    // branch league (only when more than one branch is visible)
+    b.length > 1
+      ? query(`SELECT br.id, br.name,
+                  (SELECT COALESCE(SUM(l.principal),0) FROM loans l WHERE l.branch_id = br.id AND l.status <> 'CANCELLED' AND l.entry_type <> 'OLD' AND l.loan_date BETWEEN :f AND :t ${mf}) lent,
+                  (SELECT COALESCE(SUM(t.interest_amount + t.penal_amount),0) FROM loan_transactions t JOIN loans l ON l.id = t.loan_id WHERE t.branch_id = br.id AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t ${mf}) interest,
+                  (SELECT COUNT(*) FROM loans l WHERE l.branch_id = br.id AND l.status = 'OPEN' ${mf}) open_loans,
+                  (SELECT COUNT(*) FROM loans l WHERE l.branch_id = br.id AND l.status = 'OPEN' AND l.due_date < :t ${mf}) overdue,
+                  (SELECT COALESCE(SUM(ABS(d.difference)),0) FROM cash_denominations d WHERE d.branch_id = br.id AND d.count_date BETWEEN :f AND :t) cash_diff
+                 FROM branches br WHERE br.id IN (:b) ORDER BY lent DESC`, p)
+      : Promise.resolve([]),
+    query(`SELECT d.count_date d, br.name branch, d.total, d.book_balance, d.difference FROM cash_denominations d JOIN branches br ON br.id = d.branch_id
+            WHERE d.branch_id IN (:b) AND d.count_date BETWEEN :f AND :t ORDER BY d.count_date`, p),
+    // unusual activity - read from the audit trail (only for users allowed to see it)
+    audit ? query(`SELECT u.full_name, a.user_id, COUNT(*) cnt, MAX(a.created_at) last_at FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
+                     WHERE (a.branch_id IN (:b) OR a.branch_id IS NULL) AND a.created_at BETWEEN :f AND DATE_ADD(:t, INTERVAL 1 DAY)
+                       AND (a.action IN ('DELETE', 'VOID', 'CANCEL', 'DISABLE') OR a.action LIKE '%VOID%' OR a.action LIKE '%CANCEL%')
+                     GROUP BY a.user_id ORDER BY cnt DESC LIMIT 10`, p) : Promise.resolve([]),
+    audit ? query(`SELECT u.full_name, a.created_at, a.ip FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
+                     WHERE a.action = 'LOGIN' AND (HOUR(a.created_at) < 7 OR HOUR(a.created_at) >= 22) AND a.created_at BETWEEN :f AND DATE_ADD(:t, INTERVAL 1 DAY)
+                     ORDER BY a.created_at DESC LIMIT 10`, p) : Promise.resolve([]),
+    // a loan far above what this customer usually takes (3x their earlier average)
+    query(`SELECT l.id, l.bill_no, l.loan_date, l.principal, c.name customer_name, ROUND(h.avg_prev) avg_prev FROM loans l JOIN customers c ON c.id = l.customer_id
+             JOIN (SELECT l2.id, (SELECT AVG(x.principal) FROM loans x WHERE x.customer_id = l2.customer_id AND x.loan_date < l2.loan_date AND x.status <> 'CANCELLED') avg_prev
+                     FROM loans l2 WHERE l2.branch_id IN (:b) AND l2.loan_date BETWEEN :f AND :t) h ON h.id = l.id
+            WHERE l.status <> 'CANCELLED' AND l.entry_type <> 'OLD' AND h.avg_prev > 0 AND l.principal >= h.avg_prev * 3 ${mf}
+            ORDER BY l.principal / h.avg_prev DESC LIMIT 10`, p),
+    // several loans for one customer on the same day
+    query(`SELECT c.id, c.name customer_name, l.loan_date d, COUNT(*) loans, COALESCE(SUM(l.principal),0) amount FROM loans l JOIN customers c ON c.id = l.customer_id
+            WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.entry_type <> 'OLD' AND l.loan_date BETWEEN :f AND :t ${mf}
+            GROUP BY c.id, l.loan_date HAVING loans >= 3 ORDER BY loans DESC LIMIT 10`, p),
+  ]);
+  res.json({ data: { forecast: { ...forecast, dueNext }, bestCustomers, league, cashVar, watch: { canSeeAudit: audit, voids, offHours, bigLoans, sameDay } } });
+});
+
+/* WhatsApp message templates used at the counter after saving (only the WA_ texts, active ones) */
+router.get('/wa-templates', async (_req, res) => {
+  const rows = await query("SELECT event_key, body FROM message_templates WHERE event_key LIKE 'WA\\_%' AND is_active = 1");
+  res.json({ data: Object.fromEntries(rows.map((r) => [r.event_key, r.body])) });
+});
 export default router;

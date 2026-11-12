@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/context/AuthContext';
@@ -81,6 +81,7 @@ const P = {
   BankReco: lazy(() => import('@/features/accounts/BankRecoPage')),
   Tally: lazy(() => import('@/features/accounts/TallyExportPage')),
   Analytics: lazy(() => import('@/features/reports/AnalyticsPage')),
+  Health: lazy(() => import('@/features/settings/HealthPage')),
 };
 
 function RequireAuth({ children }) {
@@ -109,8 +110,11 @@ function Home() {
 const r = (path, Comp, screen, props) => ({ path, element: <Guard screen={screen}><Comp {...props} /></Guard> });
 const REPORT_SCREENS = ['reports_loan', 'reports_release', 'reports_collection', 'reports_customer', 'reports_summary'];
 
+const CustomerStatus = lazy(() => import('@/features/public/CustomerStatusPage'));
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/c/:token', element: <Suspense fallback={null}><CustomerStatus /></Suspense> },   // customer loan-status link (read only)
   {
     path: '/',
     element: <RequireAuth><AppLayout /></RequireAuth>,
@@ -190,6 +194,7 @@ export const router = createBrowserRouter([
       r('getting-started', P.GettingStarted, 'dashboard'),
       r('accounts/bank-reco', P.BankReco, 'acc_bank_reco'),
       r('analytics', P.Analytics, ['dashboard', 'reports_summary']),
+      r('settings/health', P.Health, 's_system'),
       r('accounts/tally', P.Tally, 'acc_tally'),
       { path: '*', element: <Empty title="Page not found" message="The page you are looking for does not exist." /> },
     ],

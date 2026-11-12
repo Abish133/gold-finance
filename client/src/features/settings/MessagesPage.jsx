@@ -9,6 +9,20 @@ import { api } from '@/lib/api';
 import { amount, date, dateTime } from '@/lib/format';
 import { SettingsForm } from './SettingsForm';
 
+/* every message the app sends: [what it is for, the {variables} it can use] - same list as the server */
+const MSG = {
+  NEW_LOAN: ['New loan (SMS)', '{name} {loan_no} {amount} {date} {weight} {due_date}'],
+  INTEREST: ['Interest / part payment (SMS)', '{name} {loan_no} {amount} {date}'],
+  RELEASE: ['Loan closed (SMS)', '{name} {loan_no} {amount} {date}'],
+  DUE_REMINDER: ['Due reminder / auction notice (SMS)', '{name} {loan_no} {amount} {date} {due_date}'],
+  BIRTHDAY: ['Birthday wishes (SMS)', '{name} {company}'],
+  OWNER_SUMMARY: ['Daily summary to owner (SMS)', '{branch} {date} {loans} {lent} {releases} {released} {interest} {cash} {open} {open_amount} {overdue}'],
+  WA_NEW_LOAN: ['New loan (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {items} {due_date}'],
+  WA_RELEASE: ['Loan released (WhatsApp)', '{shop} {name} {loan_no} {amount} {date}'],
+  WA_PART_PAYMENT: ['Part payment (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {balance}'],
+  WA_INTEREST: ['Interest received (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {months}'],
+};
+
 export default function MessagesPage() {
   const [tab, setTab] = useState('queue');
   const queue = useList(tab === 'queue' ? '/admin/message-queue' : null, {});
@@ -53,6 +67,15 @@ export default function MessagesPage() {
         { key: 'SMS_REMINDER_MONTHS', label: 'Interest not paid for (months)', type: 'number' },
         { key: 'SMS_REMINDER_OVERDUE', label: 'Also remind loans past the settle-before date', type: 'bool' },
         { key: 'SMS_REMINDER_GAP_DAYS', label: 'Do not remind the same loan again within (days)', type: 'number' },
+      ] }, { title: 'Automations', subtitle: 'Optional - each one is off until you switch it on', fields: [
+        { key: 'OWNER_PHONE', label: 'Owner mobile(s) for the daily summary', hint: '9443xxxxxx, 9894xxxxxx', wide: true },
+        { key: 'OWNER_SUMMARY_TIME', label: 'Send the daily summary after', type: 'time' },
+        { key: 'BIRTHDAY_TIME', label: 'Send birthday wishes after', type: 'time' },
+        { key: 'OWNER_SUMMARY', label: "Daily summary to owner (loans, releases, interest, cash)", type: 'bool' },
+        { key: 'SMS_ON_BIRTHDAY', label: 'Birthday wishes to customers with an open loan', type: 'bool' },
+        { key: 'RATE_WATCH', label: 'Remind when loans come close to their gold value', type: 'bool' },
+        { key: 'CUSTOMER_LINK_DAYS', label: 'Customer link works for (days)', type: 'number' },
+        { key: 'CUSTOMER_LINK_ENABLED', label: 'Customer loan-status link (view only)', type: 'bool' },
       ] }]} />
       {!isAllBranches && (
         <div className="card flex min-h-64 flex-col overflow-hidden xl:min-h-0 xl:flex-1">
@@ -71,10 +94,11 @@ export default function MessagesPage() {
       </div>}
       {tab === 'templates' && (
         <div className="flex flex-col xl:min-h-0 xl:flex-1"><ResourcePage title="Templates" singular="Template" endpoint="/admin/message-templates" screen="s_messages" defaults={{ is_active: 1 }}
-          columns={[{ key: 'event_key', label: 'Event' }, { key: 'name', label: 'Name' }, { key: 'body', label: 'Message', className: 'max-w-lg text-xs' }]}
-          fields={[{ name: 'event_key', label: 'Event key', type: 'select', options: ['NEW_LOAN', 'INTEREST', 'RELEASE', 'DUE_REMINDER'], required: true },
+          columns={[{ key: 'event_key', label: 'Message', render: (r) => <span className="flex items-center gap-1.5"><span className={`rounded-sm px-1.5 py-px text-[10px] font-bold ${r.event_key.startsWith('WA_') ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>{r.event_key.startsWith('WA_') ? 'WhatsApp' : 'SMS'}</span>{MSG[r.event_key]?.[0] || r.event_key}</span> },
+            { key: 'name', label: 'Name' }, { key: 'body', label: 'Text', className: 'max-w-lg truncate text-xs' }, { key: 'is_active', label: 'On', render: (r) => (r.is_active ? 'Yes' : 'Off') }]}
+          fields={[{ name: 'event_key', label: 'Message for', type: 'select', options: Object.entries(MSG).map(([value, [label]]) => ({ value, label })), required: true },
             { name: 'name', label: 'Name', required: true }, { name: 'dlt_template_id', label: 'DLT template id' },
-            { name: 'body', label: 'Message', type: 'textarea', span: 'full', required: true, hint: 'Variables: {name} {loan_no} {amount} {date} {weight} {due_date}' },
+            { name: 'body', label: 'Message', type: 'textarea', span: 'full', required: true, hint: (v) => (MSG[v.event_key] ? `You can use: ${MSG[v.event_key][1]}` : 'Choose what the message is for to see its variables') },
             { name: 'is_active', label: 'Active', type: 'switch' }]} /></div>
       )}
       {tab === 'queue' && (

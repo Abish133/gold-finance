@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, FileDown, ArrowLeft, Search, UserRound } from 'lucide-react';
+import { BookUser, Pencil, Camera, FolderOpen, Ban, RefreshCw, MessageCircle, Printer, FileSpreadsheet, FileDown, ArrowLeft, Search, UserRound, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import { Button, Drawer, Field, Input, Spinner, Textarea, Modal } from '@/components/ui';
@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
 import { amount, date, n, weight } from '@/lib/format';
+import { ShareLinkModal } from './ShareLinkModal';
 
 const STATUS = { OPEN: ['Pending', 'bg-blue-600 text-white'], CLOSED: ['Released', 'bg-emerald-600 text-white'], RENEWED: ['Released', 'bg-emerald-600 text-white'], IN_BANK: ['In Bank', 'bg-violet-700 text-white'], AUCTIONED: ['Auctioned', 'bg-rose-600 text-white'], CANCELLED: ['Cancelled', 'bg-ink-400 text-white'] };
 const SHOW = { pending: (l) => l.status === 'OPEN', released: (l) => ['CLOSED', 'RENEWED'].includes(l.status), auctioned: (l) => l.status === 'AUCTIONED', all: () => true };
@@ -122,6 +123,7 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
               {can('customers', 'edit') && <Button variant="outline" icon={Pencil} onClick={() => setPanel('edit')}>Edit Customer (F6)</Button>}
               <Button variant="outline" icon={Camera} onClick={() => document.getElementById('ledger-photo')?.click()}>Change Photo (F7)</Button>
               <Button variant="outline" icon={FolderOpen} onClick={() => setPanel('docs')}>Documents (F8)</Button>
+              <Button variant="outline" icon={Link2} onClick={() => setPanel('share')}>Loan status link</Button>
               {can('customer_blocked', 'edit') && <Button variant="soft-danger" icon={Ban} onClick={() => { setReason(''); setPanel('block'); }}>{c.status === 'BLOCKED' ? 'Unblock' : 'Block'} Customer (Ctrl+B)</Button>}
             </div>
           </div>
@@ -186,6 +188,7 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
       )}
       <CustomerFormDrawer open={panel === 'edit'} customer={c} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); refetch(); }} />
       <Drawer open={panel === 'docs'} onClose={() => setPanel(null)} size="lg" icon={FolderOpen} title={`Documents · ${c?.name || ''}`}>{c && <DocumentsPanel owner="customer" id={c.id} canEdit={can('customers', 'edit')} />}</Drawer>
+      {c && <ShareLinkModal open={panel === 'share'} onClose={() => setPanel(null)} customer={c} />}
       <Modal tone="red" open={panel === 'block'} onClose={() => setPanel(null)} size="sm" icon={Ban} title={c?.status === 'BLOCKED' ? 'Unblock customer' : 'Block customer'}
         footer={<Button variant={c?.status === 'BLOCKED' ? 'primary' : 'danger'} onClick={block}>{c?.status === 'BLOCKED' ? 'Unblock' : 'Block'}</Button>}>
         {c?.status !== 'BLOCKED' ? <Field label="Reason" required><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></Field> : <p className="text-sm">New loans will be allowed again for {c?.name}.</p>}

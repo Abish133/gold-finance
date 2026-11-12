@@ -134,4 +134,26 @@ router.get('/next-scheme-code', permit('m_schemes', 'add'), async (_req, res) =>
   res.json({ data: `GL${String(row.c + 1).padStart(3, '0')}` });
 });
 
+/* ---------------- quick item templates for New Loan (names, pcs, metal, purity - never weights) ---------------- */
+const cleanItems = (items) => (Array.isArray(items) ? items : []).slice(0, 30).map((i) => ({
+  item_id: i.item_id || null, item_name: String(i.item_name || '').slice(0, 80), pcs: Math.max(1, Number(i.pcs) || 1),
+  metal: i.metal === 'SILVER' ? 'SILVER' : 'GOLD', purity: Number(i.purity) || null, remarks: i.remarks ? String(i.remarks).slice(0, 120) : null,
+})).filter((i) => i.item_name);
+router.get('/item-templates', async (_req, res) => {
+  const rows = await query('SELECT t.id, t.name, t.items, t.created_at, u.full_name created_by_name FROM item_templates t LEFT JOIN users u ON u.id = t.created_by ORDER BY t.name');
+  res.json({ data: rows.map((r) => ({ ...r, items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items })) });
+});
+router.post('/item-templates', permitAny(['loan_new', 'm_items'], 'add'), async (req, res) => {
+  const name = String(req.body?.name || '').trim().slice(0, 80);
+  const items = cleanItems(req.body?.items);
+  if (!name) throw ApiError.badRequest('Enter a name for the template');
+  if (!items.length) throw ApiError.badRequest('Add at least one item first');
+  const r = await query('INSERT INTO item_templates (name, items, created_by) VALUES (:n, :i, :u)', { n: name, i: JSON.stringify(items), u: req.user.id });
+  res.json({ data: { id: r.insertId, name, items } });
+});
+router.delete('/item-templates/:id', permitAny(['loan_new', 'm_items'], 'add'), async (req, res) => {
+  await query('DELETE FROM item_templates WHERE id = :id', { id: req.params.id });
+  res.json({ ok: true });
+});
+
 export default router;

@@ -78,7 +78,16 @@ export const DEFAULTS = {
   SMS_REMINDER_TIME: '10:00',
   SMS_REMINDER_MONTHS: '3',                // no interest paid for this many months
   SMS_REMINDER_OVERDUE: '1',               // also remind loans past the settle-before date
-  SMS_REMINDER_GAP_DAYS: '15',             // do not remind the same loan again within these days
+  SMS_REMINDER_GAP_DAYS: '15',
+  // optional automations (Automation service) - off until switched on
+  OWNER_PHONE: '',                          // owner mobile(s) for the daily summary, comma separated
+  OWNER_SUMMARY: '0',                       // send the day's figures to the owner every day
+  OWNER_SUMMARY_TIME: '20:00',
+  SMS_ON_BIRTHDAY: '0',                     // birthday greeting to customers with an open loan
+  BIRTHDAY_TIME: '09:00',
+  RATE_WATCH: '1',
+  CUSTOMER_LINK_ENABLED: '0',               // customers can view their open loans through a link (read only)
+  CUSTOMER_LINK_DAYS: '30',                 // a link stops working after these days                          // reminder when loans come close to the value of their gold             // do not remind the same loan again within these days
   // auto backup (server folder)
   AUTO_BACKUP_ENABLED: '1',
   AUTO_BACKUP_TIME: '21:00',

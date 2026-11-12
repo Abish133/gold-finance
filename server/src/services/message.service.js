@@ -2,7 +2,26 @@ import { query, queryOne } from '#config/db.js';
 import { logger } from '#config/logger.js';
 import { getSettings } from './settings.service.js';
 
-const render = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? '').toString());
+export const render = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? '').toString());
+
+/** Every message the app can send - SMS (sent by the server) and WhatsApp (opened at the counter). Bodies are the defaults. */
+export const TEMPLATE_DEFS = [
+  ['NEW_LOAN', 'New loan (SMS)', 'Dear {name}, your gold loan {loan_no} of Rs.{amount} dated {date} is sanctioned. Net wt {weight} g. Thank you.'],
+  ['INTEREST', 'Interest received (SMS)', 'Dear {name}, received Rs.{amount} towards loan {loan_no} on {date}. Thank you.'],
+  ['RELEASE', 'Loan closed (SMS)', 'Dear {name}, your loan {loan_no} is closed on {date}. Amount received Rs.{amount}. Thank you.'],
+  ['DUE_REMINDER', 'Due reminder / auction notice (SMS)', 'Dear {name}, your loan {loan_no} is overdue. Please pay the interest / renew at the earliest to avoid auction.'],
+  ['BIRTHDAY', 'Birthday wishes (SMS)', 'Dear {name}, warm birthday wishes from {company}!'],
+  ['OWNER_SUMMARY', 'Daily summary to owner (SMS)', '{branch} {date}: Loans {loans} Rs.{lent}, Releases {releases} Rs.{released}, Interest Rs.{interest}, Cash Rs.{cash}. Open {open} loans Rs.{open_amount}, overdue {overdue}.'],
+  ['WA_NEW_LOAN', 'New loan (WhatsApp)', '{shop}\nDear {name}, your loan {loan_no} of Rs {amount} is given on {date} ({items}). Settle before {due_date}.'],
+  ['WA_RELEASE', 'Loan released (WhatsApp)', '{shop}\nDear {name}, your loan {loan_no} is released on {date}. Received Rs {amount}. Thank you.'],
+  ['WA_PART_PAYMENT', 'Part payment (WhatsApp)', '{shop}\nDear {name}, received Rs {amount} on loan {loan_no}. Balance loan amount Rs {balance}.'],
+  ['WA_INTEREST', 'Interest received (WhatsApp)', '{shop}\nDear {name}, received interest Rs {amount} on loan {loan_no}{months}.'],
+];
+export const ensureTemplates = async () => {
+  try {
+    for (const [k, n, b] of TEMPLATE_DEFS) await query('INSERT IGNORE INTO message_templates (event_key, name, body, is_active) VALUES (:k, :n, :b, 1)', { k, n, b });
+  } catch (err) { logger.warn({ err }, 'ensureTemplates failed'); }
+};
 
 /** Queue an SMS for an event if the event + template are enabled. Never throws. */
 export const queueMessage = async ({ branchId, event, phone, vars = {}, loanId = null }) => {

@@ -65,7 +65,7 @@ export function FormFields({ fields, form, cols = 2, dense = false, className })
             </div>
           );
         }
-        return <Field key={f.name} label={f.label} required={f.required} error={err} hint={f.hint} className={span}>{input}</Field>;
+        return <Field key={f.name} label={f.label} required={f.required} error={err} hint={typeof f.hint === 'function' ? f.hint(values) : f.hint} className={span}>{input}</Field>;
       })}
     </div>
   );

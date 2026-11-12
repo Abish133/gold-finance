@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { useForm } from 'react-hook-form';
-import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize, Menu as MenuIcon, X } from 'lucide-react';
+import { Bell, LogOut, Moon, Search, Sun, Building2, KeyRound, Layers, ChevronDown, ChevronRight, Power, Keyboard, Info, Maximize, Minimize, Menu as MenuIcon, X, CalendarDays, Coins } from 'lucide-react';
 import { MENUS, HOTKEYS, allowed } from '@/config/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFetch, useAction, useCompany } from '@/hooks/useApi';
@@ -12,6 +12,8 @@ import { Button, Drawer, Spinner, Field, Input, Badge, Modal } from '@/component
 import { GlobalSearch } from './GlobalSearch';
 import { amount, setWorkDate, today } from '@/lib/format';
 import { addRecentScreen, recentScreens } from '@/lib/recent';
+import { MorningBriefing } from './MorningBriefing';
+import { loadWaTemplates } from '@/lib/whatsapp';
 import { appZoom, isDarkMode, loadAppearance, saveAppearance, syncAppearance } from '@/lib/appearance';
 import { PasswordHelp } from '@/components/common/PasswordHelp';
 
@@ -236,7 +238,7 @@ function FullscreenButton() {
     else document.documentElement.requestFullscreen?.().catch(() => {});
   };
   return (
-    <Button variant="ghost" size="icon" className="size-7 rounded-md" onClick={toggle} aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
+    <Button variant="ghost" size="icon" className="size-8 rounded-md hover:bg-white dark:hover:bg-ink-900" onClick={toggle} aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
       {full ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
     </Button>
   );
@@ -281,16 +283,16 @@ function BranchSwitcher() {
   return (
     <div ref={box} className="relative shrink-0">
       <button type="button" disabled={single} onClick={() => setOpen((o) => !o)} title="Switch branch - data is kept separate for every branch"
-        className="flex h-7 items-stretch overflow-hidden rounded-md border border-emerald-600/60 text-left transition hover:border-emerald-600 disabled:cursor-default dark:border-emerald-500/50">
-        <span className="flex items-center gap-1.5 bg-emerald-600 px-2 text-[10px] font-bold tracking-wide text-white uppercase">
-          <span className="relative flex size-1.5"><span className="absolute inset-0 animate-ping rounded-full bg-white/70" /><span className="relative size-1.5 rounded-full bg-white" /></span>
-          {branch === 'all' ? <Layers className="size-3.5" /> : <Building2 className="size-3.5" />}
-          Branch
+        className="flex h-10 items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 py-1 pr-2 pl-1 text-left transition hover:border-emerald-400 disabled:cursor-default dark:border-emerald-900 dark:bg-emerald-950/30">
+        <span className="relative grid size-8 shrink-0 place-items-center rounded-md bg-emerald-600 text-white">
+          {branch === 'all' ? <Layers className="size-4" /> : <Building2 className="size-4" />}
+          <span className="absolute -top-0.5 -right-0.5 flex size-2"><span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative size-2 rounded-full bg-emerald-400 ring-2 ring-emerald-50 dark:ring-emerald-950" /></span>
         </span>
-        <span className="flex items-center gap-1 bg-emerald-50 px-2 dark:bg-emerald-950/40">
-          <span className="max-w-36 truncate text-[12px] font-bold text-emerald-900 dark:text-emerald-100">{current?.name || 'Select branch'}</span>
-          {!single && <ChevronDown className={clsx('size-3.5 text-emerald-700 transition dark:text-emerald-300', open && 'rotate-180')} />}
+        <span className="hidden flex-col leading-none sm:flex">
+          <span className="text-[9px] font-bold tracking-wider text-emerald-700 uppercase dark:text-emerald-300">Branch</span>
+          <span className="mt-0.5 max-w-36 truncate text-[12px] font-bold text-emerald-900 dark:text-emerald-100">{current?.name || 'Select branch'}</span>
         </span>
+        {!single && <ChevronDown className={clsx('size-3.5 text-emerald-700 transition dark:text-emerald-300', open && 'rotate-180')} />}
       </button>
       {open && (() => {
         /* fixed: the header clips anything that overflows it */
@@ -335,52 +337,20 @@ function BranchSwitcher() {
 }
 
 /* ---- small header icons (inline SVG, 18px) */
-const CalendarIcon = ({ day, alert }) => (
-  <svg viewBox="0 0 20 20" className="size-[18px] shrink-0" aria-hidden>
-    <rect x="2" y="3.5" width="16" height="14.5" rx="2.5" className="fill-white stroke-ink-300 dark:fill-ink-800 dark:stroke-ink-600" strokeWidth="1" />
-    <path d="M2 6a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 18 6v1.5H2Z" className={alert ? 'fill-rose-600' : 'fill-navy-900 dark:fill-white'} />
-    <rect x="5.5" y="1.5" width="1.6" height="3.5" rx=".8" className="fill-ink-500" />
-    <rect x="12.9" y="1.5" width="1.6" height="3.5" rx=".8" className="fill-ink-500" />
-    <text x="10" y="15.6" textAnchor="middle" fontSize="7.5" fontWeight="700" className="fill-navy-900 dark:fill-white">{day}</text>
-  </svg>
-);
 
 /* gold: stacked ingots */
-const GoldIcon = () => (
-  <svg viewBox="0 0 20 20" className="size-[18px] shrink-0" aria-hidden>
-    <defs>
-      <linearGradient id="hdr-gold" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#fde68a" /><stop offset=".55" stopColor="#e0a526" /><stop offset="1" stopColor="#a16207" />
-      </linearGradient>
-    </defs>
-    <path d="M1.5 17.5 3.4 12h5.2l1.9 5.5Z" fill="url(#hdr-gold)" stroke="#92400e" strokeWidth=".7" strokeLinejoin="round" />
-    <path d="M9.5 17.5 11.4 12h5.2l1.9 5.5Z" fill="url(#hdr-gold)" stroke="#92400e" strokeWidth=".7" strokeLinejoin="round" />
-    <path d="M5.5 11 7.4 5.5h5.2l1.9 5.5Z" fill="url(#hdr-gold)" stroke="#92400e" strokeWidth=".7" strokeLinejoin="round" />
-    <path d="M8 7h2.5" stroke="#fffbeb" strokeWidth=".8" strokeLinecap="round" opacity=".8" />
-  </svg>
-);
 
 /* silver: coin with milled edge */
-const SilverIcon = () => (
-  <svg viewBox="0 0 20 20" className="size-[18px] shrink-0" aria-hidden>
-    <defs>
-      <radialGradient id="hdr-silver" cx=".35" cy=".3" r=".8">
-        <stop offset="0" stopColor="#ffffff" /><stop offset=".55" stopColor="#cbd5e1" /><stop offset="1" stopColor="#64748b" />
-      </radialGradient>
-    </defs>
-    <circle cx="10" cy="10" r="8.2" fill="url(#hdr-silver)" stroke="#475569" strokeWidth=".7" />
-    <circle cx="10" cy="10" r="6.1" fill="none" stroke="#64748b" strokeWidth=".6" strokeDasharray="1 1" />
-    <text x="10" y="12.6" textAnchor="middle" fontSize="7" fontWeight="800" fill="#334155">Ag</text>
-  </svg>
-);
 
 /* one-line stat: icon + small grey label + bold value */
 const HeaderStat = ({ icon, label, value, onClick, accent, title }) => (
   <button type="button" onClick={onClick} title={title}
-    className={clsx('flex h-7 items-center gap-1.5 rounded-md px-2 leading-none whitespace-nowrap transition', onClick ? 'hover:bg-ink-100 dark:hover:bg-ink-800' : 'cursor-default')}>
-    {icon}
-    <span className="text-[10px] font-semibold tracking-wide text-ink-400 uppercase">{label}</span>
-    <span className={clsx('num text-[13px] font-bold', accent || 'text-navy-900 dark:text-white')}>{value}</span>
+    className={clsx('flex items-center gap-2 rounded-md px-2 py-1 text-left whitespace-nowrap transition', onClick ? 'hover:bg-white dark:hover:bg-ink-700/60' : 'cursor-default')}>
+    <span className="grid size-7 shrink-0 place-items-center rounded-md bg-white dark:bg-ink-900">{icon}</span>
+    <span className="flex flex-col leading-none">
+      <span className="text-[9px] font-bold tracking-wider text-ink-400 uppercase">{label}</span>
+      <span className={clsx('num mt-0.5 text-[13px] font-bold', accent || 'text-navy-900 dark:text-white')}>{value}</span>
+    </span>
   </button>
 );
 
@@ -401,60 +371,58 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
   const name = company?.name || 'Gold Finance';
 
   return (
-    <header className="no-print relative z-20 flex h-12 items-center gap-2 overflow-hidden border-b border-ink-200 bg-white px-2 py-2 sm:gap-3 sm:px-5 dark:border-ink-800 dark:bg-ink-900">
-      <Link to="/" className="flex shrink-0 items-center gap-2" title={fy ? `Books ${dayjs(fy.start_date).format('DD/MM/YYYY')} to ${dayjs(fy.end_date).format('DD/MM/YYYY')}` : undefined}>
+    <header className="no-print relative z-20 flex h-14 items-center gap-2 overflow-hidden border-b border-ink-200 bg-white px-2 sm:gap-3 sm:px-4 dark:border-ink-800 dark:bg-ink-900">
+      {/* brand: logo, name, books year */}
+      <Link to="/" className="flex shrink-0 items-center gap-2.5" title={fy ? `Books ${dayjs(fy.start_date).format('DD/MM/YYYY')} to ${dayjs(fy.end_date).format('DD/MM/YYYY')}` : undefined}>
         {company?.logo_path
-          ? <img src={company.logo_path} alt="" className="size-6 rounded-md bg-white object-contain ring-1 ring-ink-200" />
-          : <span className="grid size-6 place-items-center rounded-md bg-navy-900 text-[13px] font-bold text-white dark:bg-white dark:text-navy-900">{name.replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</span>}
-        <span className="hidden max-w-56 truncate text-[15px] font-bold text-navy-900 sm:inline dark:text-white">{name}</span>
-        {fy && (
-          <span className="hidden h-6 items-stretch md:flex overflow-hidden rounded-md border border-navy-900 text-[11px] font-bold dark:border-white/70">
-            <span className="flex items-center bg-navy-900 px-1.5 text-[10px] tracking-wider text-white dark:bg-white dark:text-navy-900">FY</span>
-            <span className="num flex items-center bg-white px-1.5 text-navy-900 dark:bg-ink-900 dark:text-white">{fy.name}</span>
-          </span>
-        )}
+          ? <img src={company.logo_path} alt="" className="size-9 rounded-md bg-white object-contain ring-1 ring-ink-200 dark:ring-ink-700" />
+          : <span className="grid size-9 place-items-center rounded-md bg-navy-900 text-[16px] font-bold text-white dark:bg-white dark:text-navy-900">{name.replace(/[^A-Za-z]/g, '').charAt(0) || 'G'}</span>}
+        <span className="hidden min-w-0 flex-col leading-none sm:flex">
+          <span className="max-w-56 truncate text-[15px] font-bold text-navy-900 dark:text-white">{name}</span>
+          {fy && <span className="mt-1 text-[11px] text-ink-500">Books <b className="num font-semibold text-ink-700 dark:text-ink-300">FY {fy.name}</b></span>}
+        </span>
       </Link>
 
-      <span className="hidden md:block"><Sep /></span>
-
-      <div className="hidden items-center md:flex">
-        <HeaderStat icon={<CalendarIcon day={dayjs(billing?.billingDate).format('D')} alert={billing?.behind} />} label="Date" value={dayjs(billing?.billingDate).format('DD/MM/YYYY')} accent={billing?.behind ? 'text-rose-600' : undefined}
+      {/* today's figures in one soft panel */}
+      <div className="ml-2 hidden items-center gap-0.5 rounded-md bg-ink-100/70 p-0.5 md:flex dark:bg-ink-800/60">
+        <HeaderStat icon={<CalendarDays className={clsx('size-4', billing?.behind ? 'text-rose-600' : 'text-navy-700 dark:text-ink-200')} />} label="Billing date" value={dayjs(billing?.billingDate).format('DD MMM YYYY')} accent={billing?.behind ? 'text-rose-600' : undefined}
           onClick={billing?.behind ? () => navigate('/accounts/day-report') : undefined} title={billing?.behind ? 'Billing date is behind today - finish Day End' : 'Billing date'} />
-        <Sep />
-        <HeaderStat icon={<GoldIcon />} label="Gold" value={gold ? `₹${amount((gold.market_rate * 100) / (gold.purity || 100))}` : 'Not set'} accent={!todayRate ? 'text-rose-600' : undefined}
-          onClick={() => navigate('/masters?tab=rates')} title={todayRate ? 'Gold rate per gram' : 'Gold rate not set for today'} />
-        <Sep />
-        <HeaderStat icon={<SilverIcon />} label="Silver" value={silver ? `₹${amount((silver.market_rate * 100) / (silver.purity || 100))}` : 'Not set'}
-          onClick={() => navigate('/masters?tab=rates')} title="Silver rate per gram" />
+        <HeaderStat icon={<Coins className="size-4 text-amber-500" />} label={todayRate ? 'Gold / g' : 'Gold / g · not today'} value={gold ? `₹${amount((gold.market_rate * 100) / (gold.purity || 100))}` : 'Not set'} accent={!todayRate ? 'text-rose-600' : undefined}
+          onClick={() => navigate('/masters?tab=rates')} title={todayRate ? 'Gold rate per gram - click to update' : 'Gold rate not entered for today - click to enter'} />
+        <HeaderStat icon={<Coins className="size-4 text-slate-400" />} label="Silver / g" value={silver ? `₹${amount((silver.market_rate * 100) / (silver.purity || 100))}` : 'Not set'}
+          onClick={() => navigate('/masters?tab=rates')} title="Silver rate per gram - click to update" />
       </div>
 
       <span className="flex-1" />
 
+      {/* search */}
       <button type="button" onClick={onSearch} title="Search (Ctrl K)"
-        className="flex h-7 shrink-0 items-center gap-2 rounded-md border border-ink-200 px-2 text-[12px] text-ink-400 transition hover:border-navy-400 hover:text-navy-700 dark:border-ink-700">
-        <Search className="size-3.5" /><span className="hidden lg:inline">Search</span>
-        <kbd className="hidden rounded bg-ink-100 px-1 text-[10px] font-semibold text-ink-500 sm:block dark:bg-ink-800">Ctrl K</kbd>
+        className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-transparent bg-ink-100/70 px-3 text-[12px] text-ink-500 transition hover:border-ink-300 hover:bg-white lg:w-64 dark:bg-ink-800/60 dark:hover:border-ink-600 dark:hover:bg-ink-900">
+        <Search className="size-4 shrink-0" /><span className="hidden min-w-0 flex-1 truncate text-left whitespace-nowrap lg:inline">Search loan, customer…</span>
+        <kbd className="hidden shrink-0 rounded-sm border border-ink-200 bg-white px-1.5 text-[10px] font-semibold whitespace-nowrap text-ink-500 sm:block dark:border-ink-700 dark:bg-ink-900">Ctrl K</kbd>
       </button>
 
-      <span className="hidden sm:block"><Sep /></span>
       <BranchSwitcher />
-      <span className="hidden sm:block"><Sep /></span>
 
-      <div className="flex shrink-0 items-center">
+      {/* tools */}
+      <div className="flex shrink-0 items-center gap-0.5 rounded-md bg-ink-100/70 p-0.5 dark:bg-ink-800/60">
         <span className="hidden sm:block"><FullscreenButton /></span>
-        <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Theme" className="size-7 rounded-md">{dark ? <Sun className="size-4" /> : <Moon className="size-4" />}</Button>
-        <Button variant="ghost" size="icon" onClick={onAlerts} className="relative size-7 rounded-md" aria-label="Reminders">
+        <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)} aria-label="Light / dark" title={dark ? 'Light mode' : 'Dark mode'} className="size-8 rounded-md hover:bg-white dark:hover:bg-ink-900">{dark ? <Sun className="size-4" /> : <Moon className="size-4" />}</Button>
+        <Button variant="ghost" size="icon" onClick={onAlerts} className="relative size-8 rounded-md hover:bg-white dark:hover:bg-ink-900" aria-label="Reminders" title="Reminders">
           <Bell className="size-4" />
-          {alertCount > 0 && <span className="absolute top-0 right-0 grid size-3.5 place-items-center rounded-full bg-rose-600 text-[8px] font-bold text-white">{alertCount}</span>}
+          {alertCount > 0 && <span className="absolute top-0.5 right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white ring-2 ring-ink-100 dark:ring-ink-800">{alertCount}</span>}
         </Button>
       </div>
 
-      <span className="hidden sm:block"><Sep /></span>
-
-      <button type="button" onClick={onProfile} title={user.role_name}
-        className="flex h-7 shrink-0 items-center gap-1.5 rounded-md pr-2 pl-0.5 transition hover:bg-ink-100 dark:hover:bg-ink-800">
-        <span className="grid size-6 place-items-center rounded-md bg-navy-900 text-[10px] font-bold text-white uppercase dark:bg-white dark:text-navy-900">{user.username.slice(0, 2)}</span>
-        <span className="hidden text-[12px] font-bold text-navy-900 uppercase sm:inline dark:text-white">{user.username}</span>
+      {/* user */}
+      <button type="button" onClick={onProfile} title="My profile · change password · sign out"
+        className="flex h-10 shrink-0 items-center gap-2 rounded-md py-1 pr-2 pl-1 transition hover:bg-ink-100 dark:hover:bg-ink-800">
+        <span className="grid size-8 place-items-center rounded-md bg-navy-900 text-[11px] font-bold text-white uppercase dark:bg-white dark:text-navy-900">{(user.full_name || user.username).split(' ').map((w) => w[0]).join('').slice(0, 2)}</span>
+        <span className="hidden flex-col text-left leading-none sm:flex">
+          <span className="max-w-32 truncate text-[12px] font-bold text-navy-900 dark:text-white">{user.full_name || user.username}</span>
+          <span className="mt-1 max-w-32 truncate text-[10px] text-ink-500">{user.role_name}</span>
+        </span>
+        <ChevronDown className="hidden size-3.5 text-ink-400 sm:block" />
       </button>
     </header>
   );
@@ -462,19 +430,73 @@ function HeaderStrip({ onSearch, onProfile, onAlerts, alertCount, dark, setDark 
 
 /* ------------------------------------------------------------------ status bar */
 function StatusBar() {
-  const { data } = useFetch('/dashboard/status', undefined, { refetchInterval: 120_000 });
+  const navigate = useNavigate();
+  const { user, currentBranch, isAllBranches } = useAuth();
+  const { data, isError } = useFetch('/dashboard/status', undefined, { refetchInterval: 60_000 });
   const { data: company } = useCompany();
-  const month = dayjs().format('MMMM');
-  const Item = ({ label, value, warn }) => (
-    <span className="whitespace-nowrap">{label} <b className={clsx('num ml-1.5 text-base', warn ? 'text-rose-300' : 'text-white')}>{value ?? 0}</b></span>
+  const [now, setNow] = useState(() => dayjs());
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const t = setInterval(() => setNow(dayjs()), 20_000);
+    const on = () => setOnline(true); const off = () => setOnline(false);
+    window.addEventListener('online', on); window.addEventListener('offline', off);
+    return () => { clearInterval(t); window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  const d = data || {};
+  const num = (v) => Number(v || 0);
+  const short = (v) => { const x = num(v); return x >= 1e7 ? `${(x / 1e7).toFixed(2)}Cr` : x >= 1e5 ? `${(x / 1e5).toFixed(2)}L` : x >= 1e3 ? `${(x / 1e3).toFixed(1)}K` : `${Math.round(x)}`; };
+  const Item = ({ label, value, to, tone, title }) => (
+    <button type="button" onClick={to ? () => navigate(to) : undefined} title={title || (to ? 'Open' : undefined)}
+      className={clsx('flex h-6 shrink-0 items-center gap-1 rounded-sm px-1.5 leading-none whitespace-nowrap', to ? 'hover:bg-white/10' : 'cursor-default')}>
+      <span className="text-[11px] leading-none text-white/55">{label}</span>
+      <b className={clsx('num text-[13px] leading-none', tone === 'bad' ? 'text-rose-300' : tone === 'warn' ? 'text-amber-300' : 'text-white')}>{value}</b>
+    </button>
   );
+  const Group = ({ title, className, children }) => (
+    <div className={clsx('flex shrink-0 items-center', className)}>
+      <span className="mr-0.5 flex h-4 items-center rounded-sm bg-white/10 px-1.5 text-[9px] leading-none font-bold tracking-wider text-white/70 uppercase">{title}</span>{children}
+    </div>
+  );
+  const Sep = () => <span aria-hidden className="h-4 w-px shrink-0 bg-white/15" />;
+  const serverOk = online && !isError;
+  const attention = num(d.overdue) + num(d.unsettled_12m) + num(d.sms_failed);
+
   return (
-    <footer className="navy-gradient no-print hidden items-center gap-8 overflow-x-auto md:flex border-t-[3px] border-gold-500 px-5 py-2 text-sm text-navy-100">
-      <Item label={`${month} Loans`} value={data?.month_loans} />
-      <Item label={`${month} Releases`} value={data?.month_releases} />
-      <Item label="Open Loans" value={data?.open_loans} />
-      <Item label="Unsettled (over 12 months)" value={data?.unsettled_12m} warn={data?.unsettled_12m > 0} />
-      <span className="font-bold ml-auto text-xl whitespace-nowrap text-white">{company?.name || 'Gold Finance'}</span>
+    <footer className="navy-gradient no-print hidden h-9 items-center gap-2.5 overflow-hidden border-t-[3px] border-gold-500 px-3 leading-none text-white md:flex">
+      <Group title="Today">
+        <Item label="Loans" value={`${num(d.today_loans)} · ₹${short(d.today_lent)}`} to="/accounts/day-report" title="New loans given today" />
+        <Item label="Releases" value={num(d.today_releases)} to="/accounts/day-report" />
+      </Group>
+      <Sep />
+      <Group title={now.format('MMM')}>
+        <Item label="Loans" value={`${num(d.month_loans)} · ₹${short(d.month_lent)}`} to="/analytics" title="This month - open Business Analytics" />
+        <Item label="Releases" value={num(d.month_releases)} to="/analytics" />
+      </Group>
+      <Sep />
+      <Group title="Book" className="hidden lg:flex">
+        <Item label="Open" value={num(d.open_loans)} to="/loans" title="Open loans - Pledge Book" />
+        <Item label="Outstanding" value={`₹${short(d.outstanding)}`} to="/loans" />
+        <Item label="Gold" value={`${num(d.open_wt).toFixed(1)} g`} to="/stock/current" title="Net weight in custody - Current Stock" />
+      </Group>
+      <span className="hidden lg:block"><Sep /></span>
+      <Group title={attention ? 'Attention' : 'All clear'} className="hidden xl:flex">
+        <Item label="Overdue" value={num(d.overdue)} tone={num(d.overdue) ? 'warn' : undefined} to="/loans/calculator" title="Past the settle-before date" />
+        <Item label="12m+" value={num(d.unsettled_12m)} tone={num(d.unsettled_12m) ? 'bad' : undefined} to="/auction" title="Open for over 12 months - Auction" />
+        {(num(d.sms_pending) > 0 || num(d.sms_failed) > 0) && (
+          <Item label="SMS" value={num(d.sms_failed) ? `${num(d.sms_failed)} failed` : `${num(d.sms_pending)} waiting`} tone={num(d.sms_failed) ? 'bad' : undefined} to="/settings/messages" />
+        )}
+      </Group>
+
+      <span className="flex-1" />
+      <span className={clsx('flex h-6 shrink-0 items-center gap-1.5 text-[11px] leading-none', serverOk ? 'text-white/70' : 'text-rose-300')} title={serverOk ? 'Connected to the server' : 'Cannot reach the server - entries may not save'}>
+        <span className={clsx('size-2 rounded-full', serverOk ? 'bg-emerald-400' : 'animate-pulse bg-rose-400')} />{serverOk ? 'Online' : 'Offline'}
+      </span>
+      <Sep />
+      <span className="hidden h-6 shrink-0 items-center truncate text-[11px] leading-none text-white/70 lg:flex" title="Signed in as">{user.username} · {isAllBranches ? 'All branches' : currentBranch?.name}</span>
+      <span className="hidden lg:block"><Sep /></span>
+      <span className="num flex h-6 shrink-0 items-center text-[12px] leading-none font-semibold text-white/85" title={now.format('dddd, DD MMMM YYYY')}>{now.format('ddd DD MMM · hh:mm A')}</span>
+      <Sep />
+      <span className="hidden h-6 max-w-56 shrink-0 items-center truncate text-[14px] leading-none font-bold whitespace-nowrap text-white xl:flex">{company?.name || 'Gold Finance'}</span>
     </footer>
   );
 }
@@ -561,7 +583,7 @@ export function AppLayout() {
   const { can, logout } = useAuth();
   const { data: alerts = [] } = useFetch('/dashboard/alerts', undefined, { refetchInterval: 5 * 60_000 });
 
-  useEffect(() => { syncAppearance(); }, []); // the user's own look (or the shop default) after login
+  useEffect(() => { syncAppearance(); loadWaTemplates(); }, []); // the user's own look (or the shop default) + WhatsApp texts after login
   useHotkey('ctrl+k', () => setPanel('search'));
   for (const h of HOTKEYS) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -581,6 +603,7 @@ export function AppLayout() {
       <div className="sticky bottom-0 z-20"><StatusBar /></div>
 
       <GlobalSearch open={panel === 'search'} onClose={() => setPanel(null)} />
+      <MorningBriefing />
       <AlertsDrawer open={panel === 'alerts'} onClose={() => setPanel(null)} alerts={alerts} />
       <ProfileDrawer open={panel === 'profile'} onClose={() => setPanel(null)} />
       <ShortcutsDrawer open={panel === 'shortcuts'} onClose={() => setPanel(null)} />

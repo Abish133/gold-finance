@@ -16,11 +16,13 @@ import auctionRoutes from '#modules/auction/auction.routes.js';
 import toolsRoutes from '#modules/tools/tools.routes.js';
 import deskRoutes from '#modules/desk/desk.routes.js';
 import deskReportRoutes from '#modules/desk/deskReports.routes.js';
+import publicRoutes from '#modules/public/public.routes.js';
 
 const api = Router();
 
 api.get('/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 api.use('/auth', authRoutes);
+api.use('/public', publicRoutes);   // customer loan-status link - read only, off until enabled
 
 // everything below needs a logged-in user + resolved branch scope
 api.use(authenticate, branchScope);

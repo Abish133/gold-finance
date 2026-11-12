@@ -1,5 +1,11 @@
 import dayjs from 'dayjs';
 import { amount } from '@/lib/format';
+import { api } from '@/lib/api';
+
+/* WhatsApp templates from SMS / WhatsApp > Templates (loaded once after sign-in) */
+let waTemplates = {};
+export const loadWaTemplates = async () => { try { waTemplates = (await api.get('/dashboard/wa-templates')).data || {}; } catch { /* keep the built-in texts */ } };
+const fill = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? '').toString());
 
 /** Opens WhatsApp (web or app) with the message typed in, for an Indian 10-digit mobile number. */
 export const openWhatsApp = (phone, text) => {
@@ -25,5 +31,16 @@ export const whatsappAfterSave = (settings, kind, full, txn) => {
     PART: `Dear ${l.customer_name}, received Rs ${amount(txn?.total_amount)} on loan ${no}. Balance loan amount Rs ${amount(l.current_principal)}.`,
     INTEREST: `Dear ${l.customer_name}, received interest Rs ${amount(txn?.total_amount)} on loan ${no}${txn?.months_paid ? ` for ${txn.months_paid} month(s)` : ''}.`,
   }[kind];
+  const tpl = waTemplates[{ LOAN: 'WA_NEW_LOAN', RELEASE: 'WA_RELEASE', PART: 'WA_PART_PAYMENT', INTEREST: 'WA_INTEREST' }[kind]];
+  if (tpl) {
+    const amt = kind === 'LOAN' ? l.principal : txn?.total_amount;
+    const text = fill(tpl, {
+      shop, name: l.customer_name, loan_no: no, amount: amount(amt), items: l.item_summary || '', balance: amount(l.current_principal),
+      date: dayjs(kind === 'LOAN' ? l.loan_date : txn?.txn_date).format('DD/MM/YYYY'), due_date: l.due_date ? dayjs(l.due_date).format('DD/MM/YYYY') : '',
+      months: txn?.months_paid ? ` for ${txn.months_paid} month(s)` : '',
+    }).replace(/^\s*\n/, '');   // no shop name -> no empty first line
+    openWhatsApp(l.customer_phone, text);
+    return;
+  }
   openWhatsApp(l.customer_phone, `${shop ? `${shop}\n` : ''}${lines}`);
 };

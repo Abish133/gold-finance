@@ -451,7 +451,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
               ))}
               <span className="ml-1 text-[11px] text-ink-400">Mix = gold + silver items in one loan</span>
             </div>
-            <ItemEntry loanOn={loanOn} rates={rates} lookups={lk} editing={editing}
+            <ItemEntry loanOn={loanOn} rates={rates} lookups={lk} editing={editing} currentItems={items}
               onAdd={(it) => { setItems((l) => (editing ? l.map((x) => (x.key === editing.key ? it : x)) : [...l, it])); setEditing(null); }} />
             <div className="mt-2.5"><ItemsTable items={rows} onRemove={(i) => setItems((l) => l.filter((x) => x.key !== i.key))} onEdit={(i) => setEditing(i)} /></div>
             <div className="mt-2.5 grid grid-cols-2 overflow-hidden rounded-md border border-ink-200 text-[13px] sm:grid-cols-4 dark:border-ink-800 [&>div]:border-ink-200 [&>div]:px-3 [&>div]:py-1.5 [&>div:not(:last-child)]:border-r dark:[&>div]:border-ink-800">

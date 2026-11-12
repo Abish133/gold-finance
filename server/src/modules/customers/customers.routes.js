@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import { workDate } from '#services/daycontrol.service.js';
 import { query, queryOne, withTransaction } from '#config/db.js';
@@ -7,6 +8,7 @@ import { upload, publicPath } from '#middleware/upload.js';
 import { ApiError } from '#utils/ApiError.js';
 import { parseListQuery, paged } from '#utils/pagination.js';
 import { audit } from '#services/audit.service.js';
+import { getSettings } from '#services/settings.service.js';
 import { nextNumber, peekNumber } from '#services/sequence.service.js';
 import { withCalc } from '#services/loanCalc.service.js';
 
@@ -179,6 +181,32 @@ router.post('/merge', permit('customer_merge', 'edit'), async (req, res) => {
   });
   audit(req, 'MERGE', 'customers', to.id, { from: from.id });
   res.json({ data: await loadCustomer(req, to.id) });
+});
+
+
+/* ---------------- customer loan-status link (read only, off until enabled) ---------------- */
+router.get('/:id/share-links', permit('customers', 'view'), async (req, res) => {
+  const st = await getSettings(0);
+  const rows = await query(`SELECT k.id, k.expires_at, k.revoked, k.views, k.last_viewed_at, k.created_at, u.full_name created_by_name
+                              FROM customer_links k LEFT JOIN users u ON u.id = k.created_by
+                             WHERE k.customer_id = :c ORDER BY k.id DESC LIMIT 10`, { c: req.params.id });
+  res.json({ data: { enabled: st.CUSTOMER_LINK_ENABLED === '1', days: Number(st.CUSTOMER_LINK_DAYS || 30), links: rows } });
+});
+router.post('/:id/share-links', permit('customers', 'view'), async (req, res) => {
+  const st = await getSettings(0);
+  if (st.CUSTOMER_LINK_ENABLED !== '1') throw ApiError.badRequest('Customer link is switched off (SMS / WhatsApp > Auto SMS Rules > Automations)');
+  const c = await queryOne('SELECT id FROM customers WHERE id = :id', { id: req.params.id });
+  if (!c) throw ApiError.notFound('Customer not found');
+  const days = Math.min(365, Math.max(1, Number(st.CUSTOMER_LINK_DAYS) || 30));
+  const token = crypto.randomBytes(32).toString('base64url');
+  const r = await query('INSERT INTO customer_links (customer_id, token, expires_at, created_by) VALUES (:c, :t, DATE_ADD(NOW(), INTERVAL :d DAY), :u)', { c: c.id, t: token, d: days, u: req.user.id });
+  audit(req, 'SHARE_LINK', 'customers', c.id, { link: r.insertId, days });
+  res.json({ data: { id: r.insertId, token, days } });
+});
+router.delete('/share-links/:linkId', permit('customers', 'view'), async (req, res) => {
+  await query('UPDATE customer_links SET revoked = 1 WHERE id = :id', { id: req.params.linkId });
+  audit(req, 'REVOKE_LINK', 'customer_links', req.params.linkId);
+  res.json({ ok: true });
 });
 
 export default router;
