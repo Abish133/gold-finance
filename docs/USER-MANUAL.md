@@ -306,6 +306,15 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 
 Old branches keep their phone as the first contact number. Fill the licence number of each branch once - until then the company licence is printed.
 
+## Interest by days and one bill for interest + part amount
+| What | Where | What it does |
+|---|---|---|
+| **Interest + part amount on one receipt** | Loan → Part Payment | Fill the interest and the part amount together - one receipt, both lines on it |
+| **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
+| **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
+| **Approval** | Release | Interest below the system figure counts like a discount - above the limit it needs a manager's password |
+| **Minimum days** | Settings → System Control → *Interest by days: minimum days* | Staff cannot charge fewer days than this |
+
 ## Optional automations (off until switched on)
 In **SMS / WhatsApp → Auto SMS Rules → Automations** (chapter *SMS and WhatsApp*):
 - **Daily summary to the owner** by SMS.
@@ -392,14 +401,21 @@ Due date is 12 months from the loan date.
 | − Advance interest | Taken when the loan was given |
 | − Interest already paid | Interest receipts (Part Payment screen) |
 | − Part amount paid | Loan amount already paid back |
+| **Charge interest** | **Full** (the system figure above), **Days** or **Amount** - see below |
 | Against ticket / Post / other charge | Type if you collect any |
 | Discount | Above ₹500 (System Control) needs a manager's password |
 | **Total to receive** | What the customer pays now |
 
+   **Charge interest** - how much interest to take now:
+   - **Full** (usual) - the system figure: every started month.
+   - **Days** - type the days or press **7 / 15 / 30**. Interest = interest per month ÷ 30 × days, less interest already paid (and advance). Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
+   - **Amount** - type the interest to take now.
+   - *Interest now* shows the amount taken. If it is **less than the system figure**, the line *Less than system* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
+   - A *minimum days* set in System Control cannot be gone under.
 3. **Customer unable to release** - tick it if the customer only signs (amount collected later).
 4. **Release Loan (F2)** → **Receive Payment · Loan 6 / Book 103**: Cash / UPI / Card / Cheque - press **Add (Enter)** for each part until Balance is 0.
 5. **Released by (F6)**: *Customer (self)* or *Other person* - type the name, mobile and relation / ID of the person who takes the jewels.
-6. **Confirm Release (F2)**. The **Release Receipt** prints (No, Loan No · Bill Book, customer, items in capitals with weight, loan amount, interest, less advance, total received in words, paid by). The loan becomes **Released** and its items leave the stock.
+6. **Confirm Release (F2)**. The **Release Receipt** prints (No, Loan No · Bill Book, customer, items in capitals with weight, loan amount, interest - "(N months)" or "(N days)" -, less advance, total received in words, paid by). The loan becomes **Released** and its items leave the stock.
 
 *Running* shows months and days (e.g. 22 m 10 d); *Days interest* counts the actual days from the loan date.
 
@@ -408,6 +424,8 @@ Loan of ₹50,000 at 1.5% p.m. compound, advance ₹750, released after 3 months
 - Interest · 4 months = 4 × 750 = ₹3,000
 - − Advance interest ₹750
 - **Total to receive ₹50,000 + 2,250 = ₹52,250**
+
+Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per month → 750 ÷ 30 × 7 = **₹175** instead of ₹750 - *Less than system ₹575* (needs the manager's password when the limit is ₹500).
 
 ## Good to know
 - Only look, no release? Load the loan, read the total, press **New / Clear (Ctrl+N)** - nothing is saved.
@@ -419,29 +437,54 @@ Loan of ₹50,000 at 1.5% p.m. compound, advance ₹750, released after 3 months
 
 # Part Payment & Interest (F5)
 
-**Loan → Part Payment** - the customer pays interest, or pays back part of the loan amount, and keeps the loan open.
+**Loan → Part Payment** - the customer pays interest, pays back part of the loan amount, or **both on one receipt**, and keeps the loan open.
 
-## Pay interest (F2 tab)
-1. Type the **loan no** → **Load** (Enter).
-2. The **Interest months** strip shows each month: advance, paid, paying now, due, not yet.
-3. **Months to pay** - press **+ / −**, or the buttons *1 month*, *3 months*, *All due*.
-   Amount = interest per month × months. "Paid up to (after save)" shows the new paid-up date.
-4. **Payment mode** - Cash / UPI / Card / Cheque, amount, reference → **Add (F4)** until Balance is 0.
-5. **Save & Print Receipt (F10)** or **Save only**.
+The **Receive** panel on the right has two parts:
+- **Interest** - charged by **Months**, **Days** or a typed **Amount** (F2 changes between them).
+- **Part amount** - optional (F3 goes to the box). Leave it 0 to take interest only.
 
-Example: loan ₹12,345 at 1.5% → interest per month ₹185. Paying 3 months = **₹555**, paid up to 05/05/2025.
+**Total to receive** = interest + part amount.
 
-## Pay part of the loan amount (F3 tab)
-1. Load the loan → **Part Amount (F3)**.
-2. **Amount received** - e.g. ₹5,000. *New outstanding* = loan − amount.
-3. Add the payment mode(s) → **Save & Print Receipt (F10)**.
+## 1. Load the loan
+Type the **loan no** → **Load** (Enter). The **Interest months** strip shows each month: advance, paid, paying now, due, not yet. Next to *Interest* the amount still **due** is shown.
+
+## 2. Interest - choose how to charge
+| Mode | How | Amount |
+|---|---|---|
+| **Months** (usual) | **+ / −**, or *None*, *1 month*, *3 months*, *All due* | interest per month × months |
+| **Days** | Type the days, or press **7 / 15 / 21 / 30 days** | interest per month ÷ 30 × days (rounded to the rupee) |
+| **Amount** | Type the interest amount | the amount you type |
+
+*Paid up to (after save)* moves on by the months or days charged (for *Amount*, by the days that amount covers).
+
+Use **Days** when a whole month is too much - for example the customer comes after 10 days and the shop decides to take 15 days' interest.
+
+If the owner set a **minimum days** (System Control → *Interest by days: minimum days*), fewer days cannot be saved and the smaller buttons are greyed out.
+
+> Nothing is lost by taking less now: everything paid is counted, and the rest stays due. It shows as *due* next time and at release.
+
+## 3. Part amount (optional)
+Type the amount paid back, e.g. ₹5,000. The panel shows *Outstanding now*, *Paying* and *New outstanding*.
+- Interest **and** part amount → **one receipt** (Part Payment receipt) with both lines.
+- Part amount only → set interest to *None* (Months) or 0.
+- The part amount must be less than the outstanding; to pay everything use **Release**.
 
 > Like MyBook, **interest stays on the original loan amount** after a part payment. The part amount is taken off what the customer owes at release.
+
+## 4. Payment and save
+1. **Payment mode** - Cash / UPI / Card / Cheque, amount, reference → **Add (F4)** until Balance is 0 (no lines = all cash).
+2. **Save & Print Receipt (F10)** or **Save only**.
+
+## Examples
+Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
+- **Months:** 3 months = **₹2,475**.
+- **Days:** 15 days = 27.50 × 15 = **₹413**.
+- **Both on one bill:** 15 days interest ₹413 + part amount ₹5,000 = **₹5,413** - one receipt, new outstanding ₹50,000.
 
 ## Good to know
 - Interest receipts are taken off at release (*Interest already paid*).
 - **F5** on this screen clears it for the next customer.
-- The receipt shows months, from–to dates, interest per month and the payment modes.
+- The receipt shows *Interest Months* (with from–to dates) or *Interest Days* (with the paid-up date), interest received, part amount received, outstanding after it, and the payment modes.
 
 ---
 
@@ -916,11 +959,12 @@ New loans pick the first scheme; the cashier can change the rate on the loan.
 | Advance interest (AI) | Yes - first month taken at loan time |
 | Default interest rate (GROI) | 1 - used for the day-wise info line |
 | Allow back-date billing | Yes / No |
-| Release: discount without admin (RDAL) | ₹500 |
+| Release: discount without admin (RDAL) | ₹500 - also covers interest taken below the system figure at release |
 | LTV safe / warning % | 75 / 85 |
 | Old loan warning (months) | 12 |
 | Auction overdue after (months) | 12 |
 | Release grace days | 0 |
+| Interest by days: minimum days (IMND) | 7 - Part Payment / Release cannot charge fewer days (0 = no minimum) |
 | Lock closed days | Yes |
 | Top-up allowed within days | 3 |
 

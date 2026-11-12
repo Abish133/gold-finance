@@ -5,7 +5,9 @@ export const MAX_PHONES = 5;
 export const parsePhones = (raw, fallback) => {
   let list = raw;
   if (typeof list === 'string') {
-    try { list = JSON.parse(list); } catch { list = list.split(','); }
+    const text = list;
+    try { list = JSON.parse(text); } catch { list = null; }
+    if (!Array.isArray(list)) list = text.split(','); // "9443300001" or "94433 00001, 04652 231122"
   }
   if (!Array.isArray(list)) list = [];
   list = list.map((p) => String(p ?? '').trim()).filter(Boolean);

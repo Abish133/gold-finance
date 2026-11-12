@@ -31,6 +31,8 @@ export default function ReleasePage() {
   const approval = useApproval();
   const [v, setV] = useState({ ticket_charge: '', post_charge: '', discount: '', remarks: '', unable: false });
   const [other, setOther] = useState({ enabled: false });
+  // interest at release: FULL = system figure, DAYS = charge N days (e.g. closed after 3 days -> charge 7 / 15), AMOUNT = typed
+  const [im, setIm] = useState({ mode: 'FULL', days: '', amount: '' });
   const [pay, setPay] = useState(false);
   const [details, setDetails] = useState(false);
   const [ledger, setLedger] = useState(false);
@@ -41,25 +43,42 @@ export default function ReleasePage() {
   // desktop: actual days from the loan date (01/01/2025 to 11/11/2026 = 679)
   const days = l ? dayjs(d).diff(dayjs(l.loan_date), 'day') : 0;
   const postage = full?.notices?.reduce((s, x) => s + n(x.postage), 0) || 0;
-  useEffect(() => { setV({ ticket_charge: '', post_charge: postage ? String(postage) : '', discount: '', remarks: '', unable: false }); setPay(false); setOther({ enabled: false }); }, [loanId, postage]);
+  useEffect(() => { setV({ ticket_charge: '', post_charge: postage ? String(postage) : '', discount: '', remarks: '', unable: false }); setPay(false); setOther({ enabled: false }); setIm({ mode: 'FULL', days: '', amount: '' }); }, [loanId, postage]);
 
   const paidInterest = c ? round2(c.interestPaid - n(l.advance_interest)) : 0;
   const partPaid = full ? round2(full.transactions.filter((t) => !t.is_void && t.txn_type === 'PART_PAYMENT').reduce((s, t) => s - n(t.principal_amount), 0)) : 0;
-  const total = c ? round2(c.principalOutstanding + c.interestDue + c.penalDue + n(v.ticket_charge) + n(v.post_charge) - n(v.discount)) : 0;
+  const minDays = n(settings?.INTEREST_MIN_DAYS);
+  const perDay = c ? n(c.monthlyInterest) / 30 : 0;
+  const chargeDays = Math.max(0, Math.floor(n(im.days)));
+  const daysInterest = Math.round(perDay * chargeDays);             // interest for the whole period, by days
+  const interestNow = !c ? 0
+    : im.mode === 'DAYS' ? round2(Math.max(0, daysInterest - n(c.interestPaid)))
+      : im.mode === 'AMOUNT' ? round2(Math.max(0, n(im.amount)))
+        : c.interestDue;
+  const reduced = c ? round2(Math.max(0, c.interestDue - interestNow)) : 0;
+  const daysTooFew = im.mode === 'DAYS' && chargeDays > 0 && minDays > 0 && chargeDays < minDays;
+  const total = c ? round2(c.principalOutstanding + interestNow + c.penalDue + n(v.ticket_charge) + n(v.post_charge) - n(v.discount)) : 0;
   const limit = n(settings?.DISCOUNT_APPROVAL_LIMIT);
+  const pickMode = (mode) => setIm((x) => ({ ...x, mode, days: mode === 'DAYS' && !x.days ? String(Math.max(days, minDays, 1)) : x.days }));
   const open = l?.status === 'OPEN';
   const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
   const goldR = rateOf('GOLD');
   const silverR = rateOf('SILVER');
   const otherOpen = (others.data || []).filter((x) => x.id !== l?.id);
 
-  const start = () => { if (!open) return; if (total > 0 && !v.unable) setPay(true); else release([]); };
+  const start = () => {
+    if (!open) return;
+    if (im.mode === 'DAYS' && !chargeDays) return toast.error('Enter the number of days to charge');
+    if (daysTooFew) return toast.error(`Interest must be charged for at least ${minDays} days`);
+    if (total > 0 && !v.unable) setPay(true); else release([]);
+  };
   const release = async (payments) => {
     if (!open) return;
     setSaving(true);
     try {
       const r = await approval.run((ap) => api.post(`/loans/${l.id}/release`, {
         date: d, ticket_charge: v.ticket_charge, post_charge: v.post_charge, discount: v.discount, remarks: v.remarks, unable_to_release: v.unable,
+        ...(im.mode !== 'FULL' ? { interest_amount: interestNow } : {}), ...(im.mode === 'DAYS' ? { interest_days: chargeDays } : {}),
         released_by_other: other.enabled ? other : null, payments, approval: ap,
       }));
       setPay(false);
@@ -76,7 +95,7 @@ export default function ReleasePage() {
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }
   };
   const clear = () => setSp({});
-  useKeys({ f2: start, f5: () => l && setLedger(true), f7: () => l && setDetails(true), 'ctrl+n': clear, f3: () => document.querySelector('[data-finder]')?.focus(), escape: () => navigate('/') }, [l, total, v, other, d]);
+  useKeys({ f2: start, f5: () => l && setLedger(true), f7: () => l && setDetails(true), 'ctrl+n': clear, f3: () => document.querySelector('[data-finder]')?.focus(), escape: () => navigate('/') }, [l, total, v, other, d, im]);
 
   return (
     <>
@@ -125,6 +144,35 @@ export default function ReleasePage() {
               <Line minus label="Advance interest" value={l ? amount(l.advance_interest) : '-'} />
               <Line minus label="Interest already paid" value={amount(paidInterest)} />
               <Line minus label="Part amount paid" value={amount(partPaid)} />
+              </div>
+              {/* interest to take now: system figure, by days, or a typed amount */}
+              <div className="rounded-md border border-ink-200 p-1.5 dark:border-ink-800">
+                <div className="flex items-center gap-1.5">
+                  <span className="flex-1 pl-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Charge interest</span>
+                  <div className="grid grid-cols-3" role="tablist" aria-label="Charge interest by">
+                    {[['FULL', 'Full'], ['DAYS', 'Days'], ['AMOUNT', 'Amount']].map(([k, t]) => (
+                      <button key={k} type="button" role="tab" aria-selected={im.mode === k} disabled={!open} onClick={() => pickMode(k)}
+                        className={`-ml-px h-7 border px-2.5 text-[12px] font-bold first:ml-0 first:rounded-l-md last:rounded-r-md ${im.mode === k ? 'relative z-10 border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200' : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800'}`}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                {im.mode === 'DAYS' && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Input type="number" min="0" aria-label="Days to charge" className="!h-8 w-20 text-center font-bold" value={im.days} onChange={(e) => setIm({ ...im, days: e.target.value })} />
+                    <span className="text-[12px] text-ink-500">days</span>
+                    <span className="flex-1" />
+                    {[7, 15, 30].map((x) => <Button key={x} size="sm" variant="outline" className="!h-7 !px-2 text-[12px]" disabled={minDays > 0 && x < minDays} onClick={() => setIm({ ...im, days: String(x) })}>{x}</Button>)}
+                  </div>
+                )}
+                {im.mode === 'AMOUNT' && (
+                  <div className="mt-1.5 grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Interest to receive now</span><Input type="number" min="0" aria-label="Interest to receive now" value={im.amount} onChange={(e) => setIm({ ...im, amount: e.target.value })} /></div>
+                )}
+                <div className="mt-1 px-1 [&>div]:py-0 [&>div]:text-[12px]">
+                  {im.mode === 'DAYS' && c && <Line label={`${chargeDays} days × ₹${amount(perDay)} − interest paid ${amount(c.interestPaid)}`} value={amount(daysInterest)} tone="text-ink-500" />}
+                  <Line bold label="Interest now" value={amount(interestNow)} />
+                  {reduced > 0 && <Line label={`Less than system (${amount(c.interestDue)})${limit ? ` · admin above ₹${limit}` : ''}`} value={`− ${amount(reduced)}`} tone="text-amber-700 dark:text-amber-300" />}
+                  {daysTooFew && <p className="text-[12px] font-semibold text-rose-600">At least {minDays} days must be charged.</p>}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Against ticket charge</span><Input type="number" value={v.ticket_charge} onChange={(e) => setV({ ...v, ticket_charge: e.target.value })} /></div>

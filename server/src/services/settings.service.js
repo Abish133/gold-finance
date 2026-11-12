@@ -30,6 +30,7 @@ export const DEFAULTS = {
   AUCTION_OVERDUE_MONTHS: '12',          // auction list / interest calculator mark older loans
   STOCK_RISK_MARGIN: '10',               // stock analysis: margin below this % = at-risk loan
   RELEASE_GRACE_DAYS: '0',               // extra days after full months not charged
+  INTEREST_MIN_DAYS: '0',                // interest by days: never charge fewer days than this (0 = no minimum)
   PRINT_LOAN_RECEIPT_COPIES: '1',
   PRINT_LOAN_RECEIPT_PAPER: 'A4',
   PRINT_RELEASE_RECEIPT_COPIES: '1',

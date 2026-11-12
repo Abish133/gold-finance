@@ -38,6 +38,8 @@ const COLUMNS = [
   ['branches', 'phones', 'JSON NULL AFTER email'],
   ['branches', 'licence_no', 'VARCHAR(60) NULL AFTER phones'],
   ['branches', 'licence_valid_till', 'DATE NULL AFTER licence_no'],
+  // interest charged by days (7, 15 ...) instead of whole months
+  ['loan_transactions', 'interest_days', 'INT NULL AFTER months_paid'],
 ];
 
 const TABLES = `

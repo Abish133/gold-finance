@@ -26,6 +26,7 @@ export const SETTING_GROUPS = [
     ['AUCTION_AFTER_DAYS_OVERDUE', 'AUDD', 'Auction list: days after due date', 'Show in the overdue list after this many days past due', 'number'],
     ['STOCK_RISK_MARGIN', 'STRK', 'Stock: risk margin %', 'Stock analysis: margin below this % = at-risk loan', 'number'],
     ['RELEASE_GRACE_DAYS', 'RGDY', 'Release: grace days', 'Extra days after full months not charged', 'number'],
+    ['INTEREST_MIN_DAYS', 'IMND', 'Interest by days: minimum days', 'When interest is charged by days (Part Payment / Release), never fewer than this (0 = no minimum)', 'number'],
     ['MONTH_ROUND_HALF_DAYS', 'RDAY', 'Months mode: half month up to (days)', '1-15 days = ½ month, 16+ = full month (0 = always full)', 'number'],
     ['COMPOUND_PERIOD_MONTHS', 'CMPM', 'Compound interest period (months)', 'Unpaid interest is added to the loan every N months', 'number'],
     ['TOPUP_WITHIN_DAYS', 'TUPD', 'Top-up allowed within (days)', '0 = top-up any time', 'number'],

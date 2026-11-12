@@ -46,6 +46,15 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 
 Old branches keep their phone as the first contact number. Fill the licence number of each branch once - until then the company licence is printed.
 
+## Interest by days and one bill for interest + part amount
+| What | Where | What it does |
+|---|---|---|
+| **Interest + part amount on one receipt** | Loan → Part Payment | Fill the interest and the part amount together - one receipt, both lines on it |
+| **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
+| **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
+| **Approval** | Release | Interest below the system figure counts like a discount - above the limit it needs a manager's password |
+| **Minimum days** | Settings → System Control → *Interest by days: minimum days* | Staff cannot charge fewer days than this |
+
 ## Optional automations (off until switched on)
 In **SMS / WhatsApp → Auto SMS Rules → Automations** (chapter *SMS and WhatsApp*):
 - **Daily summary to the owner** by SMS.

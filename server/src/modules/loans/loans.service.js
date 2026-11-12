@@ -65,6 +65,19 @@ export const checkApproval = async (req, amount, settings, what = 'Discount') =>
   return u.id;
 };
 
+/**
+ * Interest charged by days (7, 15 … instead of a whole month). Returns the day count or null.
+ * The shop can set a minimum (System Control: INTEREST_MIN_DAYS).
+ */
+const interestDays = (body, settings) => {
+  if (body.interest_days == null || body.interest_days === '') return null;
+  const days = Math.floor(num(body.interest_days));
+  if (days <= 0) throw ApiError.badRequest('Enter the number of days');
+  const min = num(settings.INTEREST_MIN_DAYS, 0);
+  if (min > 0 && days < min) throw ApiError.badRequest(`Interest must be charged for at least ${min} days`);
+  return days;
+};
+
 /** Desktop rule: no new loan until today's gold / silver rate is entered. */
 const ensureTodayRate = async (metalIds, date) => {
   for (const id of metalIds) {
@@ -114,12 +127,12 @@ const insertTxn = async (tx, req, loan, t, payments) => {
   const rno = await nextNumber(tx, { branchId: loan.branch_id, key: 'RECEIPT', fyId: fy.id });
   const r = await tx.query(
     `INSERT INTO loan_transactions (branch_id, loan_id, receipt_no, txn_date, txn_type, principal_amount, interest_amount, penal_amount,
-       charges, discount, total_amount, months_paid, interest_upto, remarks, created_by)
-     VALUES (:b, :l, :rno, :d, :t, :p, :i, :pe, :c, :dis, :tot, :m, :upto, :rem, :u)`,
+       charges, discount, total_amount, months_paid, interest_days, interest_upto, remarks, created_by)
+     VALUES (:b, :l, :rno, :d, :t, :p, :i, :pe, :c, :dis, :tot, :m, :days, :upto, :rem, :u)`,
     {
       b: loan.branch_id, l: loan.id, rno: `${settings.RECEIPT_PREFIX || ''}${rno}`, d: t.date, t: t.type,
       p: round2(t.principal || 0), i: round2(t.interest || 0), pe: round2(t.penal || 0), c: round2(t.charges || 0),
-      dis: round2(t.discount || 0), tot: round2(t.total || 0), m: t.months || 0, upto: t.upto || null, rem: t.remarks || null, u: req.user.id,
+      dis: round2(t.discount || 0), tot: round2(t.total || 0), m: t.months || 0, days: t.days || null, upto: t.upto || null, rem: t.remarks || null, u: req.user.id,
     },
   );
   for (const p of payments || []) {
@@ -335,11 +348,13 @@ export const payInterest = async (req, id, body) => {
     const penal = round2(body.penal_amount);
     const charges = round2(body.charges);
     const discount = round2(body.discount);
-    const approvedBy = await checkApproval(req, discount, await getSettings(loan.branch_id));
+    const settings = await getSettings(loan.branch_id);
+    const days = interestDays(body, settings);
+    const approvedBy = await checkApproval(req, discount, settings);
     const total = round2(interest + penal + charges - discount);
     if (total <= 0) throw ApiError.badRequest('Enter interest amount');
     const payments = normalisePayments(body.payments, total);
-    const txn = await insertTxn(tx, req, loan, { date, type: 'INTEREST', interest, penal, charges, discount, total, months: body.months_paid, upto: body.interest_upto || date, remarks: body.remarks }, payments);
+    const txn = await insertTxn(tx, req, loan, { date, type: 'INTEREST', interest, penal, charges, discount, total, months: days ? 0 : body.months_paid, days, upto: body.interest_upto || date, remarks: body.remarks }, payments);
     const fy = await getCurrentFy(tx);
     const narration = `Interest ${loan.bill_no}`;
     const vId = await postVoucher(tx, {
@@ -367,9 +382,15 @@ export const partPayment = async (req, id, body) => {
     const discount = round2(body.discount);
     if (principal <= 0) throw ApiError.badRequest('Enter principal amount');
     if (principal >= num(loan.current_principal)) throw ApiError.badRequest('Part payment must be less than outstanding. Use Release to close the loan.');
+    if (interest < 0) throw ApiError.badRequest('Interest cannot be below zero');
+    const days = interest > 0 ? interestDays(body, await getSettings(loan.branch_id)) : null;
     const total = round2(principal + interest - discount);
     const payments = normalisePayments(body.payments, total);
-    const txn = await insertTxn(tx, req, loan, { date, type: 'PART_PAYMENT', principal: -principal, interest, discount, total, upto: interest ? date : null, remarks: body.remarks }, payments);
+    // interest and part amount together = one receipt
+    const txn = await insertTxn(tx, req, loan, {
+      date, type: 'PART_PAYMENT', principal: -principal, interest, discount, total,
+      months: interest > 0 && !days ? body.months_paid : 0, days, upto: interest > 0 ? (body.interest_upto || date) : null, remarks: body.remarks,
+    }, payments);
     await tx.query('UPDATE loans SET current_principal = current_principal - :p WHERE id = :id', { p: principal, id: loan.id });
     const fy = await getCurrentFy(tx);
     const narration = `Part payment ${loan.bill_no}`;
@@ -381,7 +402,7 @@ export const partPayment = async (req, id, body) => {
     await tx.query('UPDATE loan_transactions SET voucher_id = :v WHERE id = :id', { v: vId, id: txn.id });
     return { loan, txn, total };
   });
-  audit(req, 'PART_PAYMENT', 'loans', id, { amount: res.total });
+  audit(req, 'PART_PAYMENT', 'loans', id, { amount: res.total, interest: round2(body.interest_amount) || 0 });
   notify(req, res.loan, 'INTEREST', { amount: res.total, date });
   return res.txn;
 };
@@ -443,17 +464,22 @@ export const releaseLoan = async (req, id, body) => {
     const txns = await loadTxns(tx, loan.id);
     const calc = calculateInterest({ loan, scheme, txns, asOf: date, options: calcOptions(settings) });
     const principal = calc.principalOutstanding;
+    const days = interestDays(body, settings);
     const interest = body.interest_amount != null && body.interest_amount !== '' ? round2(body.interest_amount) : calc.interestDue;
+    if (interest < 0) throw ApiError.badRequest('Interest cannot be below zero');
     const penal = body.penal_amount != null && body.penal_amount !== '' ? round2(body.penal_amount) : calc.penalDue;
     const charges = round2(num(body.charges) + num(body.ticket_charge) + num(body.post_charge));
     const discount = round2(body.discount);
-    const approvedBy = await checkApproval(req, discount, settings);
+    // interest taken below the system figure (by days / typed amount) is a concession like a discount
+    const reduced = round2(Math.max(0, calc.interestDue - interest));
+    const approvedBy = await checkApproval(req, round2(discount + reduced), settings, reduced ? 'Interest reduction + discount' : 'Discount');
+    if (reduced) audit(req, 'INTEREST_REDUCED', 'loans', loan.id, { system: calc.interestDue, charged: interest, days, reason: body.remarks || null });
     const total = round2(principal + interest + penal + charges - discount);
     if (total < 0) throw ApiError.badRequest('Discount too high');
     const fyR = await getCurrentFy(tx);
     const releaseNo = await nextNumber(tx, { branchId: loan.branch_id, key: 'RELEASE', fyId: fyR.id });
     const payments = normalisePayments(body.payments, total);
-    const txn = await insertTxn(tx, req, loan, { date, type: 'RELEASE', principal: -principal, interest, penal, charges, discount, total, upto: date, remarks: body.remarks }, payments);
+    const txn = await insertTxn(tx, req, loan, { date, type: 'RELEASE', principal: -principal, interest, penal, charges, discount, total, days, upto: date, remarks: body.remarks }, payments);
     await tx.query("UPDATE loans SET status = 'CLOSED', current_principal = 0, close_date = :d, closed_by = :u, release_no = :rn, released_unable = :un WHERE id = :id",
       { d: date, u: req.user.id, id: loan.id, rn: releaseNo, un: body.unable_to_release ? 1 : 0 });
     await tx.query('UPDATE loan_transactions SET release_no = :rn, approved_by = :a WHERE id = :t', { rn: releaseNo, a: approvedBy, t: txn.id });

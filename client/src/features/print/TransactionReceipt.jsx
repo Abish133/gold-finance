@@ -49,6 +49,7 @@ function PaymentReceipt({ data }) {
       <div className="my-1 border-t border-black" />
       {n(txn.interest_amount) > 0 && (<>
         {months > 0 && <Row k="Interest Months" v={`${months}${from ? `  (${d(from)} to ${d(txn.interest_upto)})` : ''}`} />}
+        {n(txn.interest_days) > 0 && <Row k="Interest Days" v={`${n(txn.interest_days)}${txn.interest_upto ? `  (up to ${d(txn.interest_upto)})` : ''}`} />}
         {months > 0 && monthly > 0 && <Row k="Interest / Month" v={rs(monthly)} />}
         <Row k="Interest Received" v={rs(n(txn.interest_amount) + n(txn.penal_amount))} bold />
       </>)}
@@ -86,7 +87,7 @@ function ReleaseReceipt({ data }) {
       {items.map((i) => <Row key={i.id} k={`${String(i.item_name || '').toUpperCase()}  x${i.pcs}`} v={`${weight(i.net_wt)} g`} />)}
       <div className="my-2 border-t border-ink-400" />
       <Row k="Loan amount" v={amount(Math.abs(n(txn.principal_amount)))} />
-      <Row k={`Interest${months ? ` (${months} months)` : ''}`} v={amount(interestTotal)} />
+      <Row k={`Interest${n(txn.interest_days) ? ` (${n(txn.interest_days)} days)` : months ? ` (${months} months)` : ''}`} v={amount(interestTotal)} />
       {adv > 0 && <Row k="Less: advance interest" v={`- ${amount(adv)}`} />}
       {paidBefore > 0 && <Row k="Less: interest already paid" v={`- ${amount(paidBefore)}`} />}
       {n(txn.penal_amount) > 0 && <Row k="Penal interest" v={amount(txn.penal_amount)} />}

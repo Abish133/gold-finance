@@ -27,11 +27,12 @@ screens: s_users, s_system, s_print, s_company, s_audit
 | Advance interest (AI) | Yes - first month taken at loan time |
 | Default interest rate (GROI) | 1 - used for the day-wise info line |
 | Allow back-date billing | Yes / No |
-| Release: discount without admin (RDAL) | ₹500 |
+| Release: discount without admin (RDAL) | ₹500 - also covers interest taken below the system figure at release |
 | LTV safe / warning % | 75 / 85 |
 | Old loan warning (months) | 12 |
 | Auction overdue after (months) | 12 |
 | Release grace days | 0 |
+| Interest by days: minimum days (IMND) | 7 - Part Payment / Release cannot charge fewer days (0 = no minimum) |
 | Lock closed days | Yes |
 | Top-up allowed within days | 3 |
 
