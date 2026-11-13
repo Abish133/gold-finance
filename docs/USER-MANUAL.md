@@ -312,6 +312,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 |---|---|---|
 | **Interest + part amount on one receipt** | Loan → Part Payment | Fill the interest and the part amount together - one receipt, both lines on it |
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
+| **Loan bill: terms, photos, contact** | Loan bill (A4) | Terms & conditions page prints by default; customer photo falls back to the customer's record; branch contact numbers on the acknowledge card |
 | **Interest Auto or Manual everywhere** | New / Old Loan (advance), Part Payment, Top-up, Release, Re-loan, Loan Counter | One *Interest* box: Auto, or Months / Days / Amount with a rate % - chapter *Interest - Auto or Manual* |
 | **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
 | **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
@@ -349,7 +350,7 @@ Before you start: today's rate must be entered (header gold rate not red).
 6. **Doc. charges** (if any) and **Advance interest** - **Auto** takes the scheme's advance months now; **Months / Days / Amount** take what you choose (e.g. 15 days); **None** takes nothing. F6 switches Auto ↔ None. See *Interest - Auto or Manual*.
 7. **Item photo** - Camera, Browse (choose a file) or Old Photo (the customer's last photo).
 8. **Save Loan (F2)** → enter the bill book no (if you use paper bill books) → **Pay customer**: choose Cash / UPI / Card / Cheque and the amount → **Confirm**.
-9. The loan bill prints (two copies if set). The message *Loan details saved* has **Print** (print again) and **Open loan** (Loan Counter) buttons. The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
+9. The loan bill prints (two copies if set): **page 1** - company logo, name, branch licence no and numbers; customer details; interest table; the **customer photo** (taken with the loan, else the photo in the customer's record), the jewels and the **item photo**; declarations, promissory note and receipt. **Page 2** - terms & conditions. **Page 3** - acknowledge card (customer copy) with the same photos and the working hours / contact line. The message *Loan details saved* has **Print** (print again) and **Open loan** (Loan Counter) buttons. The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
 
 ## Example
 Ravi Kumar S/o Mani Kumar brings a chain.
@@ -1050,6 +1051,8 @@ Search (F3), Save Changes (F2), Print settings (F9).
 # Printer Setup and Print settings
 - **Printer Setup** - paper size and copies for loan bill, receipts, stickers (A4 / thermal), test print.
 - **Print settings** - **Loan bill layout** (Branch bill A4 / MyBook pawn ticket), bill language Tamil / English, receipt notes, terms, footer, sticker size and columns. **Label designer** - what is printed on stickers.
+  - **Terms & conditions** (page 2 of the loan bill) - filled with the standard 20 Tamil clauses (விதிமுறைகளும் நிபந்தனைகளும்), one clause per line; the bill numbers them 1, 2, 3 … Change them here. Left blank, the standard clauses print again; to print no terms page, switch off *Print terms page*.
+  - **Acknowledge card footer** - working hours and holidays. The branch's contact numbers are added as *தொடர்புக்கு: …* by themselves, unless the footer already has a contact line.
 
 # Branches
 **Settings → More → Branches** - one row for each shop: code, name, city, **Licence no**, **Contact numbers**, manager, loan prefix, opening cash, status.

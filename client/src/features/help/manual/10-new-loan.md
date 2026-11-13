@@ -25,7 +25,7 @@ Before you start: today's rate must be entered (header gold rate not red).
 6. **Doc. charges** (if any) and **Advance interest** - **Auto** takes the scheme's advance months now; **Months / Days / Amount** take what you choose (e.g. 15 days); **None** takes nothing. F6 switches Auto ↔ None. See *Interest - Auto or Manual*.
 7. **Item photo** - Camera, Browse (choose a file) or Old Photo (the customer's last photo).
 8. **Save Loan (F2)** → enter the bill book no (if you use paper bill books) → **Pay customer**: choose Cash / UPI / Card / Cheque and the amount → **Confirm**.
-9. The loan bill prints (two copies if set). The message *Loan details saved* has **Print** (print again) and **Open loan** (Loan Counter) buttons. The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
+9. The loan bill prints (two copies if set): **page 1** - company logo, name, branch licence no and numbers; customer details; interest table; the **customer photo** (taken with the loan, else the photo in the customer's record), the jewels and the **item photo**; declarations, promissory note and receipt. **Page 2** - terms & conditions. **Page 3** - acknowledge card (customer copy) with the same photos and the working hours / contact line. The message *Loan details saved* has **Print** (print again) and **Open loan** (Loan Counter) buttons. The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
 
 ## Example
 Ravi Kumar S/o Mani Kumar brings a chain.

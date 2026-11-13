@@ -1,4 +1,5 @@
 import { query, queryOne } from '#config/db.js';
+import { DEFAULT_RECEIPT_TERMS } from '#config/receiptTerms.js';
 
 /**
  * Settings are key/value with branch override: branch row wins over global (branch_id = 0).
@@ -63,7 +64,7 @@ export const DEFAULTS = {
   PRINT_ACK_CARD: '1',
   PRINT_PROMISSORY_NOTE: '1',
   RECEIPT_FOOTER: '* வேலை நேரம்: காலை 9:30 மணி முதல் மாலை 5:30 மணி வரை. நகை திருப்பும் நேரம்: காலை 10 மணி முதல் மாலை 3:30 வரை.\n*ஞாயிறு விடுமுறை.',
-  RECEIPT_TERMS: '',
+  RECEIPT_TERMS: DEFAULT_RECEIPT_TERMS,   // page 2 of the loan bill; blank = these defaults (switch the page off with PRINT_TERMS_PAGE)
   RECEIPT_NOTES:
     'காலக்கெடு கடன் பெற்ற தேதியிலிருந்து கணக்கிடப்படுகிறது. குறைந்தபட்சம் 7 நாள் வட்டி பொருந்தும்.\nமேற்குறிப்பிட்டுள்ள நாட்களுக்குள் பெற்றுள்ள கடனை புதுப்பிக்கவோ / திருப்பவோ செய்யாவிட்டால் வட்டி விகிதம் கடன் தேதியிலிருந்து மாறுபடும்.\nஒவ்வொரு மாத இறுதியிலும் வட்டி விகிதம் கடன் தொகையுடன் சேர்க்கப்படும் அபராத வட்டிக்கு கூட்டு வட்டி கிடையாது.',
   STICKER_WIDTH_MM: '50',
@@ -161,6 +162,8 @@ export const getSettings = async (branchId = 0) => {
   );
   const out = { ...DEFAULTS };
   for (const r of rows) out[r.setting_key] = r.setting_value; // branch rows come last -> override
+  // terms left blank in Print settings -> the standard terms (the page itself is switched off with PRINT_TERMS_PAGE)
+  if (!String(out.RECEIPT_TERMS || '').trim()) out.RECEIPT_TERMS = DEFAULT_RECEIPT_TERMS;
   return out;
 };
 

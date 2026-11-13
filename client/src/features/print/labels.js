@@ -14,7 +14,7 @@ export const LABELS = {
     receipt: 'இரசீது',
     receiptText: 'மேற்குறிப்பிட்ட கடனுக்காக நான் வழங்கிய தங்க நகைகளை இன்று எந்த வித குறைபாடுகளும் இல்லாமல் அடகு வைக்கும் போது இருந்த படியே திரும்பப் பெற்று கொண்டேன்;',
     terms: 'விதிமுறைகளும் நிபந்தனைகளும்', termsSign: 'கடன் விண்ணப்பதாரர் / கடன் பெறுபவர் கையொப்பம்',
-    ack: 'ACKNOWLEDGE CARD', licence: 'Licence No.', mobile: 'Mobile Number',
+    ack: 'ACKNOWLEDGE CARD', licence: 'Licence No.', mobile: 'Mobile Number', contact: 'தொடர்புக்கு',
   },
   en: {
     branch: 'Branch', phone: 'Phone', customerNo: 'Customer No', date: 'Date', name: 'Name', loanNo: 'Loan No', address: 'Address',
@@ -30,6 +30,6 @@ export const LABELS = {
     receipt: 'RECEIPT',
     receiptText: 'I have received back the gold ornaments pledged by me for the above loan today, in the same condition as at the time of pledge, without any defect.',
     terms: 'TERMS AND CONDITIONS', termsSign: 'Applicant / Borrower Signature',
-    ack: 'ACKNOWLEDGE CARD', licence: 'Licence No.', mobile: 'Mobile Number',
+    ack: 'ACKNOWLEDGE CARD', licence: 'Licence No.', mobile: 'Mobile Number', contact: 'Contact',
   },
 };

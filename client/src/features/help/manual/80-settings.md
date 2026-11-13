@@ -59,6 +59,8 @@ Search (F3), Save Changes (F2), Print settings (F9).
 # Printer Setup and Print settings
 - **Printer Setup** - paper size and copies for loan bill, receipts, stickers (A4 / thermal), test print.
 - **Print settings** - **Loan bill layout** (Branch bill A4 / MyBook pawn ticket), bill language Tamil / English, receipt notes, terms, footer, sticker size and columns. **Label designer** - what is printed on stickers.
+  - **Terms & conditions** (page 2 of the loan bill) - filled with the standard 20 Tamil clauses (விதிமுறைகளும் நிபந்தனைகளும்), one clause per line; the bill numbers them 1, 2, 3 … Change them here. Left blank, the standard clauses print again; to print no terms page, switch off *Print terms page*.
+  - **Acknowledge card footer** - working hours and holidays. The branch's contact numbers are added as *தொடர்புக்கு: …* by themselves, unless the footer already has a contact line.
 
 # Branches
 **Settings → More → Branches** - one row for each shop: code, name, city, **Licence no**, **Contact numbers**, manager, loan prefix, opening cash, status.

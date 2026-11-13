@@ -90,7 +90,8 @@ function Jewels({ L, d, withAmount = true }) {
   const c = `${B} px-1.5 py-0.5 text-[13px]`;
   return (
     <div className={`${B} mt-2 flex items-stretch gap-2 p-1`}>
-      <div className="w-24 shrink-0">{loan.customer_photo && <img src={loan.customer_photo} alt="" className="h-28 w-full object-cover" />}</div>
+      {/* customer photo: the one taken with this loan, else the customer's own photo */}
+      <div className="w-24 shrink-0">{(loan.customer_photo || loan.customer_photo_master) && <img src={loan.customer_photo || loan.customer_photo_master} alt="" className="h-28 w-full object-cover" />}</div>
       <div className="flex-1 py-2">
         <table className="w-full border-collapse">
           <thead>
@@ -142,6 +143,9 @@ export function LoanReceipt({ data }) {
   const { loan, company, settings, copy } = data;
   const terms = String(settings.RECEIPT_TERMS || '').split('\n').filter(Boolean);
   const footer = String(settings.RECEIPT_FOOTER || '').split('\n').filter(Boolean);
+  // the branch's contact numbers on the acknowledge card (unless the footer already has a contact line)
+  const contact = (company.phones || []).filter(Boolean);
+  if (contact.length && !footer.some((f) => /தொடர்புக்கு|contact/i.test(f))) footer.push(`*${L.contact}: ${contact.join(', ')}`);
 
   return (
     <div className="tamil mx-auto w-[194mm] text-black">
