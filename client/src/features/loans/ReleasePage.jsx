@@ -31,6 +31,7 @@ export default function ReleasePage() {
   const { printTxn, printerUi } = usePrinter();
   const approval = useApproval();
   const [v, setV] = useState({ ticket_charge: '', post_charge: '', discount: '', remarks: '', unable: false });
+  const [pen, setPen] = useState({ mode: 'AUTO', amount: '' });
   const [other, setOther] = useState({ enabled: false });
   // interest at release: FULL = system figure, DAYS = charge N days (e.g. closed after 3 days -> charge 7 / 15), AMOUNT = typed
   const [pay, setPay] = useState(false);
@@ -43,7 +44,7 @@ export default function ReleasePage() {
   // desktop: actual days from the loan date (01/01/2025 to 11/11/2026 = 679)
   const days = l ? dayjs(d).diff(dayjs(l.loan_date), 'day') : 0;
   const postage = full?.notices?.reduce((s, x) => s + n(x.postage), 0) || 0;
-  useEffect(() => { setV({ ticket_charge: '', post_charge: postage ? String(postage) : '', discount: '', remarks: '', unable: false }); setPay(false); setOther({ enabled: false }); }, [loanId, postage]);
+  useEffect(() => { setV({ ticket_charge: '', post_charge: postage ? String(postage) : '', discount: '', remarks: '', unable: false }); setPay(false); setOther({ enabled: false }); setPen({ mode: 'AUTO', amount: '' }); }, [loanId, postage]);
 
   const paidInterest = c ? round2(c.interestPaid - n(l.advance_interest)) : 0;
   const partPaid = full ? round2(full.transactions.filter((t) => !t.is_void && t.txn_type === 'PART_PAYMENT').reduce((s, t) => s - n(t.principal_amount), 0)) : 0;
@@ -51,7 +52,10 @@ export default function ReleasePage() {
   const ic = useInterestChoice({ basis: 'DUE', calc: c, loan: l, txns: full?.transactions, settings, resetKey: `${loanId}-${d}`,
     autoLabel: c ? `${c.monthsDue} month${c.monthsDue === 1 ? '' : 's'}` : '' });
   const interestNow = c ? ic.interest : 0;
-  const total = c ? round2(c.principalOutstanding + interestNow + c.penalDue + n(v.ticket_charge) + n(v.post_charge) - n(v.discount)) : 0;
+  // penal (late) interest: Auto (worked out from the scheme's penal rate after the due date), a typed Amount, or None
+  const penalNow = !c ? 0 : pen.mode === 'AMOUNT' ? round2(Math.max(0, n(pen.amount))) : pen.mode === 'NONE' ? 0 : n(c.penalDue);
+  const penalReduced = c ? round2(Math.max(0, n(c.penalDue) - penalNow)) : 0;
+  const total = c ? round2(c.principalOutstanding + interestNow + penalNow + n(v.ticket_charge) + n(v.post_charge) - n(v.discount)) : 0;
   const limit = n(settings?.DISCOUNT_APPROVAL_LIMIT);
   const open = l?.status === 'OPEN';
   const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
@@ -70,7 +74,7 @@ export default function ReleasePage() {
     try {
       const r = await approval.run((ap) => api.post(`/loans/${l.id}/release`, {
         date: d, ticket_charge: v.ticket_charge, post_charge: v.post_charge, discount: v.discount, remarks: v.remarks, unable_to_release: v.unable,
-        ...ic.payload,
+        ...ic.payload, ...(pen.mode !== 'AUTO' ? { penal_amount: penalNow } : {}),
         released_by_other: other.enabled ? other : null, payments, approval: ap,
       }));
       setPay(false);
@@ -132,13 +136,33 @@ export default function ReleasePage() {
               <Line label={`Interest${c ? ` · ${c.monthsDue} month${c.monthsDue > 1 ? 's' : ''}` : ''}`} value={c ? amount(c.totalInterest) : '-'} />
               {/* desktop: info only - day-wise interest at the System Control default rate (% p.m.) for the actual days */}
               {settings?.RELEASE_SHOW_DAYS_INTEREST !== '0' && <Line label={`Days interest (${days} days) · info`} value={c ? amount(Math.round((c.principalOutstanding + partPaid) * (n(settings?.DEFAULT_INTEREST_RATE) || 1) / 100 / 30 * days)) : '-'} tone="text-ink-500" />}
-              {c?.penalDue > 0 && <Line label="Penal interest" value={amount(c.penalDue)} />}
               <Line minus label="Advance interest" value={l ? amount(l.advance_interest) : '-'} />
               <Line minus label="Interest already paid" value={amount(paidInterest)} />
               <Line minus label="Part amount paid" value={amount(partPaid)} />
               </div>
               {/* interest to take now: Auto or Manual (months / days / amount, typed rate) */}
               <InterestChoice ic={ic} title="Charge interest" approvalLimit={limit} disabled={!open} />
+              {/* penal (late) interest: Auto / Amount / None */}
+              <div className={`rounded-md border border-ink-200 p-1.5 dark:border-ink-800 ${!open ? 'pointer-events-none opacity-60' : ''}`}>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="flex-1 pl-1 text-[10px] font-bold tracking-wider text-ink-500 uppercase">Penal (late) interest</span>
+                  <div className="flex" role="tablist" aria-label="Penal interest: how to charge">
+                    {[['AUTO', 'Auto'], ['AMOUNT', 'Amount'], ['NONE', 'None']].map(([k, t]) => (
+                      <button key={k} type="button" role="tab" aria-selected={pen.mode === k} onClick={() => setPen((p) => ({ ...p, mode: k }))}
+                        className={`-ml-px h-7 border px-2 text-[11.5px] font-bold first:ml-0 first:rounded-l-md last:rounded-r-md ${pen.mode === k ? (k === 'AUTO' ? 'relative z-10 border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' : 'relative z-10 border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200') : 'border-ink-200 text-ink-600 hover:bg-ink-50 dark:border-ink-700 dark:text-ink-300 dark:hover:bg-ink-800'}`}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                {pen.mode === 'AMOUNT' && (
+                  <div className="mt-1.5 grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Penal to take now (₹)</span><Input type="number" min="0" aria-label="Penal interest amount" className="text-right" value={pen.amount} placeholder={c ? String(c.penalDue) : '0'} onChange={(e) => setPen({ ...pen, amount: e.target.value })} /></div>
+                )}
+                <div className="mt-1 space-y-0.5 px-1 text-[12px]">
+                  <p className="flex justify-between gap-2 font-bold text-navy-900 dark:text-white"><span>{pen.mode === 'AUTO' ? `Auto${c?.overdueDays ? ` · ${c.overdueDays} days past due` : ' · not past the due date'}` : pen.mode === 'NONE' ? 'No penal' : 'Manual · typed amount'}</span><span className="num">{amount(penalNow)}</span></p>
+                  {pen.mode !== 'AUTO' && c && n(c.penalDue) !== penalNow && (
+                    <p className={`flex justify-between gap-2 ${penalReduced > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-ink-500'}`}><span>{penalReduced > 0 ? `Less than auto (${amount(c.penalDue)})${limit ? ` · admin above ₹${limit} with interest + discount` : ''}` : `Auto would be ${amount(c.penalDue)}`}</span>{penalReduced > 0 && <span className="num">− {amount(penalReduced)}</span>}</p>
+                  )}
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Against ticket charge</span><Input type="number" value={v.ticket_charge} onChange={(e) => setV({ ...v, ticket_charge: e.target.value })} /></div>
                 <div className="grid grid-cols-[1fr_120px] items-center gap-2 text-[13px]"><span>Post / other charge</span><Input type="number" value={v.post_charge} onChange={(e) => setV({ ...v, post_charge: e.target.value })} /></div>

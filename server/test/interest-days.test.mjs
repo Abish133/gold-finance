@@ -68,11 +68,12 @@ ok('unknown unit refused');
 const L2 = await newLoan();
 const c2 = (await call('GET', `/loans/${L2.id}`)).data.calc;
 const i7 = Math.round((c2.monthlyInterest / 30) * 7);
-await call('POST', `/loans/${L2.id}/release`, { date: day, interest_amount: i7, interest_days: 7, payments: [{ mode: 'CASH', amount: 30000 + i7 }] });
+await call('POST', `/loans/${L2.id}/release`, { date: day, interest_amount: i7, interest_days: 7, penal_amount: 50, payments: [{ mode: 'CASH', amount: 30000 + i7 + 50 }] });
 const r = (await call('GET', `/loans/${L2.id}`)).data;
 t = r.transactions.filter((x) => !x.is_void && x.txn_type === 'RELEASE').at(-1);
 eq(t.interest_amount, i7, 'release charged 7 days');
 eq(t.interest_days, 7, 'release stores days');
+eq(t.penal_amount, 50, 'typed penal stored on release');
 if (r.loan.status !== 'CLOSED') throw new Error('loan not closed');
 ok('loan closed');
 

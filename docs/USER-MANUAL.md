@@ -316,6 +316,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
 | **Loan bill: terms, photos, contact** | Loan bill (A4) | Terms & conditions page prints by default; customer photo falls back to the customer's record; branch contact numbers on the acknowledge card |
 | **Interest Auto or Manual everywhere** | New / Old Loan (advance), Part Payment, Top-up, Release, Re-loan, Loan Counter | One *Interest* box: Auto, or Months / Days / Amount with a rate % - chapter *Interest - Auto or Manual* |
+| **Penal interest Auto or Manual** | Loan → Release | Penal (late) interest: Auto, a typed Amount, or None; less than Auto needs the manager's approval with the interest and discount |
 | **Interest rate box everywhere** | Every Interest box (incl. advance interest), Part Payment, Interest Calculator → Quote | *Days* shows the rate per day, *Months* per month; type any rate; change the unit and the number converts; *= ₹ a day · ₹ a month* shows what it comes to |
 | **Rate in any unit** | Every Interest box (Months / Days) and Part Payment | % / month, % / year, % / day, ₹ / day or ₹ / month - printed on the receipt with its unit |
 | **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
@@ -411,6 +412,7 @@ Due date is 12 months from the loan date.
 | − Interest already paid | Interest receipts (Part Payment screen) |
 | − Part amount paid | Loan amount already paid back |
 | **Charge interest** | **Auto** (the system figure above) or Manual: **Months**, **Days** or **Amount** - see below |
+| **Penal (late) interest** | **Auto** (from the scheme's penal rate, after the due date), **Amount** (type it) or **None** |
 | Against ticket / Post / other charge | Type if you collect any |
 | Discount | Above ₹500 (System Control) needs a manager's password |
 | **Total to receive** | What the customer pays now |
@@ -422,6 +424,7 @@ Due date is 12 months from the loan date.
    - **Amount** - type the interest to take now.
    - The last line shows the amount taken (*Manual · 7 days ₹175*). If it is **less than Auto**, the line *Less than auto* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
    - A *minimum days* set in System Control cannot be gone under.
+   **Penal (late) interest** - extra interest after the due date, when the scheme has a *penal rate* (Masters → Loan Schemes). *Auto* shows the figure and the days past due (*not past the due date* = ₹0). **Amount** - type what you take (it can also add a late charge when Auto is 0). **None** - take no penal. Taking less than Auto counts together with the interest reduction and the discount for the manager's approval, and is written in the Audit Trail.
 3. **Customer unable to release** - tick it if the customer only signs (amount collected later).
 4. **Release Loan (F2)** → **Receive Payment · Loan 6 / Book 103**: Cash / UPI / Card / Cheque - press **Add (Enter)** for each part until Balance is 0.
 5. **Released by (F6)**: *Customer (self)* or *Other person* - type the name, mobile and relation / ID of the person who takes the jewels.
@@ -717,7 +720,7 @@ No - they do different jobs:
 | **New Loan / Old Loan entry** | *Advance interest (F6)* - F6 switches Auto ↔ None | the coming period |
 | **Part Payment** | *Interest* (Months / Days / Amount, rate + unit) - see *Part Payment & Interest* | where the paid interest ends |
 | **Top-up** | *Interest deducted now* - **None** by default | where the paid interest ends |
-| **Release** | *Charge interest* | the loan date (interest already paid is taken off) |
+| **Release** | *Charge interest*, and *Penal (late) interest* (Auto / Amount / None) | the loan date (interest already paid is taken off) |
 | **Re-loan** | *Interest on old loan* and *Advance interest (F6)* on the new loan | old loan: the loan date · advance: the coming period |
 | **Loan Counter** | *Interest* on Interest / Part payment / Top-up / Release / Renew | Interest, Part, Top-up: where paid interest ends · Release, Renew: the loan date |
 

@@ -94,7 +94,7 @@ No - they do different jobs:
 | **New Loan / Old Loan entry** | *Advance interest (F6)* - F6 switches Auto ↔ None | the coming period |
 | **Part Payment** | *Interest* (Months / Days / Amount, rate + unit) - see *Part Payment & Interest* | where the paid interest ends |
 | **Top-up** | *Interest deducted now* - **None** by default | where the paid interest ends |
-| **Release** | *Charge interest* | the loan date (interest already paid is taken off) |
+| **Release** | *Charge interest*, and *Penal (late) interest* (Auto / Amount / None) | the loan date (interest already paid is taken off) |
 | **Re-loan** | *Interest on old loan* and *Advance interest (F6)* on the new loan | old loan: the loan date · advance: the coming period |
 | **Loan Counter** | *Interest* on Interest / Part payment / Top-up / Release / Renew | Interest, Part, Top-up: where paid interest ends · Release, Renew: the loan date |
 

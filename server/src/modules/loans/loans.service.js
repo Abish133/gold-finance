@@ -488,8 +488,9 @@ export const releaseLoan = async (req, id, body) => {
     const discount = round2(body.discount);
     // interest taken below the system figure (by days / typed amount) is a concession like a discount
     const reduced = round2(Math.max(0, calc.interestDue - interest));
-    const approvedBy = await checkApproval(req, round2(discount + reduced), settings, reduced ? 'Interest reduction + discount' : 'Discount');
-    if (reduced) audit(req, 'INTEREST_REDUCED', 'loans', loan.id, { system: calc.interestDue, charged: interest, days, rate: typedRate(body), reason: body.remarks || null });
+    const penalReduced = round2(Math.max(0, num(calc.penalDue) - penal));
+    const approvedBy = await checkApproval(req, round2(discount + reduced + penalReduced), settings, reduced || penalReduced ? 'Interest reduction + discount' : 'Discount');
+    if (reduced || penalReduced) audit(req, 'INTEREST_REDUCED', 'loans', loan.id, { system: calc.interestDue, charged: interest, days, rate: typedRate(body), penal_system: num(calc.penalDue), penal_charged: penal, reason: body.remarks || null });
     const total = round2(principal + interest + penal + charges - discount);
     if (total < 0) throw ApiError.badRequest('Discount too high');
     const fyR = await getCurrentFy(tx);
