@@ -233,6 +233,96 @@ router.get('/analytics', permitAny(['dashboard', 'reports_summary']), async (req
   res.json({ data: { from: p.f, to: p.t, prevFrom: pf, prevTo: pt, group, metal, current: cur, previous: prev, series, ageing, sizes, byMetal, byScheme, byBranch, topCustomers } });
 });
 
+/* ---------------- Analytics money flow: net lending, loan book over time, cash in / out, interest sources, modes, concessions ---------------- */
+router.get('/analytics/flows', permitAny(['dashboard', 'reports_summary']), async (req, res) => {
+  const b = req.branchIds;
+  const to = dayjs(req.query.to).isValid() ? dayjs(req.query.to) : dayjs();
+  const from = dayjs(req.query.from).isValid() ? dayjs(req.query.from) : to.startOf('month');
+  const span = Math.max(0, to.diff(from, 'day'));
+  const group = GROUPS[req.query.group] ? req.query.group : span > 120 ? 'month' : span > 31 ? 'week' : 'day';
+  const metal = ['GOLD', 'SILVER', 'MIX'].includes(req.query.metal) ? req.query.metal : '';
+  const p = { b, f: from.format('YYYY-MM-DD'), t: to.format('YYYY-MM-DD'), metal, before: from.subtract(1, 'day').format('YYYY-MM-DD') };
+  const pf = from.subtract(span + 1, 'day').format('YYYY-MM-DD');
+  const pt = from.subtract(1, 'day').format('YYYY-MM-DD');
+  const mf = "AND (:metal = '' OR l.loan_on = :metal)";
+  const gl = GROUPS[group]('l.loan_date');
+  const gt = GROUPS[group]('t.txn_date');
+  // loan book (outstanding) as on a date: every loan given (incl. opening entries) + top-ups - amounts paid back / auctioned
+  const bookAsOn = (d) => queryOne(`SELECT
+      (SELECT COALESCE(SUM(l.principal),0) FROM loans l WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.loan_date <= :d ${mf})
+    + (SELECT COALESCE(SUM(CASE WHEN t.txn_type = 'TOPUP' THEN t.principal_amount WHEN t.txn_type IN ('RELEASE','PART_PAYMENT','AUCTION') THEN -ABS(t.principal_amount) ELSE 0 END),0)
+         FROM loan_transactions t JOIN loans l ON l.id = t.loan_id WHERE t.branch_id IN (:b) AND t.is_void = 0 AND l.status <> 'CANCELLED' AND t.txn_date <= :d ${mf}) book`, { ...p, d });
+  const topupsIn = (f, t) => queryOne(`SELECT COALESCE(SUM(t.principal_amount),0) amt, COUNT(*) cnt FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+      WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_type = 'TOPUP' AND t.txn_date BETWEEN :f AND :t ${mf}`, { ...p, f, t });
+
+  const [opening, closing, topups, topupsPrev, loanRows, moveRows, sources, adv, modes, manual, reductions, discounts] = await Promise.all([
+    bookAsOn(p.before),
+    bookAsOn(p.t),
+    topupsIn(p.f, p.t),
+    topupsIn(pf, pt),
+    // every loan entered (incl. opening entries dated in the period) - for the book line
+    query(`SELECT ${gl} k, COALESCE(SUM(l.principal),0) amt FROM loans l WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.loan_date BETWEEN :f AND :t ${mf} GROUP BY k`, p),
+    query(`SELECT ${gt} k,
+                  COALESCE(SUM(IF(t.txn_type = 'TOPUP', t.principal_amount, 0)),0) topups,
+                  COALESCE(SUM(IF(t.txn_type IN ('RELEASE','PART_PAYMENT','AUCTION'), ABS(t.principal_amount), 0)),0) back,
+                  COALESCE(SUM(IF(t.txn_type = 'AUCTION', ABS(t.principal_amount), 0)),0) auctioned
+             FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+            WHERE t.branch_id IN (:b) AND t.is_void = 0 AND l.status <> 'CANCELLED' AND t.txn_date BETWEEN :f AND :t ${mf} GROUP BY k`, p),
+    // interest by where it came from
+    query(`SELECT CASE WHEN t.txn_type = 'RELEASE' AND t.remarks = 'Renewed' THEN 'RENEW' ELSE t.txn_type END src,
+                  COALESCE(SUM(t.interest_amount),0) interest, COALESCE(SUM(t.penal_amount),0) penal, COUNT(*) cnt
+             FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+            WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t AND (t.interest_amount > 0 OR t.penal_amount > 0) ${mf} GROUP BY src`, p),
+    queryOne(`SELECT COALESCE(SUM(l.advance_interest),0) amt, COUNT(*) cnt FROM loans l
+               WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.entry_type <> 'OLD' AND l.advance_interest > 0 AND l.loan_date BETWEEN :f AND :t ${mf}`, p),
+    // money received from / paid to customers by payment mode
+    query(`SELECT tp.mode, CASE WHEN t.txn_type IN ('DISBURSE','TOPUP') THEN 'OUT' ELSE 'IN' END dir, COALESCE(SUM(tp.amount),0) amt, COUNT(DISTINCT t.id) cnt
+             FROM transaction_payments tp JOIN loan_transactions t ON t.id = tp.transaction_id JOIN loans l ON l.id = t.loan_id
+            WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t ${mf} GROUP BY tp.mode, dir`, p),
+    // manual interest: receipts charged by days / at a typed rate
+    queryOne(`SELECT COALESCE(SUM(t.interest_days IS NOT NULL),0) by_days, COALESCE(SUM(IF(t.interest_days IS NOT NULL, t.interest_amount, 0)),0) by_days_amt,
+                     COALESCE(SUM(t.interest_rate_used IS NOT NULL),0) typed_rate, COALESCE(SUM(IF(t.interest_rate_used IS NOT NULL, t.interest_amount, 0)),0) typed_rate_amt,
+                     COALESCE(SUM(t.interest_amount > 0),0) receipts
+                FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+               WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t ${mf}`, p),
+    // interest given up at closing (Release / Re-loan below Auto) - from the audit trail
+    query(`SELECT a.details FROM audit_logs a JOIN loans l ON l.id = a.entity_id
+            WHERE a.action = 'INTEREST_REDUCED' AND a.entity = 'loans' AND l.branch_id IN (:b) AND DATE(a.created_at) BETWEEN :f AND :t ${mf}`, p),
+    queryOne(`SELECT COALESCE(SUM(t.discount),0) amt, COALESCE(SUM(t.discount > 0),0) cnt FROM loan_transactions t JOIN loans l ON l.id = t.loan_id
+               WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t ${mf}`, p),
+  ]);
+
+  // loan book at the end of every period (opening + running net)
+  const lm = new Map(loanRows.map((r) => [r.k, Number(r.amt)]));
+  const mm = new Map(moveRows.map((r) => [r.k, r]));
+  let run = Number(opening.book || 0);
+  const series = periodKeys(p.f, p.t, group).map((k) => {
+    const m = mm.get(k) || {};
+    const given = (lm.get(k) || 0) + Number(m.topups || 0);
+    const back = Number(m.back || 0);
+    run += given - back;
+    return { k, topups: Number(m.topups || 0), auctioned: Number(m.auctioned || 0), book: Math.round(run * 100) / 100 };
+  });
+
+  let reduced = 0; let penalReduced = 0; let reducedCnt = 0;
+  for (const r of reductions) {
+    let dt = r.details; if (typeof dt === 'string') { try { dt = JSON.parse(dt); } catch { dt = {}; } }
+    const x = Math.max(0, Number(dt?.system || 0) - Number(dt?.charged || 0));
+    const y = Math.max(0, Number(dt?.penal_system || 0) - Number(dt?.penal_charged ?? dt?.penal_system ?? 0));
+    if (x || y) { reduced += x; penalReduced += y; reducedCnt += 1; }
+  }
+
+  res.json({ data: {
+    group, opening: Number(opening.book || 0), closing: Number(closing.book || 0), series,
+    topups: { amt: Number(topups.amt), cnt: Number(topups.cnt) }, topupsPrev: { amt: Number(topupsPrev.amt), cnt: Number(topupsPrev.cnt) },
+    advance: { amt: Number(adv.amt), cnt: Number(adv.cnt) },
+    sources: sources.map((r) => ({ src: r.src, interest: Number(r.interest), penal: Number(r.penal), cnt: Number(r.cnt) })),
+    modes: modes.map((r) => ({ mode: r.mode, dir: r.dir, amt: Number(r.amt), cnt: Number(r.cnt) })),
+    manual: { byDays: Number(manual.by_days), byDaysAmt: Number(manual.by_days_amt), typedRate: Number(manual.typed_rate), typedRateAmt: Number(manual.typed_rate_amt), receipts: Number(manual.receipts) },
+    concessions: { reduced: Math.round(reduced * 100) / 100, penal: Math.round(penalReduced * 100) / 100, loans: reducedCnt, discount: Number(discounts.amt), discountCnt: Number(discounts.cnt) },
+  } });
+});
+
 /* ---------------- Analytics insights: risk, pending interest, behaviour (as on the end date) ---------------- */
 router.get('/analytics/insights', permitAny(['dashboard', 'reports_summary']), async (req, res) => {
   const b = req.branchIds;

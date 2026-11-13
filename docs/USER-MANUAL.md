@@ -1049,6 +1049,12 @@ Double-click a month in the Summary to see that month day by day.
 - **Largest open exposures** - the top customers with their **share of the loan book**. A warning shows when one customer holds 20% or more.
 - **Look deeper** - Business Analytics, System Health, Interest Calculator.
 
+## Money flow (top of the page)
+- **Net lent (given − recovered)** - loan amount given minus loan amount recovered in the period. Plus = the book grew, minus = more came back.
+- **Loan book (outstanding)** - at the start and end of the period, with the change %. **Recovered vs given** %, **Interest earned / month** (% of the average book).
+- **Paid out** (new loans + top-ups), **Received** (loan amount back + interest), **Net cash**, **Interest given up** (below Auto at closing + discounts).
+- Charts: **Net lent per period** (above / below the line), **Loan book over time**, **Cash out vs cash in**, **Interest - running total**, **Where the interest came from**, **Interest: Auto and Manual**, **Money received / paid out by payment mode**. Every chart has a Table view, and *Excel with charts* adds a *Money flow* sheet.
+
 ---
 
 # Gold / Silver Rate

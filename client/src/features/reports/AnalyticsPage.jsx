@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bar, BarChart, Cell, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Bar, BarChart, Cell, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartNoAxesCombined, FileSpreadsheet, Search, ArrowUpRight, ArrowDownRight, Minus, Table2, BarChart3 } from 'lucide-react';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -37,6 +37,9 @@ const AGE = ['', '0-3 months', '3-6 months', '6-9 months', '9-12 months', 'Over 
 const SIZE = ['', 'Under 10K', '10K - 25K', '25K - 50K', '50K - 1L', '1L - 2L', 'Over 2L'];
 const METALS = { GOLD: 'Gold', SILVER: 'Silver', MIX: 'Gold + Silver' };
 const DOW = ['', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/* where interest came from (money flow) */
+const SOURCES = { ADVANCE: 'Advance (new loans)', INTEREST: 'Interest receipts', PART_PAYMENT: 'With part payments', RELEASE: 'At release', RENEW: 'At re-loan', TOPUP: 'Deducted at top-up', PENAL: 'Penal (late) interest' };
+const MODE_NAMES = { CASH: 'Cash', UPI: 'UPI', ONLINE: 'Online', BANK: 'Bank / NEFT', CARD: 'Card', CHEQUE: 'Cheque' };
 /* how much of today's metal value the loan + interest already uses */
 const cover = (pct) => (pct >= 100 ? ['Over value', 'crit'] : pct >= 85 ? ['Close to value', 'warn'] : ['Watch', null]);
 
@@ -137,6 +140,7 @@ export default function AnalyticsPage() {
   const { data, isLoading, isFetching } = useFetch('/dashboard/analytics', { from: q.from, to: q.to, group: q.group === 'auto' ? undefined : q.group, metal: q.metal || undefined });
   const ins = useFetch('/dashboard/analytics/insights', { from: q.from, to: q.to, metal: q.metal || undefined });
   const more = useFetch('/dashboard/analytics/more', { from: q.from, to: q.to, metal: q.metal || undefined });
+  const flw = useFetch('/dashboard/analytics/flows', { from: q.from, to: q.to, group: q.group === 'auto' ? undefined : q.group, metal: q.metal || undefined });
   const pick = (k) => { const [a, b] = RANGES[k][1](); const nf = { ...f, from: a.format('YYYY-MM-DD'), to: b.format('YYYY-MM-DD') }; setRange(k); setF(nf); setQ(nf); };
   const setNow = (patch) => { const nf = { ...f, ...patch }; setF(nf); setQ(nf); };
 
@@ -157,13 +161,26 @@ export default function AnalyticsPage() {
         subtitle: `${dayjs(d.from).format('DD MMM YYYY')} to ${dayjs(d.to).format('DD MMM YYYY')} · compared with ${dayjs(d.prevFrom).format('DD MMM YYYY')} to ${dayjs(d.prevTo).format('DD MMM YYYY')}${d.metal ? ` · ${METALS[d.metal]}` : ''}`,
         sheets: [
           { name: 'Summary', blocks: [{ title: 'This period vs before', columns: [{ key: 'k', label: 'Figure', width: 28 }, money2('c', 'This period'), money2('p', 'Before'), { key: 'x', label: 'Change %', num: true }],
-            rows: [['Loan amount given', cur2.lent, prv.lent], ['Loan amount recovered', cur2.recovered, prv.recovered], ['Interest collected', cur2.interest, prv.interest],
+            rows: [['Loan amount given', cur2.lent, prv.lent], ['Loan amount recovered', cur2.recovered, prv.recovered], ['Net lent (given − recovered)', n(cur2.lent) - n(cur2.recovered), n(prv.lent) - n(prv.recovered)], ['Interest collected', cur2.interest, prv.interest],
               ['New loans', cur2.cnt, prv.cnt], ['Releases', cur2.releases, prv.releases], ['Average loan', cur2.avg_loan, prv.avg_loan]].map(([k, c, p]) => ({ k, c: n(c), p: n(p), x: pct(c, p) })) }] },
           { name: 'Trend', blocks: [
             { title: 'Loan amount given vs recovered', chart: el('given'), columns: [{ key: 'name', label: 'Period' }, money2('lent', 'Given'), money2('recovered', 'Recovered')], rows: series },
             { title: 'Interest collected', chart: el('interest'), columns: [{ key: 'name', label: 'Period' }, money2('interest', 'Interest')], rows: series },
             { title: 'New loans vs releases', chart: el('counts'), columns: [{ key: 'name', label: 'Period' }, { key: 'loans', label: 'New loans', num: true }, { key: 'releases', label: 'Releases', num: true }], rows: series },
           ] },
+          ...(flow ? [{ name: 'Money flow', blocks: [
+            { title: 'Money flow this period', columns: [{ key: 'k', label: 'Figure', width: 34 }, money2('v', 'Value')],
+              rows: [['Net lent (given − recovered)', flow.net], ['Loan book at the start', fl.opening], ['Loan book at the end', fl.closing], ['Paid out to customers', flow.paidOut],
+                ['Received from customers', flow.received], ['Net cash (received − paid out)', flow.netCash], ['Top-ups given', fl.topups.amt],
+                ['Interest given up below Auto', flow.givenUp], ['Discounts', fl.concessions.discount]].map(([k, v]) => ({ k, v: n(v) })) },
+            { title: 'Net lent per period', chart: el('net'), columns: [{ key: 'name', label: 'Period' }, money2('net', 'Given − recovered')], rows: flow.rows },
+            { title: 'Loan book over time', chart: el('book'), columns: [{ key: 'name', label: 'Period end' }, money2('book', 'Outstanding')], rows: flow.rows },
+            { title: 'Cash out vs cash in', chart: el('cashflow'), columns: [{ key: 'name', label: 'Period' }, money2('out', 'Paid out'), money2('inn', 'Received'), money2('cash', 'Net')], rows: flow.rows },
+            { title: 'Interest - running total', chart: el('cumint'), columns: [{ key: 'name', label: 'Period' }, money2('cumInt', 'Total so far')], rows: flow.rows },
+            { title: 'Where the interest came from', columns: [{ key: 'name', label: 'Source' }, { key: 'cnt', label: 'Entries', num: true }, money2('amt', 'Interest')], rows: flow.src },
+            { title: 'Received by payment mode', columns: [{ key: 'name', label: 'Mode' }, { key: 'cnt', label: 'Entries', num: true }, money2('amt', 'Amount')], rows: flow.modesIn },
+            { title: 'Paid out by payment mode', columns: [{ key: 'name', label: 'Mode' }, { key: 'cnt', label: 'Entries', num: true }, money2('amt', 'Amount')], rows: flow.modesOut },
+          ] }] : []),
           { name: 'Loan book', blocks: [
             { title: 'Open loans by age', columns: [{ key: 'age', label: 'Age' }, { key: 'loans', label: 'Loans', num: true }, money2('amount', 'Amount')], rows: d.ageing.map((r) => ({ ...r, age: AGE[r.bucket] })) },
             { title: 'Loan sizes given', columns: [{ key: 'size', label: 'Loan amount' }, { key: 'loans', label: 'Loans', num: true }, money2('amount', 'Total')], rows: d.sizes.map((r) => ({ ...r, size: SIZE[r.bucket] })) },
@@ -195,6 +212,40 @@ export default function AnalyticsPage() {
   };
   const series = useMemo(() => (d?.series || []).map((r) => ({ ...r, name: label(r.k, d.group) })), [d]);
   const cur = d?.current || {}; const prev = d?.previous || {};
+  /* ---------- money flow (derived) ---------- */
+  const fl = flw.data;
+  const flow = useMemo(() => {
+    if (!d || !fl) return null;
+    const tm = new Map(fl.series.map((r) => [r.k, r]));
+    let cumInt = 0;
+    const rows = series.map((r) => {
+      const x = tm.get(r.k) || {};
+      const out = n(r.lent) + n(x.topups);
+      const inn = n(r.recovered) + n(r.interest);
+      cumInt += n(r.interest);
+      return { name: r.name, k: r.k, net: Math.round(n(r.lent) - n(r.recovered)), out, inn, cash: Math.round(inn - out), book: n(x.book), topups: n(x.topups), cumInt: Math.round(cumInt) };
+    });
+    const sumMode = (dir) => fl.modes.filter((m) => m.dir === dir).reduce((a, m) => a + n(m.amt), 0);
+    const paidOut = sumMode('OUT') || n(cur.lent) + n(fl.topups.amt);
+    const received = sumMode('IN') || n(cur.recovered) + n(cur.interest) - n(fl.advance.amt);
+    const avgBook = rows.length ? rows.reduce((a, r) => a + r.book, 0) / rows.length : n(fl.closing);
+    const months = Math.max(1, dayjs(d.to).diff(dayjs(d.from), 'day') + 1) / 30.4;
+    const src = [{ k: 'ADVANCE', amt: n(fl.advance.amt), cnt: n(fl.advance.cnt) },
+      ...fl.sources.map((x) => ({ k: x.src, amt: n(x.interest), cnt: n(x.cnt) })),
+      { k: 'PENAL', amt: fl.sources.reduce((a, x) => a + n(x.penal), 0), cnt: fl.sources.filter((x) => n(x.penal) > 0).reduce((a, x) => a + n(x.cnt), 0) }]
+      .filter((x) => x.amt > 0).map((x) => ({ ...x, name: SOURCES[x.k] || x.k })).sort((a, b) => b.amt - a.amt);
+    const modeRows = (dir) => fl.modes.filter((m) => m.dir === dir).map((m) => ({ name: MODE_NAMES[m.mode] || m.mode, amt: n(m.amt), cnt: n(m.cnt) })).sort((a, b) => b.amt - a.amt);
+    return {
+      rows, paidOut, received, netCash: received - paidOut, avgBook,
+      net: n(cur.lent) - n(cur.recovered), netPrev: n(prev.lent) - n(prev.recovered),
+      recoveryPct: n(cur.lent) ? (n(cur.recovered) / n(cur.lent)) * 100 : 0,
+      yieldPm: avgBook ? (n(cur.interest) / avgBook / months) * 100 : 0,
+      bookChange: fl.opening ? ((fl.closing - fl.opening) / fl.opening) * 100 : 0,
+      src, modesIn: modeRows('IN'), modesOut: modeRows('OUT'),
+      manualAmt: n(fl.manual.byDaysAmt) + n(fl.manual.typedRateAmt),
+      givenUp: n(fl.concessions.reduced) + n(fl.concessions.penal),
+    };
+  }, [d, fl, series, cur, prev]);
   const axis = { tickLine: false, axisLine: false, fontSize: 11, stroke: pal.axis };
   const money = (v) => compact(v);
 
@@ -233,6 +284,139 @@ export default function AnalyticsPage() {
               <Kpi label="Releases" value={n(cur.releases)}><Delta cur={cur.releases} prev={prev.releases} pal={pal} /></Kpi>
               <Kpi label="Average loan" value={money(cur.avg_loan)} sub={`${n(cur.avg_rate).toFixed(2)}% avg rate`}><Delta cur={cur.avg_loan} prev={prev.avg_loan} pal={pal} /></Kpi>
             </div>
+
+            {/* ---------- money flow: net lending, loan book, cash in / out ---------- */}
+            {flow && (
+              <section className="shrink-0 overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
+                <header className="flex min-h-9 flex-wrap items-center gap-x-2 border-b border-ink-200 px-3 py-1.5 dark:border-ink-800">
+                  <h3 className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">Money flow</h3>
+                  <span className="truncate text-[11px] text-ink-500">given minus recovered, the loan book, and cash in / out with customers in this period</span>
+                </header>
+                <div className="grid sm:grid-cols-2 xl:grid-cols-4">
+                  <Kpi label="Net lent (given − recovered)" value={`${flow.net < 0 ? '−' : ''}${money(Math.abs(flow.net))}`} sub={flow.net >= 0 ? 'more given than recovered' : 'more recovered than given'}>
+                    <Delta cur={flow.net} prev={flow.netPrev} pal={pal} />
+                  </Kpi>
+                  <Kpi label="Loan book (outstanding)" value={money(fl.closing)} sub={`from ${money(fl.opening)} at the start`}>
+                    <span className="text-[11px] font-semibold" style={{ color: Math.abs(flow.bookChange) < 0.05 ? undefined : flow.bookChange > 0 ? pal.good : pal.bad }}>{flow.bookChange > 0 ? '+' : ''}{flow.bookChange.toFixed(1)}%</span>
+                  </Kpi>
+                  <Kpi label="Recovered vs given" value={n(cur.lent) ? `${flow.recoveryPct.toFixed(0)}%` : '-'} sub={`${money(cur.recovered)} back of ${money(cur.lent)} given`} />
+                  <Kpi label="Interest earned / month" value={`${flow.yieldPm.toFixed(2)}%`} sub={`of the average book ${money(flow.avgBook)}`} />
+                </div>
+                <div className="grid border-t border-ink-200 sm:grid-cols-2 xl:grid-cols-4 dark:border-ink-800">
+                  <Kpi label="Paid out to customers" value={money(flow.paidOut)} sub={`new loans + ${n(fl.topups.cnt)} top-up${n(fl.topups.cnt) === 1 ? '' : 's'} (${money(fl.topups.amt)})`}>
+                  </Kpi>
+                  <Kpi label="Received from customers" value={money(flow.received)} sub="loan amount back + interest" />
+                  <Kpi label="Net cash (received − paid out)" value={`${flow.netCash < 0 ? '−' : ''}${money(Math.abs(flow.netCash))}`} sub={flow.netCash >= 0 ? 'more cash came in' : 'more cash went out'}>
+                    <span className="text-[11px] font-semibold" style={{ color: flow.netCash >= 0 ? pal.good : pal.warn }}>{flow.netCash >= 0 ? 'cash in' : 'cash out'}</span>
+                  </Kpi>
+                  <Kpi label="Interest given up" value={money(flow.givenUp + n(fl.concessions.discount))}
+                    sub={`${money(flow.givenUp)} below Auto on ${n(fl.concessions.loans)} loan${n(fl.concessions.loans) === 1 ? '' : 's'} · ${money(fl.concessions.discount)} discounts`} />
+                </div>
+              </section>
+            )}
+
+            {flow && (
+              <div className="grid gap-2 lg:grid-cols-2">
+                <ChartCard xl="net" title="Net lent per period" sub={`given − recovered per ${d.group} · above the line = more given (book grows), below = more recovered`}
+                  legend={[[pal.s1, 'More given'], [pal.s2, 'More recovered']]}
+                  table={<MiniTable rows={flow.rows} cols={[{ key: 'name', label: 'Period' }, { key: 'net', label: 'Given − recovered', right: true, render: (r) => `${r.net > 0 ? '+' : ''}${amount(r.net)}` }]} />}>
+                  <div className="h-60">
+                    <ResponsiveContainer>
+                      <BarChart data={flow.rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke={pal.grid} />
+                        <XAxis dataKey="name" {...axis} minTickGap={16} />
+                        <YAxis {...axis} width={64} tickFormatter={money} />
+                        <ReferenceLine y={0} stroke={pal.axis} />
+                        <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v) => [`${v > 0 ? '+' : ''}₹${amount(v)}`, v >= 0 ? 'More given' : 'More recovered']} />
+                        <Bar dataKey="net" name="Given − recovered" radius={[4, 4, 4, 4]} maxBarSize={32}>
+                          {flow.rows.map((r, k) => <Cell key={k} fill={r.net >= 0 ? pal.s1 : pal.s2} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+
+                <ChartCard xl="book" title="Loan book over time" sub={`outstanding at the end of each ${d.group} · ${money(fl.opening)} → ${money(fl.closing)}`}
+                  table={<MiniTable rows={flow.rows} cols={[{ key: 'name', label: 'Period end' }, { key: 'book', label: 'Outstanding', right: true, render: (r) => amount(r.book) }]} />}>
+                  <div className="h-60">
+                    <ResponsiveContainer>
+                      <AreaChart data={flow.rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke={pal.grid} />
+                        <XAxis dataKey="name" {...axis} minTickGap={16} />
+                        <YAxis {...axis} width={64} tickFormatter={money} domain={['auto', 'auto']} />
+                        <Tooltip {...tip} formatter={(v) => [`₹${amount(v)}`, 'Outstanding']} />
+                        <Area type="monotone" dataKey="book" name="Outstanding" stroke={pal.s1} strokeWidth={2} fill={pal.s1} fillOpacity={0.12} dot={flow.rows.length <= 31 ? { r: 3 } : false} activeDot={{ r: 5 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+
+                <ChartCard xl="cashflow" title="Cash out vs cash in" sub={`per ${d.group} · out = new loans + top-ups · in = loan amount back + interest`}
+                  legend={[[pal.s1, 'Paid out'], [pal.s3, 'Received']]}
+                  table={<MiniTable rows={flow.rows} cols={[{ key: 'name', label: 'Period' }, { key: 'out', label: 'Paid out', right: true, render: (r) => amount(r.out) }, { key: 'inn', label: 'Received', right: true, render: (r) => amount(r.inn) }, { key: 'cash', label: 'Net', right: true, render: (r) => `${r.cash > 0 ? '+' : ''}${amount(r.cash)}` }]} />}>
+                  <div className="h-60">
+                    <ResponsiveContainer>
+                      <BarChart data={flow.rows} barGap={2} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke={pal.grid} />
+                        <XAxis dataKey="name" {...axis} minTickGap={16} />
+                        <YAxis {...axis} width={64} tickFormatter={money} />
+                        <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v, k) => [`₹${amount(v)}`, k]} />
+                        <Bar dataKey="out" name="Paid out" fill={pal.s1} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                        <Bar dataKey="inn" name="Received" fill={pal.s3} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+
+                <ChartCard xl="cumint" title="Interest collected - running total" sub={`adds up through the period · ${money(cur.interest)} in all`}
+                  table={<MiniTable rows={flow.rows} cols={[{ key: 'name', label: 'Period' }, { key: 'cumInt', label: 'Total so far', right: true, render: (r) => amount(r.cumInt) }]} />}>
+                  <div className="h-60">
+                    <ResponsiveContainer>
+                      <AreaChart data={flow.rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke={pal.grid} />
+                        <XAxis dataKey="name" {...axis} minTickGap={16} />
+                        <YAxis {...axis} width={64} tickFormatter={money} />
+                        <Tooltip {...tip} formatter={(v) => [`₹${amount(v)}`, 'Interest so far']} />
+                        <Area type="monotone" dataKey="cumInt" name="Interest so far" stroke={pal.s3} strokeWidth={2} fill={pal.s3} fillOpacity={0.12} dot={false} activeDot={{ r: 5 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </ChartCard>
+
+                <ChartCard title="Where the interest came from" sub="this period · advance, receipts, part payments, release, re-loan, top-up, penal"
+                  table={<MiniTable rows={flow.src} cols={[{ key: 'name', label: 'Source' }, { key: 'cnt', label: 'Entries', right: true }, { key: 'amt', label: 'Interest', right: true, render: (r) => amount(r.amt) }]} />}>
+                  <ShareBars rows={flow.src} labelKey="name" valueKey="amt" fmt={(v) => `₹${amount(v)}`} color={pal.s3}
+                    extra={(r) => `${n(cur.interest) ? Math.round((r.amt / n(cur.interest)) * 100) : 0}% · ${r.cnt}`} />
+                </ChartCard>
+
+                <ChartCard title="Interest: Auto and Manual" sub="receipts in this period charged by days or at a typed rate, and what was given up">
+                  <div className="space-y-2 py-1 text-[12px]">
+                    <ShareBars labelKey="name" valueKey="amt" fmt={(v) => `₹${amount(v)}`} color={pal.s4}
+                      rows={[{ name: 'Auto / months', amt: Math.max(0, n(cur.interest) - flow.manualAmt - n(fl.advance.amt)) + n(fl.advance.amt), cnt: Math.max(0, n(fl.manual.receipts) - n(fl.manual.byDays)) },
+                        { name: 'Manual - by days', amt: n(fl.manual.byDaysAmt), cnt: n(fl.manual.byDays) },
+                        { name: 'Manual - typed rate', amt: n(fl.manual.typedRateAmt), cnt: n(fl.manual.typedRate) }].filter((r) => r.amt > 0 || r.cnt > 0)}
+                      extra={(r) => `${r.cnt} receipt${r.cnt === 1 ? '' : 's'}`} />
+                    <div className="grid grid-cols-3 gap-2 border-t border-ink-100 pt-2 dark:border-ink-800">
+                      {[['Below Auto at closing', flow.givenUp, `${n(fl.concessions.loans)} loans`], ['Penal waived', n(fl.concessions.penal), 'release'], ['Discounts', n(fl.concessions.discount), `${n(fl.concessions.discountCnt)} entries`]].map(([k, v, s2]) => (
+                        <div key={k} className="min-w-0"><p className="truncate text-[10px] font-bold tracking-wider text-ink-500 uppercase">{k}</p><p className="num text-[15px] font-bold">₹{amount(v)}</p><p className="text-[10px] text-ink-500">{s2}</p></div>
+                      ))}
+                    </div>
+                  </div>
+                </ChartCard>
+
+                <ChartCard title="Money received by payment mode" sub="from customers in this period"
+                  table={<MiniTable rows={flow.modesIn} cols={[{ key: 'name', label: 'Mode' }, { key: 'cnt', label: 'Entries', right: true }, { key: 'amt', label: 'Amount', right: true, render: (r) => amount(r.amt) }]} />}>
+                  <ShareBars rows={flow.modesIn} labelKey="name" valueKey="amt" fmt={(v) => `₹${amount(v)}`} color={pal.s3}
+                    extra={(r) => `${flow.received ? Math.round((r.amt / flow.received) * 100) : 0}%`} />
+                </ChartCard>
+
+                <ChartCard title="Money paid out by payment mode" sub="new loans and top-ups in this period"
+                  table={<MiniTable rows={flow.modesOut} cols={[{ key: 'name', label: 'Mode' }, { key: 'cnt', label: 'Entries', right: true }, { key: 'amt', label: 'Amount', right: true, render: (r) => amount(r.amt) }]} />}>
+                  <ShareBars rows={flow.modesOut} labelKey="name" valueKey="amt" fmt={(v) => `₹${amount(v)}`} color={pal.s1}
+                    extra={(r) => `${flow.paidOut ? Math.round((r.amt / flow.paidOut) * 100) : 0}%`} />
+                </ChartCard>
+              </div>
+            )}
 
             <div className="grid gap-2 lg:grid-cols-2">
               <ChartCard xl="given" title="Loan amount given vs recovered" sub={`per ${d.group}`} legend={[[pal.s1, 'Given'], [pal.s2, 'Recovered']]}
