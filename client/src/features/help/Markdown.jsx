@@ -72,7 +72,7 @@ export function Markdown({ text, highlight }) {
   const hl = highlight?.trim().toLowerCase();
   const mark = (s) => (hl && s.toLowerCase().includes(hl) ? 'bg-yellow-100 dark:bg-yellow-500/20' : '');
   return (
-    <div className="manual mx-auto max-w-3xl space-y-3 text-[14px] leading-relaxed text-ink-800 dark:text-ink-100">
+    <div className="manual mx-auto w-full max-w-7xl space-y-3 text-[14px] leading-relaxed text-ink-800 dark:text-ink-100">
       {blocks.map((b, n) => {
         if (b.t === 'h1') return <h1 key={n} id={slug(b.text)} className="border-b border-ink-200 pb-2 text-[22px] font-bold tracking-tight text-navy-900 dark:border-ink-800 dark:text-white">{inline(b.text)}</h1>;
         if (b.t === 'h2') return <h2 key={n} id={slug(b.text)} className="pt-3 text-[17px] font-bold text-navy-900 dark:text-white">{inline(b.text)}</h2>;

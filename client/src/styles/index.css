@@ -204,6 +204,8 @@
     /* tables scroll sideways inside their panel */
     .desk .card, .desk [class*='rounded-md'][class*='border'] { max-width: 100%; }
     .desk table:not(.dt) { min-width: max-content; }
+    /* the user manual's tables are text - they wrap to the page instead */
+    .desk .manual table { min-width: 0; }
     .desk :has(> table:not(.dt)) { overflow-x: auto; }
     /* the slim page header: title on its own line, chips / tabs below */
     .desk > section.navy-gradient { padding-left: 0.75rem; padding-right: 0.75rem; }
