@@ -32,3 +32,6 @@ Example ₹12,345 at 1.5% p.m.: per month ₹185. 22 months flat = 22 × 185 −
 
 ## Item value
 Fine weight (net × purity ÷ 100, 3 decimals) × fine (100%) rate, rounded to the nearest ₹100.
+
+**New Loan has "Loan Int. % P.M." and another rate inside Advance interest - which one counts?**
+Both, for different things. *Loan Int. %* is the loan's rate for every month until release. The rate inside *Advance interest* is only for the advance taken today; it copies the loan rate until you type a different one. See *Interest - Auto or Manual*.

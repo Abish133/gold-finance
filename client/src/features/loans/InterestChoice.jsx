@@ -39,7 +39,7 @@ export const rateInfo = (calc, loan, txns = []) => {
 export function useInterestChoice({
   basis = 'DUE', calc, loan, txns, settings, auto, autoLabel,
   monthly: monthlyIn, loanRate: rateIn, base: baseIn, defaultMonths, defaultDays,
-  allowNone = false, defaultMode = 'AUTO', resetKey,
+  allowNone = false, defaultMode = 'AUTO', resetKey, rateLabel = 'Interest rate', rateSource = "loan's rate",
 }) {
   const info = useMemo(() => rateInfo(calc, loan, txns), [calc, loan, txns]);
   const loanRate = rateIn ?? info.loanRate;
@@ -48,13 +48,17 @@ export function useInterestChoice({
   const minDays = n(settings?.INTEREST_MIN_DAYS);
   const autoMonths = defaultMonths ?? (!calc ? 1 : basis === 'PAY' ? Math.max(1, n(calc.monthsDue) - n(calc.monthsPaid)) : Math.max(1, n(calc.monthsDue)));
   const autoDays = defaultDays ?? (calc && basis === 'DUE' ? Math.max(1, n(calc.elapsedDays)) : 30);
-  const [s, setS] = useState({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM', touched: false });
+  const [s, setS] = useState({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM', touched: false, unitPicked: false });
   // a new loan / screen starts on Auto again
-  useEffect(() => { setS({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM', touched: false }); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setS({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM', touched: false, unitPicked: false }); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // the rate counts as typed only once the user types it - until then the loan's own rate is used exactly
   // (the box shows it in the unit of the mode: % a month for Months, % a day for Days)
   const rateTyped = ['MONTHS', 'DAYS'].includes(s.mode) && s.touched && s.rate !== '' && n(s.rate) >= 0;
+  // what the box shows: the typed rate, or - live - the loan's rate in the unit of the mode (or the unit picked),
+  // so it always matches the loan's rate field (New Loan / Re-loan "Int. %") until a different rate is typed
+  const unitShown = s.touched || s.unitPicked ? s.unit : (s.mode === 'DAYS' ? 'PD' : 'PM');
+  const rateShown = s.touched ? s.rate : String(convertRate(loanRate, 'PM', unitShown, base));
   const typed = rateTyped ? ratePer(base, s.rate, s.unit) : null;
   const monthly = typed ? typed.monthly : sysMonthly;
   const perDay = typed ? typed.perDay : monthly / 30;
@@ -93,25 +97,26 @@ export function useInterestChoice({
     // switching to Days / Months: start from the period so far
     if (patch.mode === 'DAYS' && !x.days) next.days = String(Math.max(autoDays, minDays, 1));
     if (patch.mode === 'MONTHS' && !x.months) next.months = autoMonths;
-    // until a rate is typed, the rate box follows the mode: Months -> % a month, Days -> % a day (the loan's rate in that unit)
-    if (['MONTHS', 'DAYS'].includes(patch.mode) && !x.touched) {
-      next.unit = patch.mode === 'DAYS' ? 'PD' : 'PM';
-      next.rate = String(convertRate(loanRate, 'PM', next.unit, base));
+    // until a rate is typed, the box shows the loan's rate (live) in the unit of the mode: Months -> % a month, Days -> % a day
+    if (['MONTHS', 'DAYS'].includes(patch.mode) && !x.touched && !x.unitPicked) next.unit = patch.mode === 'DAYS' ? 'PD' : 'PM';
+    // typing a rate makes it the rate of this entry (in the unit on screen)
+    if (patch.rate != null) {
+      if (!x.touched) next.unit = x.unitPicked ? x.unit : (x.mode === 'DAYS' ? 'PD' : 'PM');
+      next.touched = true;
     }
-    // typing a rate makes it the rate of this entry
-    if (patch.rate != null) next.touched = true;
     // another unit: the same money in the new unit (1.2% a month -> 0.04% a day -> 14.4% a year -> ₹20 a day on ₹50,000)
-    if (patch.unit && patch.unit !== x.unit && patch.rate == null) {
-      next.rate = String(convertRate(x.touched && x.rate !== '' ? x.rate : loanRate, x.touched && x.rate !== '' ? x.unit : 'PM', patch.unit, base));
+    if (patch.unit && patch.rate == null) {
+      next.unitPicked = true;
+      if (x.touched && x.rate !== '') next.rate = String(convertRate(x.rate, x.unit, patch.unit, base));
     }
     return next;
   });
-  // back to the loan's own rate
-  const resetRate = () => setS((x) => ({ ...x, touched: false, unit: x.mode === 'DAYS' ? 'PD' : 'PM', rate: String(convertRate(loanRate, 'PM', x.mode === 'DAYS' ? 'PD' : 'PM', base)) }));
+  // back to the loan's own rate (follows it again)
+  const resetRate = () => setS((x) => ({ ...x, touched: false, unitPicked: false, rate: '' }));
   const error = daysTooFew ? `At least ${minDays} days must be charged` : s.mode === 'DAYS' && !days ? 'Enter the number of days' : null;
 
   return {
-    ...s, set, resetRate, basis, manual, interest, gross, paid, monthly, perDay, loanRate, rateTyped, base, reduced, autoAmount, autoLabel,
+    ...s, rate: rateShown, unit: unitShown, rateLabel, rateSource, set, resetRate, basis, manual, interest, gross, paid, monthly, perDay, loanRate, rateTyped, base, reduced, autoAmount, autoLabel,
     label, payload, error, minDays, allowNone, modes: ['AUTO', 'MONTHS', 'DAYS', 'AMOUNT', ...(allowNone ? ['NONE'] : [])],
   };
 }
@@ -122,11 +127,11 @@ const box = 'num h-8 w-full min-w-0 rounded-md border border-ink-200 bg-white px
  * Interest rate box with its unit (% a month / % a year / % a day / ₹ a day / ₹ a month) and what it comes to.
  * Used in every Interest box and on Part Payment.
  */
-export function RateField({ title = 'Interest', rate, unit = 'PM', typed, placeholder, onRate, onUnit, onReset, perDay, monthly, className, big, resetLabel = 'Use loan rate', idleLabel = 'loan rate - type to change' }) {
+export function RateField({ title = 'Interest', label = 'Interest rate', rate, unit = 'PM', typed, placeholder, onRate, onUnit, onReset, perDay, monthly, className, big, resetLabel = 'Use loan rate', idleLabel = 'loan rate - type to change' }) {
   return (
     <div className={clsx('min-w-0', className)}>
       <div className="flex items-center justify-between gap-2">
-        <p className="label">Interest rate</p>
+        <p className="label">{label}</p>
         {typed ? <button type="button" className="text-[10px] font-bold text-amber-700 underline dark:text-amber-300" onClick={onReset}>{resetLabel}</button>
           : <span className="text-[10px] text-ink-400">{idleLabel}</span>}
       </div>
@@ -191,7 +196,8 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
               <input type="number" min="0" aria-label={`${title}: amount`} className={clsx(box, '!text-right')} value={ic.amount} placeholder={String(ic.autoAmount)} onChange={(e) => ic.set({ amount: e.target.value })} onFocus={(e) => e.target.select()} />
             </div>
           )}
-          {showRate && <RateField title={title} rate={ic.rate} unit={ic.unit} typed={ic.rateTyped} placeholder={ic.loanRate} perDay={ic.perDay} monthly={ic.monthly}
+          {showRate && <RateField title={title} label={ic.rateLabel} idleLabel={`same as ${ic.rateSource} (${ic.loanRate}% p.m.) - type to change`} resetLabel={`Use ${ic.rateSource}`}
+            rate={ic.rate} unit={ic.unit} typed={ic.rateTyped} placeholder={ic.loanRate} perDay={ic.perDay} monthly={ic.monthly}
             onRate={(v) => ic.set({ rate: v })} onUnit={(u) => ic.set({ unit: u })} onReset={ic.resetRate} />}
         </div>
       )}

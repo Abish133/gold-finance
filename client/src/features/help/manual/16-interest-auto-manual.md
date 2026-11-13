@@ -36,6 +36,20 @@ When you change the unit, the box first shows the loan's own rate in that unit (
 
 The line at the bottom always shows what will be charged: *Auto · 4 months ₹3,000* or *Manual · 15 days ₹375*, and **Auto would be ₹…** so you can compare.
 
+## Two rate boxes on New Loan / Re-loan - are they the same?
+No - they do different jobs:
+
+| Box | What it is | Used for |
+|---|---|---|
+| **Loan Int. % P.M.** (top of the Loan panel) | The **loan's own rate**, saved on the loan and printed on the bill | Interest of the loan **every month till release** (Auto everywhere uses it) |
+| **Advance rate (only for this advance)** - inside *Advance interest*, with Months / Days | The rate for the **advance taken today** only | The advance deducted now. Nothing else. |
+| **Rate for the old loan** - inside *Interest on old loan* (Re-loan) | The rate to settle the **old** loan | The old loan's interest only |
+
+- Until you type in the advance box it **is the loan rate** - it follows the top box live (1.5% a month shows as 0.05% a day) and says *same as Loan Int. % above (1.5% p.m.)*.
+- Type a different number there **only** when the advance should be at another rate (e.g. 15 days at 0.04% a day). The loan itself keeps the top rate.
+- **Use Loan Int. % above** makes it follow the top box again.
+- On Release, Part Payment, Top-up and the Loan Counter there is only the Interest box: the loan's rate is already fixed on the loan (shown at the top of the screen); the rate in the box is for that one entry.
+
 ## How to - step by step
 **A. Charge some days at a daily rate** (customer closes / pays after a few days)
 1. In the Interest box press **Days** (Part Payment: F2 until *Days*).

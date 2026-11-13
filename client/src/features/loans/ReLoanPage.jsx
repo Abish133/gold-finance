@@ -49,7 +49,8 @@ export default function ReLoanPage() {
   const itemRate = (i) => (i.metal_code === 'SILVER' ? silverRate : goldRate);
   // interest to settle on the old loan: Auto (due + penal) or Manual (months / days / amount, typed rate)
   const icOld = useInterestChoice({ basis: 'DUE', calc: c, loan: l, txns: full?.transactions, settings, resetKey: l?.id,
-    auto: c ? round2(c.interestDue + c.penalDue) : 0, autoLabel: c ? `${Math.max(1, c.monthsDue)} month${c.monthsDue > 1 ? 's' : ''}` : '' });
+    auto: c ? round2(c.interestDue + c.penalDue) : 0, autoLabel: c ? `${Math.max(1, c.monthsDue)} month${c.monthsDue > 1 ? 's' : ''}` : '',
+    rateLabel: 'Rate for the old loan', rateSource: "old loan's rate" });
   const oldTotal = c ? round2(c.principalOutstanding + icOld.interest) : 0;
   const valueToday = useMemo(() => round2((full?.items || []).reduce((s, i) => s + valueOf(n(i.net_wt) * n(i.purity) / 100, itemRate(i)), 0) + extra.reduce((s, i) => s + n(i.value), 0)), [full, extra, goldRate, silverRate]);
   const np = n(f.new_principal);
@@ -58,7 +59,8 @@ export default function ReLoanPage() {
   const advMonths = n(scheme?.advance_interest_months) || 1;
   const icAdv = useInterestChoice({ basis: 'ADVANCE', settings, allowNone: true, resetKey: l?.id,
     monthly: Math.round(np * monthly), loanRate: round2(scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) : n(f.interest_rate) / 12), base: np,
-    auto: Math.round(np * monthly * advMonths), autoLabel: `${advMonths} month${advMonths > 1 ? 's' : ''}`, defaultMonths: advMonths, defaultDays: 30 });
+    auto: Math.round(np * monthly * advMonths), autoLabel: `${advMonths} month${advMonths > 1 ? 's' : ''}`, defaultMonths: advMonths, defaultDays: 30,
+    rateLabel: 'Advance rate (only for this advance)', rateSource: 'new loan Int. % above' });
   const adv = icAdv.interest;
   const deductions = round2(adv + n(f.doc_charges));
   const payToCustomer = round2(np - oldTotal + n(f.discount) - n(f.doc_charges) - adv);
@@ -117,7 +119,7 @@ export default function ReLoanPage() {
               <Field label="New loan amount"><Input type="number" prefix={<IndianRupee className="size-4" />} className="!h-11 text-right text-xl font-bold" value={f.new_principal} onChange={(e) => set({ new_principal: e.target.value })} onFocus={(e) => e.target.select()} /></Field>
               <Field label="Scheme"><Select prefix={<Layers className="size-3.5" />} value={f.scheme_id} onChange={(e) => { const s = lk.schemes.find((x) => String(x.id) === e.target.value); set({ scheme_id: e.target.value, interest_rate: parseSlabs(s?.slabs)[0]?.rate ?? f.interest_rate }); }} options={(lk?.schemes || []).map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} /></Field>
               <div className="grid grid-cols-2 gap-2">
-                <Field label={`Interest % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input type="number" prefix={<Percent className="size-3.5" />} value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
+                <Field label={`New loan Int. % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`} hint="the new loan's rate - every month"><Input type="number" prefix={<Percent className="size-3.5" />} value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
                 <Field label="Calculation"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
                 <Field label="Doc charges"><Input type="number" prefix={<Receipt className="size-3.5" />} value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
               </div>

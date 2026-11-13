@@ -301,7 +301,8 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const icAdv = useInterestChoice({ basis: 'ADVANCE', settings, allowNone: true,
     defaultMode: settings?.DEFAULT_ADVANCE_INTEREST === '0' ? 'NONE' : 'AUTO', resetKey: `${resetN}-${settings?.DEFAULT_ADVANCE_INTEREST}`,
     monthly: Math.round(principal * monthlyRate), loanRate: round2(scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) : n(f.interest_rate) / 12), base: principal,
-    auto: Math.round(perMonth * advMonths), autoLabel: `${advMonths} month${advMonths > 1 ? 's' : ''}`, defaultMonths: advMonths, defaultDays: 30 });
+    auto: Math.round(perMonth * advMonths), autoLabel: `${advMonths} month${advMonths > 1 ? 's' : ''}`, defaultMonths: advMonths, defaultDays: 30,
+    rateLabel: 'Advance rate (only for this advance)', rateSource: 'Loan Int. % above' });
   const advance = icAdv.interest;
   const doc = n(f.doc_charges);
   const netPay = round2(principal - doc - advance - n(f.other_charges));
@@ -376,7 +377,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
             <Button variant="soft" className="h-12" onClick={() => set({ principal: String(eligible) })} title="Use eligible amount">Max</Button></div>
         </Field>
         <div className="grid grid-cols-2 gap-2">
-          <Field label={`Int. % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input prefix={<Percent className="size-3.5" />} type="number" step="0.01" value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
+          <Field label={`Loan Int. % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`} hint="the loan's rate - every month till release"><Input prefix={<Percent className="size-3.5" />} type="number" step="0.01" value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
           <Field label="Interest type"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
           <Field label="Doc. charges"><Input prefix={<Receipt className="size-3.5" />} type="number" value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
         </div>
