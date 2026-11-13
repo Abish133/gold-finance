@@ -497,6 +497,7 @@ Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
 - A **closed** loan, or **All Branches** selected, cannot take an entry - the panel says why (with a *Switch to branch* button) and Save is locked.
 - UPI / Bank / Card / Cheque need a bank account of the branch; if there is none the panel says so (add it in **Bank → Bank Accounts**).
 - **+ / −** change the months only when you are not typing in a box (a "-" in a UTR number is typed normally).
+- A loan of **another branch** shows *Loan not found in this branch* - check the loan no or switch to the loan's branch.
 
 ---
 

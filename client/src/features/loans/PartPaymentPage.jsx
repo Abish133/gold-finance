@@ -26,7 +26,7 @@ export default function PartPaymentPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const loanId = sp.get('loan');
-  const { full, refresh } = useLoan(loanId);
+  const { full, refresh, error: loadError } = useLoan(loanId);
   const { data: lk } = useLookups();
   const { data: settings } = useFetch('/admin/settings');
   const { printTxn, printerUi } = usePrinter();
@@ -73,7 +73,9 @@ export default function PartPaymentPage() {
   // part of a month already paid (earlier interest by days / amount): counted when paying by months, so nothing is charged twice
   const credit = c ? round2(Math.max(0, n(c.interestPaid) - paidMonths * sysMonthly)) : 0;
   // days that part covers: from the last receipt's paid-up date (exact even when a typed rate was used), else by amount
-  const lastUpto = (full?.transactions || []).filter((t) => !t.is_void && n(t.interest_amount) > 0 && t.interest_upto).map((t) => dayjs(t.interest_upto)).sort((a, b) => a - b).at(-1);
+  // exact only when the latest interest receipt was taken by days; otherwise worked out from the amount
+  const lastInt = (full?.transactions || []).filter((t) => !t.is_void && n(t.interest_amount) > 0).at(-1);
+  const lastUpto = lastInt && n(lastInt.interest_days) > 0 && lastInt.interest_upto ? dayjs(lastInt.interest_upto) : null;
   const monthsEnd = l ? dayjs(l.loan_date).add(paidMonths, 'month') : null;
   const leftDays = credit <= 0 ? 0 : lastUpto && monthsEnd && lastUpto.isAfter(monthsEnd) ? lastUpto.diff(monthsEnd, 'day') : sysPerDay > 0 ? Math.round(credit / sysPerDay) : 0;
   const paidBase = l ? dayjs(l.loan_date).add(paidMonths, 'month').add(leftDays, 'day') : null;
@@ -233,6 +235,11 @@ export default function PartPaymentPage() {
 
         <div className="desk-col">
         <Panel title="Receive" bodyClassName="flex flex-col gap-2 p-3">
+          {loanId && loadError && !l && (
+            <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[12px] font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+              Loan not found in {isAllBranches ? 'your branches' : 'this branch'}. Check the loan no, or switch to the loan's branch.
+            </p>
+          )}
           {blocked && (
             <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-[12px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
               <span className="flex-1">{blocked}</span>
