@@ -351,7 +351,7 @@ Before you start: today's rate must be entered (header gold rate not red).
    - **Item templates** - for jewels that often come together. Add the items once, then **Templates ▾ → Save these N items as a template** and give a name (e.g. *Chain + 2 rings*). Next time: **Templates ▾ →** pick it - the first item fills in and the cursor waits in *Gross Wt*; weigh, press Enter, and the next item fills in by itself (a green *Next: …* bar shows what is coming, **Stop** ends it). Templates keep item names, pcs, metal and purity - **never weights**. Every counter shares them; ✕ (on hover) removes one.
 4. **Loan amount** - type the amount. The **Loan to value** bar turns green / orange / red. Above the warning limit (85%) the app asks *"Loan is xx% of item value. Continue?"* before saving.
 5. **Interest % p.m.** (from the scheme, can be changed) and **Interest type** - *Compound* or *Flat*.
-5a. **Loan Int. % P.M.** - the loan's own rate (from the scheme; change it if agreed). It is used every month until release and printed on the bill.
+5a. **Loan Int. % P.M.** - the loan's own rate (from the scheme; change it if agreed). It is used every month until release and printed on the bill. The blue **ⓘ line** under it says how the scheme counts the interest - *by months* (MyBook: every started month), *by exact days* or *by half / full months* - with its minimum days. Pick the scheme that matches what you agreed with the customer.
 6. **Doc. charges** (if any) and **Advance interest** - **Auto** takes the scheme's advance months now; **Months / Days / Amount** take what you choose (e.g. 15 days); **None** takes nothing. F6 switches Auto ↔ None. The *Advance rate* inside the box follows **Loan Int. %** - type there only if the advance alone needs another rate. See *Interest - Auto or Manual* ("Two rate boxes").
 7. **Item photo** - Camera, Browse (choose a file) or Old Photo (the customer's last photo).
 8. **Save Loan (F2)** → enter the bill book no (if you use paper bill books) → **Pay customer**: choose Cash / UPI / Card / Cheque and the amount → **Confirm**.
@@ -658,6 +658,20 @@ Manual modes show **amber**. With **Months** and **Days** the box has an **Inter
 When you change the unit, the box first shows the loan's own rate in that unit (1.5% a month = 18% a year = ₹25 a day on ₹50,000); then type your rate. Months use the monthly figure, Days the daily figure. % / year counts a day as 1/365 of the year, so 30 days come to a little less than a month (₹740 against ₹750).
 
 The line at the bottom always shows what will be charged: *Auto · 4 months ₹3,000* or *Manual · 15 days ₹375*, and **Auto would be ₹…** so you can compare.
+
+## How Auto counts the loan's interest - days or months?
+The loan's rate is typed per month (or per year). **How the time is counted** comes from the loan's **scheme** (Masters → Loan Schemes → *Calculate by*). New Loan and Re-loan show it in a blue line under the rate, e.g. *ⓘ GL001 counts interest by exact days - a day = yearly rate ÷ 365 · minimum 7 days*.
+
+| Calculate by | Counts | 40 days is charged as |
+|---|---|---|
+| **MyBook** | every started month is a full month (minimum 1 month) | 2 months |
+| **Exact days** | the actual days; a day = yearly rate ÷ 365 (or monthly rate ÷ 30) | 40 days |
+| **Months (half / full)** | half and full months - up to 15 extra days (System Control) = ½ month | 1½ months |
+
+*Minimum days* and *grace days* of the scheme are shown on the same line. To charge one receipt differently, use **Manual → Days / Months** in the Interest box.
+
+## Is interest charged on the advance?
+No. **Advance interest is interest paid early.** On a ₹50,000 loan at 1.5% a month with 1 month advance, ₹750 is kept back and the customer gets ₹49,250. The ₹750 counts as **interest already paid** - it is taken off at Part Payment / Release (*− Advance interest*). The loan amount stays ₹50,000 and no interest is charged on the ₹750.
 
 ## Two rate boxes on New Loan / Re-loan - are they the same?
 No - they do different jobs:
@@ -1269,3 +1283,9 @@ Fine weight (net × purity ÷ 100, 3 decimals) × fine (100%) rate, rounded to t
 
 **New Loan has "Loan Int. % P.M." and another rate inside Advance interest - which one counts?**
 Both, for different things. *Loan Int. %* is the loan's rate for every month until release. The rate inside *Advance interest* is only for the advance taken today; it copies the loan rate until you type a different one. See *Interest - Auto or Manual*.
+
+**Is a loan's interest only by months, or also by days?**
+It depends on the scheme. *MyBook* schemes count every started month; *Exact days* schemes (e.g. GL001 / GL002) count the actual days; *Months (half / full)* count half months. The blue ⓘ line on New Loan / Re-loan tells you. Any single receipt can still be taken by days with Manual → Days.
+
+**Is interest charged on the advance interest?**
+No. The advance is interest paid early - it is deducted from the amount paid out and counted as interest already paid. Interest is always on the loan amount.

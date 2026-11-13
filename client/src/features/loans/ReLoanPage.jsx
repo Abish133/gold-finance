@@ -10,7 +10,7 @@ import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
 import { useInterestChoice, InterestChoice, oldInterest } from './InterestChoice';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, ItemEntry, LtvBar, useLoan, useApproval, PayDrawer, LoanHead, Chip, loanCustomer, INTEREST_TYPES, fineRate, valueOf } from './desk';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, ItemEntry, LtvBar, useLoan, useApproval, PayDrawer, LoanHead, Chip, loanCustomer, INTEREST_TYPES, fineRate, valueOf , SchemeCounting } from './desk';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
 
@@ -123,6 +123,7 @@ export default function ReLoanPage() {
                 <Field label="Calculation"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
                 <Field label="Doc charges"><Input type="number" prefix={<Receipt className="size-3.5" />} value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
               </div>
+              <SchemeCounting scheme={scheme} settings={settings} />
               <InterestChoice ic={icAdv} title="Advance interest (F6)" disabled={!l} />
               <InterestChoice ic={icOld} title="Interest on old loan" approvalLimit={n(settings?.DISCOUNT_APPROVAL_LIMIT)} disabled={!l} />
               <LtvBar value={valueToday ? (np / valueToday) * 100 : 0} max={n(scheme?.ltv_percent || 75)} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="(value today)" />

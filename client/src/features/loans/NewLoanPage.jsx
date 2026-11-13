@@ -18,7 +18,7 @@ import { api } from '@/lib/api';
 import { money, amount, n, round2, today, weight, date } from '@/lib/format';
 import { whatsappAfterSave } from '@/lib/whatsapp';
 import { useInterestChoice, InterestChoice } from './InterestChoice';
-import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate } from './desk';
+import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate, SchemeCounting } from './desk';
 import { NeedBranch } from '@/components/common/NeedBranch';
 import { addRecentRecord } from '@/lib/recent';
 
@@ -381,6 +381,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
           <Field label="Interest type"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
           <Field label="Doc. charges"><Input prefix={<Receipt className="size-3.5" />} type="number" value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
         </div>
+        <SchemeCounting scheme={scheme} settings={settings} />
         <InterestChoice ic={icAdv} title="Advance interest (F6)" />
         <LtvBar value={ltv} max={ltvMax} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="of value" />
         <div className="overflow-hidden rounded-md border border-ink-200 text-[13px] dark:border-ink-800 [&>div]:flex [&>div]:items-center [&>div]:justify-between [&>div]:gap-3 [&>div]:px-2.5 [&>div:not(:last-child)]:border-b [&>div]:border-ink-100 dark:[&>div]:border-ink-800">

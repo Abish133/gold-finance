@@ -96,6 +96,36 @@ export const Chip = ({ children, tone = 'ink' }) => (
 export const interestTypeLabel = (t) => (t === 'COMPOUND' ? 'Compound Interest' : 'Flat Interest Calculation');
 export const INTEREST_TYPES = [{ value: 'COMPOUND', label: 'Compound Interest' }, { value: 'SIMPLE', label: 'Flat Interest Calculation' }];
 
+/** How a scheme counts the time for the loan's interest (Masters → Loan Schemes → "Calculate by"), in plain words. */
+export const schemeCounting = (scheme, settings) => {
+  if (!scheme) return null;
+  const minDays = n(scheme.min_days);
+  const grace = n(scheme.grace_days) || n(settings?.RELEASE_GRACE_DAYS);
+  const half = settings?.MONTH_ROUND_HALF_DAYS != null ? n(settings.MONTH_ROUND_HALF_DAYS) : 15;
+  const yearly = scheme.rate_type !== 'MONTHLY';
+  const extra = [minDays > 0 && `minimum ${minDays} days`, grace > 0 && `${grace} grace day${grace > 1 ? 's' : ''} not charged`].filter(Boolean);
+  if (scheme.calc_mode === 'MYBOOK') {
+    return { mode: 'Months', text: 'by months - every started month is a full month (minimum 1 month)', example: '40 days = 2 months', extra };
+  }
+  if (scheme.calc_mode === 'MONTHS') {
+    return { mode: 'Half / full months', text: half > 0 ? `by half and full months - up to ${half} extra days = ½ month, more = full month` : 'by full months - every started month', example: half > 0 ? `40 days = 1½ months` : '40 days = 2 months', extra };
+  }
+  return { mode: 'Days', text: `by exact days - a day = ${yearly ? 'yearly rate ÷ 365' : 'monthly rate ÷ 30'}`, example: '40 days = 40 days', extra };
+};
+
+/** One line under the loan's rate: how this scheme counts the interest. */
+export function SchemeCounting({ scheme, settings, className }) {
+  const sc = schemeCounting(scheme, settings);
+  if (!sc) return null;
+  return (
+    <p className={clsx('flex items-start gap-1.5 rounded-md bg-sky-50 px-2 py-1 text-[11.5px] leading-snug text-sky-900 dark:bg-sky-950/40 dark:text-sky-200', className)}
+      title="Masters → Loan Schemes → Calculate by. Manual Days / Months in the Interest box can still be used for a single receipt.">
+      <span aria-hidden className="mt-px font-bold">ⓘ</span>
+      <span><b>{scheme.code}</b> counts interest <b>{sc.text}</b>{sc.extra.length ? ` · ${sc.extra.join(' · ')}` : ''} <span className="text-sky-700/80 dark:text-sky-300/70">(e.g. {sc.example})</span></span>
+    </p>
+  );
+}
+
 /** "LOAN 1 · BILL BOOK 1 · GOLD" title row with chips, then info cells. */
 export function LoanHead({ loan, prefix = 'Loan', chips, cells = [] }) {
   return (

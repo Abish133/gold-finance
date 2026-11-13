@@ -35,3 +35,9 @@ Fine weight (net × purity ÷ 100, 3 decimals) × fine (100%) rate, rounded to t
 
 **New Loan has "Loan Int. % P.M." and another rate inside Advance interest - which one counts?**
 Both, for different things. *Loan Int. %* is the loan's rate for every month until release. The rate inside *Advance interest* is only for the advance taken today; it copies the loan rate until you type a different one. See *Interest - Auto or Manual*.
+
+**Is a loan's interest only by months, or also by days?**
+It depends on the scheme. *MyBook* schemes count every started month; *Exact days* schemes (e.g. GL001 / GL002) count the actual days; *Months (half / full)* count half months. The blue ⓘ line on New Loan / Re-loan tells you. Any single receipt can still be taken by days with Manual → Days.
+
+**Is interest charged on the advance interest?**
+No. The advance is interest paid early - it is deducted from the amount paid out and counted as interest already paid. Interest is always on the loan amount.

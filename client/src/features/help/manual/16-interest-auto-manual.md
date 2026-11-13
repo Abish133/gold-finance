@@ -36,6 +36,20 @@ When you change the unit, the box first shows the loan's own rate in that unit (
 
 The line at the bottom always shows what will be charged: *Auto · 4 months ₹3,000* or *Manual · 15 days ₹375*, and **Auto would be ₹…** so you can compare.
 
+## How Auto counts the loan's interest - days or months?
+The loan's rate is typed per month (or per year). **How the time is counted** comes from the loan's **scheme** (Masters → Loan Schemes → *Calculate by*). New Loan and Re-loan show it in a blue line under the rate, e.g. *ⓘ GL001 counts interest by exact days - a day = yearly rate ÷ 365 · minimum 7 days*.
+
+| Calculate by | Counts | 40 days is charged as |
+|---|---|---|
+| **MyBook** | every started month is a full month (minimum 1 month) | 2 months |
+| **Exact days** | the actual days; a day = yearly rate ÷ 365 (or monthly rate ÷ 30) | 40 days |
+| **Months (half / full)** | half and full months - up to 15 extra days (System Control) = ½ month | 1½ months |
+
+*Minimum days* and *grace days* of the scheme are shown on the same line. To charge one receipt differently, use **Manual → Days / Months** in the Interest box.
+
+## Is interest charged on the advance?
+No. **Advance interest is interest paid early.** On a ₹50,000 loan at 1.5% a month with 1 month advance, ₹750 is kept back and the customer gets ₹49,250. The ₹750 counts as **interest already paid** - it is taken off at Part Payment / Release (*− Advance interest*). The loan amount stays ₹50,000 and no interest is charged on the ₹750.
+
 ## Two rate boxes on New Loan / Re-loan - are they the same?
 No - they do different jobs:
 
