@@ -54,3 +54,15 @@ screens: dashboard, reports_summary
 - **Paid out** (new loans + top-ups), **Received** (loan amount back + interest), **Net cash**, **Interest given up** (below Auto at closing + discounts).
 - Charts: **Net lent per period** (above / below the line), **Loan book over time**, **Cash out vs cash in**, **Interest - running total**, **Where the interest came from**, **Interest: Auto and Manual**, **Money received / paid out by payment mode**. Every chart has a Table view, and *Excel with charts* adds a *Money flow* sheet.
 
+## Metal in custody and branches
+Choose **All Branches** in the header to compare branches; with one branch selected you see that branch only.
+- **Gold held / Silver held** - net weight on open loans, fine (100%) weight, pieces and loans. **Gold in custody (fine)** also in sovereigns (8 g).
+- **Gold / Silver loan outstanding** - loan amount on each metal (a gold + silver loan is shared by the value of its items).
+- **Metal value today** - fine weight × today's 100% rate (Gold / Silver Rate). **Loan used of value** - loan ÷ value: green *safe*, amber *close to value* (85%+), red *over value* (100%+).
+- **Can still lend (top-up room)** - each scheme's LTV on today's value minus the loan.
+- **Metal in custody by branch** (table): branch × metal - loans, pcs, gross, net, fine, value, loan, used %, can still lend.
+- Charts: **Gold held by branch**, **Silver held by branch**, **Loan vs metal value by branch**, **Branches in this period** (given vs recovered), **Interest by branch**, **Can still lend by branch**, **Lending by metal and branch** (gold / silver / gold + silver given).
+- *Excel with charts* adds a **Metal by branch** sheet.
+
+Example: Head Office 119.7 g gold (109.6 g fine) worth ₹8.74L at ₹7,969/g, loan ₹4.28L → 49% used, ₹2.27L can still be lent.
+

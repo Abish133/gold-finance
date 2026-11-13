@@ -323,6 +323,87 @@ router.get('/analytics/flows', permitAny(['dashboard', 'reports_summary']), asyn
   } });
 });
 
+/* ---------------- Analytics metal in custody: gold / silver held on open loans, per branch; lending by branch and metal ---------------- */
+router.get('/analytics/holdings', permitAny(['dashboard', 'reports_summary']), async (req, res) => {
+  const b = req.branchIds;
+  const to = dayjs(req.query.to).isValid() ? dayjs(req.query.to) : dayjs();
+  const from = dayjs(req.query.from).isValid() ? dayjs(req.query.from) : to.startOf('month');
+  const metal = ['GOLD', 'SILVER', 'MIX'].includes(req.query.metal) ? req.query.metal : '';
+  const p = { b, f: from.format('YYYY-MM-DD'), t: to.format('YYYY-MM-DD'), metal };
+  const mf = "AND (:metal = '' OR l.loan_on = :metal)";
+  const [rates, items, lent, recovered] = await Promise.all([
+    // today's 100% (fine) rate per gram of each metal (latest on or before the end date)
+    query(`SELECT m.code, r.market_rate * 100 / NULLIF(r.purity, 0) per_gram, r.rate_date FROM metal_rates r JOIN metals m ON m.id = r.metal_id
+            WHERE r.id IN (SELECT MAX(id) FROM metal_rates WHERE rate_date <= :t GROUP BY metal_id)`, p),
+    // every item of every open loan
+    query(`SELECT l.id loan_id, l.branch_id, br.name branch, l.current_principal principal, COALESCE(s.ltv_percent, 75) ltv,
+                  COALESCE(mi.code, ml.code, IF(l.loan_on = 'SILVER', 'SILVER', 'GOLD')) metal,
+                  li.pcs, li.gross_wt, li.net_wt, IF(li.fine_wt > 0, li.fine_wt, li.net_wt * li.purity / 100) fine_wt
+             FROM loans l JOIN loan_items li ON li.loan_id = l.id JOIN branches br ON br.id = l.branch_id
+             LEFT JOIN metals mi ON mi.id = li.metal_id LEFT JOIN metals ml ON ml.id = l.metal_id LEFT JOIN schemes s ON s.id = l.scheme_id
+            WHERE l.branch_id IN (:b) AND l.status = 'OPEN' ${mf}`, p),
+    // lending in the period by branch and metal
+    query(`SELECT br.name branch, l.loan_on metal, COUNT(*) loans, COALESCE(SUM(l.principal),0) amt, COALESCE(SUM(l.net_wt),0) net_wt
+             FROM loans l JOIN branches br ON br.id = l.branch_id
+            WHERE l.branch_id IN (:b) AND l.status <> 'CANCELLED' AND l.entry_type <> 'OLD' AND l.loan_date BETWEEN :f AND :t ${mf}
+            GROUP BY br.id, l.loan_on`, p),
+    query(`SELECT br.name branch, COALESCE(SUM(IF(t.txn_type IN ('RELEASE','PART_PAYMENT'), ABS(t.principal_amount), 0)),0) recovered,
+                  COALESCE(SUM(t.interest_amount + t.penal_amount),0) interest, COALESCE(SUM(t.txn_type = 'RELEASE'),0) releases
+             FROM loan_transactions t JOIN loans l ON l.id = t.loan_id JOIN branches br ON br.id = l.branch_id
+            WHERE t.branch_id IN (:b) AND t.is_void = 0 AND t.txn_date BETWEEN :f AND :t ${mf} GROUP BY br.id`, p),
+  ]);
+  const rate = Object.fromEntries(rates.map((r) => [r.code, Number(r.per_gram || 0)]));
+  // value of each item today; a loan's amount is shared between its metals by item value (gold + silver loans)
+  const loanValue = new Map();
+  for (const it of items) { it.value = Number(it.fine_wt || 0) * (rate[it.metal] || 0); loanValue.set(it.loan_id, (loanValue.get(it.loan_id) || 0) + it.value); }
+  const loanItems = new Map();
+  for (const it of items) loanItems.set(it.loan_id, (loanItems.get(it.loan_id) || 0) + 1);
+  const agg = new Map();
+  const seen = new Set();
+  for (const it of items) {
+    const key = `${it.branch_id}|${it.metal}`;
+    const a = agg.get(key) || { branch: it.branch, branch_id: it.branch_id, metal: it.metal, loans: 0, pcs: 0, gross: 0, net: 0, fine: 0, value: 0, loan: 0, canLend: 0 };
+    const lv = loanValue.get(it.loan_id) || 0;
+    const share = lv > 0 ? it.value / lv : 1 / (loanItems.get(it.loan_id) || 1);
+    const loanShare = Number(it.principal || 0) * share;
+    a.pcs += Number(it.pcs || 0); a.gross += Number(it.gross_wt || 0); a.net += Number(it.net_wt || 0); a.fine += Number(it.fine_wt || 0);
+    a.value += it.value; a.loan += loanShare;
+    a.canLend += it.value * (Number(it.ltv) / 100) - loanShare;
+    if (!seen.has(`${key}|${it.loan_id}`)) { seen.add(`${key}|${it.loan_id}`); a.loans += 1; }
+    agg.set(key, a);
+  }
+  const r2 = (x) => Math.round(x * 100) / 100;
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  const byBranchMetal = [...agg.values()].map((a) => ({ ...a, gross: r3(a.gross), net: r3(a.net), fine: r3(a.fine), value: r2(a.value), loan: r2(a.loan), canLend: r2(a.canLend) }))
+    .sort((x, y) => x.branch.localeCompare(y.branch) || x.metal.localeCompare(y.metal));
+  const totals = {};
+  for (const a of byBranchMetal) {
+    const t = totals[a.metal] || (totals[a.metal] = { metal: a.metal, loans: 0, pcs: 0, gross: 0, net: 0, fine: 0, value: 0, loan: 0, canLend: 0 });
+    for (const k of ['loans', 'pcs', 'gross', 'net', 'fine', 'value', 'loan', 'canLend']) t[k] += a[k];
+  }
+  const recMap = new Map(recovered.map((r) => [r.branch, r]));
+  const branches = [...new Set([...byBranchMetal.map((a) => a.branch), ...lent.map((r) => r.branch)])].sort();
+  const byBranch = branches.map((name) => {
+    const ls = lent.filter((r) => r.branch === name);
+    const hs = byBranchMetal.filter((a) => a.branch === name);
+    const rc = recMap.get(name) || {};
+    const g = (arr, m, k) => arr.filter((x) => (x.metal === m)).reduce((s2, x) => s2 + Number(x[k] || 0), 0);
+    return {
+      name,
+      lent: ls.reduce((s2, r) => s2 + Number(r.amt), 0), lentGold: g(ls, 'GOLD', 'amt'), lentSilver: g(ls, 'SILVER', 'amt'), lentMix: g(ls, 'MIX', 'amt'), newLoans: ls.reduce((s2, r) => s2 + Number(r.loans), 0),
+      recovered: Number(rc.recovered || 0), interest: Number(rc.interest || 0), releases: Number(rc.releases || 0),
+      goldNet: r3(g(hs, 'GOLD', 'net')), goldFine: r3(g(hs, 'GOLD', 'fine')), silverNet: r3(g(hs, 'SILVER', 'net')), silverFine: r3(g(hs, 'SILVER', 'fine')),
+      value: r2(hs.reduce((s2, a) => s2 + a.value, 0)), loan: r2(hs.reduce((s2, a) => s2 + a.loan, 0)), canLend: r2(hs.reduce((s2, a) => s2 + a.canLend, 0)),
+      goldLoan: r2(g(hs, 'GOLD', 'loan')), silverLoan: r2(g(hs, 'SILVER', 'loan')),
+    };
+  });
+  res.json({ data: {
+    asOn: p.t, rates: Object.fromEntries(rates.map((r) => [r.code, { perGram: r2(Number(r.per_gram || 0)), date: r.rate_date }])),
+    totals: Object.values(totals).map((t) => ({ ...t, gross: r3(t.gross), net: r3(t.net), fine: r3(t.fine), value: r2(t.value), loan: r2(t.loan), canLend: r2(t.canLend) })),
+    byBranchMetal, byBranch,
+  } });
+});
+
 /* ---------------- Analytics insights: risk, pending interest, behaviour (as on the end date) ---------------- */
 router.get('/analytics/insights', permitAny(['dashboard', 'reports_summary']), async (req, res) => {
   const b = req.branchIds;

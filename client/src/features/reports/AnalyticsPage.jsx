@@ -140,6 +140,7 @@ export default function AnalyticsPage() {
   const { data, isLoading, isFetching } = useFetch('/dashboard/analytics', { from: q.from, to: q.to, group: q.group === 'auto' ? undefined : q.group, metal: q.metal || undefined });
   const ins = useFetch('/dashboard/analytics/insights', { from: q.from, to: q.to, metal: q.metal || undefined });
   const more = useFetch('/dashboard/analytics/more', { from: q.from, to: q.to, metal: q.metal || undefined });
+  const hold = useFetch('/dashboard/analytics/holdings', { from: q.from, to: q.to, metal: q.metal || undefined });
   const flw = useFetch('/dashboard/analytics/flows', { from: q.from, to: q.to, group: q.group === 'auto' ? undefined : q.group, metal: q.metal || undefined });
   const pick = (k) => { const [a, b] = RANGES[k][1](); const nf = { ...f, from: a.format('YYYY-MM-DD'), to: b.format('YYYY-MM-DD') }; setRange(k); setF(nf); setQ(nf); };
   const setNow = (patch) => { const nf = { ...f, ...patch }; setF(nf); setQ(nf); };
@@ -180,6 +181,15 @@ export default function AnalyticsPage() {
             { title: 'Where the interest came from', columns: [{ key: 'name', label: 'Source' }, { key: 'cnt', label: 'Entries', num: true }, money2('amt', 'Interest')], rows: flow.src },
             { title: 'Received by payment mode', columns: [{ key: 'name', label: 'Mode' }, { key: 'cnt', label: 'Entries', num: true }, money2('amt', 'Amount')], rows: flow.modesIn },
             { title: 'Paid out by payment mode', columns: [{ key: 'name', label: 'Mode' }, { key: 'cnt', label: 'Entries', num: true }, money2('amt', 'Amount')], rows: flow.modesOut },
+          ] }] : []),
+          ...(hold.data ? [{ name: 'Metal by branch', blocks: [
+            { title: 'Metal in custody by branch', columns: [{ key: 'branch', label: 'Branch' }, { key: 'metal', label: 'Metal', value: (r) => METALS[r.metal] || r.metal }, { key: 'loans', label: 'Loans', num: true }, { key: 'pcs', label: 'Pcs', num: true },
+              { key: 'gross', label: 'Gross (g)', num: true }, { key: 'net', label: 'Net (g)', num: true }, { key: 'fine', label: 'Fine (g)', num: true }, money2('value', 'Value today'), money2('loan', 'Loan'), money2('canLend', 'Can still lend')], rows: hold.data.byBranchMetal },
+            { title: 'Gold held by branch', chart: el('held-GOLD'), columns: [{ key: 'name', label: 'Branch' }, { key: 'goldNet', label: 'Net (g)', num: true }, { key: 'goldFine', label: 'Fine (g)', num: true }, money2('goldLoan', 'Loan')], rows: hold.data.byBranch },
+            { title: 'Silver held by branch', chart: el('held-SILVER'), columns: [{ key: 'name', label: 'Branch' }, { key: 'silverNet', label: 'Net (g)', num: true }, { key: 'silverFine', label: 'Fine (g)', num: true }, money2('silverLoan', 'Loan')], rows: hold.data.byBranch },
+            { title: 'Loan vs metal value by branch', chart: el('loan-value'), columns: [{ key: 'name', label: 'Branch' }, money2('loan', 'Loan'), money2('value', 'Value today')], rows: hold.data.byBranch },
+            { title: 'Branches in this period', chart: el('branch-flow'), columns: [{ key: 'name', label: 'Branch' }, { key: 'newLoans', label: 'New loans', num: true }, money2('lent', 'Given'), money2('recovered', 'Recovered'), money2('interest', 'Interest'),
+              money2('lentGold', 'Gold given'), money2('lentSilver', 'Silver given'), money2('lentMix', 'Gold + silver given')], rows: hold.data.byBranch },
           ] }] : []),
           { name: 'Loan book', blocks: [
             { title: 'Open loans by age', columns: [{ key: 'age', label: 'Age' }, { key: 'loans', label: 'Loans', num: true }, money2('amount', 'Amount')], rows: d.ageing.map((r) => ({ ...r, age: AGE[r.bucket] })) },
@@ -417,6 +427,119 @@ export default function AnalyticsPage() {
                 </ChartCard>
               </div>
             )}
+
+            {/* ---------- metal in custody + branches ---------- */}
+            {hold.data && (() => {
+              const h = hold.data;
+              const T = (m) => h.totals.find((t) => t.metal === m) || { loans: 0, pcs: 0, gross: 0, net: 0, fine: 0, value: 0, loan: 0, canLend: 0 };
+              const g = T('GOLD'); const sv = T('SILVER');
+              const value = g.value + sv.value; const loan = g.loan + sv.loan; const canLend = g.canLend + sv.canLend;
+              const used = value ? (loan / value) * 100 : 0;
+              const usedTone = used >= 100 ? pal.crit : used >= 85 ? pal.warn : pal.good;
+              const br = h.byBranch.map((r) => ({ ...r, used: r.value ? Math.round((r.loan / r.value) * 100) : 0, net: r.lent - r.recovered }));
+              const many = br.length > 1;
+              const bTable = (cols) => <MiniTable rows={br} cols={[{ key: 'name', label: 'Branch' }, ...cols]} />;
+              const metalName = (m) => METALS[m] || m;
+              return (
+                <>
+                  <section className="shrink-0 overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900">
+                    <header className="flex min-h-9 flex-wrap items-center gap-x-2 border-b border-ink-200 px-3 py-1.5 dark:border-ink-800">
+                      <h3 className="text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:text-white">Metal in custody</h3>
+                      <span className="truncate text-[11px] text-ink-500">gold and silver held on open loans{many ? `, ${br.length} branches` : ''} · valued at the rate of {h.rates.GOLD ? `₹${amount(h.rates.GOLD.perGram)}/g gold` : 'no gold rate'}{h.rates.SILVER ? ` · ₹${amount(h.rates.SILVER.perGram)}/g silver` : ''} (100%)</span>
+                    </header>
+                    <div className="grid sm:grid-cols-2 xl:grid-cols-4">
+                      <Kpi label="Gold held" value={grams(g.net)} sub={`${grams(g.fine)} fine · ${n(g.pcs)} pcs · ${n(g.loans)} loan${n(g.loans) === 1 ? '' : 's'}`} />
+                      <Kpi label="Silver held" value={grams(sv.net)} sub={`${grams(sv.fine)} fine · ${n(sv.pcs)} pcs · ${n(sv.loans)} loan${n(sv.loans) === 1 ? '' : 's'}`} />
+                      <Kpi label="Gold loan outstanding" value={money(g.loan)} sub={`metal value ${money(g.value)}`} />
+                      <Kpi label="Silver loan outstanding" value={money(sv.loan)} sub={`metal value ${money(sv.value)}`} />
+                    </div>
+                    <div className="grid border-t border-ink-200 sm:grid-cols-2 xl:grid-cols-4 dark:border-ink-800">
+                      <Kpi label="Metal value today" value={money(value)} sub={`gold ${money(g.value)} · silver ${money(sv.value)}`} />
+                      <Kpi label="Loan used of value" value={value ? `${used.toFixed(1)}%` : '-'} sub={`${money(loan)} on ${money(value)}`}>
+                        {value > 0 && <span className="text-[11px] font-semibold" style={{ color: usedTone }}>{used >= 100 ? 'over value' : used >= 85 ? 'close to value' : 'safe'}</span>}
+                      </Kpi>
+                      <Kpi label="Can still lend (top-up room)" value={money(Math.max(0, canLend))} sub="up to each scheme's LTV on today's value" />
+                      <Kpi label="Gold in custody (fine)" value={`${(g.fine / 8).toFixed(2)} sov`} sub={`${grams(g.fine)} of 100% gold · 1 sovereign = 8 g`} />
+                    </div>
+                  </section>
+
+                  <div className="grid gap-2 lg:grid-cols-2">
+                    <ChartCard xl="hold-detail" title="Metal in custody by branch" sub={`open loans as on ${dayjs(h.asOn).format('DD MMM YYYY')}${many ? '' : ' · choose All Branches in the header to compare branches'}`} className="lg:col-span-2">
+                      <MiniTable rows={h.byBranchMetal} cols={[{ key: 'branch', label: 'Branch', render: (r) => <span className="font-semibold">{r.branch}</span> }, { key: 'metal', label: 'Metal', render: (r) => metalName(r.metal) },
+                        { key: 'loans', label: 'Loans', right: true }, { key: 'pcs', label: 'Pcs', right: true }, { key: 'gross', label: 'Gross', right: true, render: (r) => grams(r.gross) },
+                        { key: 'net', label: 'Net', right: true, render: (r) => grams(r.net) }, { key: 'fine', label: 'Fine', right: true, render: (r) => grams(r.fine) },
+                        { key: 'value', label: 'Value today', right: true, render: (r) => amount(r.value) }, { key: 'loan', label: 'Loan', right: true, render: (r) => amount(r.loan) },
+                        { key: 'used', label: 'Used', right: true, render: (r) => { const u = r.value ? (r.loan / r.value) * 100 : 0; return <b style={{ color: u >= 100 ? pal.crit : u >= 85 ? pal.warn : undefined }}>{Math.round(u)}%</b>; } },
+                        { key: 'canLend', label: 'Can still lend', right: true, render: (r) => amount(Math.max(0, r.canLend)) }]} />
+                    </ChartCard>
+
+                    {['GOLD', 'SILVER'].filter((m) => !q.metal || q.metal === m || q.metal === 'MIX').map((m) => (
+                      <ChartCard key={m} xl={`held-${m}`} title={`${m === 'GOLD' ? 'Gold' : 'Silver'} held by branch`} sub="net weight on open loans (grams)"
+                        table={bTable([{ key: m === 'GOLD' ? 'goldNet' : 'silverNet', label: 'Net (g)', right: true, render: (r) => grams(m === 'GOLD' ? r.goldNet : r.silverNet) }, { key: m === 'GOLD' ? 'goldFine' : 'silverFine', label: 'Fine (g)', right: true, render: (r) => grams(m === 'GOLD' ? r.goldFine : r.silverFine) }, { key: m === 'GOLD' ? 'goldLoan' : 'silverLoan', label: 'Loan', right: true, render: (r) => amount(m === 'GOLD' ? r.goldLoan : r.silverLoan) }])}>
+                        {br.some((r) => (m === 'GOLD' ? r.goldNet : r.silverNet) > 0) ? (
+                          <div style={{ height: Math.max(140, br.length * 44 + 40) }}>
+                            <ResponsiveContainer>
+                              <BarChart data={br} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                                <CartesianGrid horizontal={false} stroke={pal.grid} />
+                                <XAxis type="number" {...axis} tickFormatter={(v) => `${v} g`} />
+                                <YAxis type="category" dataKey="name" {...axis} width={110} />
+                                <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v, k, it) => [`${grams(v)} · loan ₹${amount(m === 'GOLD' ? it.payload.goldLoan : it.payload.silverLoan)}`, `${m === 'GOLD' ? 'Gold' : 'Silver'} net`]} />
+                                <Bar dataKey={m === 'GOLD' ? 'goldNet' : 'silverNet'} name="Net weight" fill={m === 'GOLD' ? pal.s4 : pal.s5} radius={[0, 4, 4, 0]} maxBarSize={26} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : <p className="py-10 text-center text-[12px] text-ink-400">No {m === 'GOLD' ? 'gold' : 'silver'} on open loans</p>}
+                      </ChartCard>
+                    ))}
+
+                    <ChartCard xl="loan-value" title="Loan vs metal value by branch" sub="outstanding loan against today's value of the metal held" legend={[[pal.s1, 'Loan'], [pal.s3, 'Metal value']]}
+                      table={bTable([{ key: 'loan', label: 'Loan', right: true, render: (r) => amount(r.loan) }, { key: 'value', label: 'Value today', right: true, render: (r) => amount(r.value) }, { key: 'used', label: 'Used', right: true, render: (r) => `${r.used}%` }])}>
+                      <div className="h-60">
+                        <ResponsiveContainer>
+                          <BarChart data={br} barGap={2} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <CartesianGrid vertical={false} stroke={pal.grid} />
+                            <XAxis dataKey="name" {...axis} interval={0} />
+                            <YAxis {...axis} width={64} tickFormatter={money} />
+                            <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v, k, it) => [`₹${amount(v)}${k === 'Loan' ? ` (${it.payload.used}% of value)` : ''}`, k]} />
+                            <Bar dataKey="loan" name="Loan" fill={pal.s1} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                            <Bar dataKey="value" name="Metal value" fill={pal.s3} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
+
+                    <ChartCard xl="branch-flow" title="Branches in this period" sub="loan amount given and recovered" legend={[[pal.s1, 'Given'], [pal.s2, 'Recovered']]}
+                      table={bTable([{ key: 'newLoans', label: 'New loans', right: true }, { key: 'lent', label: 'Given', right: true, render: (r) => amount(r.lent) }, { key: 'recovered', label: 'Recovered', right: true, render: (r) => amount(r.recovered) }, { key: 'net', label: 'Net lent', right: true, render: (r) => `${r.net > 0 ? '+' : ''}${amount(r.net)}` }, { key: 'interest', label: 'Interest', right: true, render: (r) => amount(r.interest) }])}>
+                      <div className="h-60">
+                        <ResponsiveContainer>
+                          <BarChart data={br} barGap={2} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <CartesianGrid vertical={false} stroke={pal.grid} />
+                            <XAxis dataKey="name" {...axis} interval={0} />
+                            <YAxis {...axis} width={64} tickFormatter={money} />
+                            <Tooltip {...tip} cursor={{ fill: pal.grid, opacity: 0.5 }} formatter={(v, k) => [`₹${amount(v)}`, k]} />
+                            <Bar dataKey="lent" name="Given" fill={pal.s1} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                            <Bar dataKey="recovered" name="Recovered" fill={pal.s2} radius={[4, 4, 0, 0]} maxBarSize={36} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
+
+                    <ChartCard title="Interest by branch" sub="collected in this period">
+                      <ShareBars rows={br} labelKey="name" valueKey="interest" fmt={(v) => `₹${amount(v)}`} color={pal.s3} extra={(r) => `${r.releases} releases`} />
+                    </ChartCard>
+
+                    <ChartCard title="Can still lend by branch" sub="top-up room: each scheme's LTV on today's metal value minus the loan">
+                      <ShareBars rows={br.map((r) => ({ ...r, canLendPos: Math.max(0, r.canLend) }))} labelKey="name" valueKey="canLendPos" fmt={(v) => `₹${amount(v)}`} color={pal.s1} extra={(r) => `${r.used}% used`} />
+                    </ChartCard>
+
+                    <ChartCard title="Lending by metal and branch" sub="loan amount given in this period"
+                      className={many ? '' : 'lg:col-span-2'}>
+                      {bTable([{ key: 'lentGold', label: 'Gold', right: true, render: (r) => amount(r.lentGold) }, { key: 'lentSilver', label: 'Silver', right: true, render: (r) => amount(r.lentSilver) }, { key: 'lentMix', label: 'Gold + silver', right: true, render: (r) => amount(r.lentMix) }, { key: 'lent', label: 'Total', right: true, render: (r) => <b>{amount(r.lent)}</b> }])}
+                    </ChartCard>
+                  </div>
+                </>
+              );
+            })()}
 
             <div className="grid gap-2 lg:grid-cols-2">
               <ChartCard xl="given" title="Loan amount given vs recovered" sub={`per ${d.group}`} legend={[[pal.s1, 'Given'], [pal.s2, 'Recovered']]}

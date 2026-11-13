@@ -316,6 +316,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
 | **Loan bill: terms, photos, contact** | Loan bill (A4) | Terms & conditions page prints by default; customer photo falls back to the customer's record; branch contact numbers on the acknowledge card |
 | **Interest Auto or Manual everywhere** | New / Old Loan (advance), Part Payment, Top-up, Release, Re-loan, Loan Counter | One *Interest* box: Auto, or Months / Days / Amount with a rate % - chapter *Interest - Auto or Manual* |
+| **Analytics: money flow, metal and branches** | Reports → Business Analytics | Net lent (given − recovered), loan book over time, cash in / out, interest sources, payment modes; gold and silver held by branch, value today, loan used of value, top-up room, branch comparison |
 | **Penal interest Auto or Manual** | Loan → Release | Penal (late) interest: Auto, a typed Amount, or None; less than Auto needs the manager's approval with the interest and discount |
 | **Interest rate box everywhere** | Every Interest box (incl. advance interest), Part Payment, Interest Calculator → Quote | *Days* shows the rate per day, *Months* per month; type any rate; change the unit and the number converts; *= ₹ a day · ₹ a month* shows what it comes to |
 | **Rate in any unit** | Every Interest box (Months / Days) and Part Payment | % / month, % / year, % / day, ₹ / day or ₹ / month - printed on the receipt with its unit |
@@ -1054,6 +1055,18 @@ Double-click a month in the Summary to see that month day by day.
 - **Loan book (outstanding)** - at the start and end of the period, with the change %. **Recovered vs given** %, **Interest earned / month** (% of the average book).
 - **Paid out** (new loans + top-ups), **Received** (loan amount back + interest), **Net cash**, **Interest given up** (below Auto at closing + discounts).
 - Charts: **Net lent per period** (above / below the line), **Loan book over time**, **Cash out vs cash in**, **Interest - running total**, **Where the interest came from**, **Interest: Auto and Manual**, **Money received / paid out by payment mode**. Every chart has a Table view, and *Excel with charts* adds a *Money flow* sheet.
+
+## Metal in custody and branches
+Choose **All Branches** in the header to compare branches; with one branch selected you see that branch only.
+- **Gold held / Silver held** - net weight on open loans, fine (100%) weight, pieces and loans. **Gold in custody (fine)** also in sovereigns (8 g).
+- **Gold / Silver loan outstanding** - loan amount on each metal (a gold + silver loan is shared by the value of its items).
+- **Metal value today** - fine weight × today's 100% rate (Gold / Silver Rate). **Loan used of value** - loan ÷ value: green *safe*, amber *close to value* (85%+), red *over value* (100%+).
+- **Can still lend (top-up room)** - each scheme's LTV on today's value minus the loan.
+- **Metal in custody by branch** (table): branch × metal - loans, pcs, gross, net, fine, value, loan, used %, can still lend.
+- Charts: **Gold held by branch**, **Silver held by branch**, **Loan vs metal value by branch**, **Branches in this period** (given vs recovered), **Interest by branch**, **Can still lend by branch**, **Lending by metal and branch** (gold / silver / gold + silver given).
+- *Excel with charts* adds a **Metal by branch** sheet.
+
+Example: Head Office 119.7 g gold (109.6 g fine) worth ₹8.74L at ₹7,969/g, loan ₹4.28L → 49% used, ₹2.27L can still be lent.
 
 ---
 
