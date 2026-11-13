@@ -18,6 +18,7 @@ export const n = (v) => (v === null || v === undefined || v === '' || Number.isN
 export const money = (v) => withSym(num2.format(n(v)), v);
 export const money0 = (v) => withSym(num0.format(n(v)), v);
 export const amount = (v) => num2.format(n(v));
+export const rupees = (v) => num0.format(Math.round(n(v)));   // whole rupees, no sign (messages)
 export const compact = (v) => withSym(compactFmt.format(n(v)), v);
 export const weight = (v) => `${n(v).toFixed(3)}`;
 export const grams = (v) => `${n(v).toFixed(3)} g`;

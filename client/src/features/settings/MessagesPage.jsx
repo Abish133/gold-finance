@@ -20,7 +20,7 @@ const MSG = {
   WA_NEW_LOAN: ['New loan (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {items} {due_date}'],
   WA_RELEASE: ['Loan released (WhatsApp)', '{shop} {name} {loan_no} {amount} {date}'],
   WA_PART_PAYMENT: ['Part payment (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {balance}'],
-  WA_INTEREST: ['Interest received (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {months}'],
+  WA_INTEREST: ['Interest received (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {period} ( for 15 days / for 2 month(s))'],
 };
 
 export default function MessagesPage() {
@@ -56,9 +56,10 @@ export default function MessagesPage() {
           <div key={l} className="relative min-w-0 border-ink-200 px-3 py-1.5 pl-4 not-last:border-r dark:border-ink-800"><span aria-hidden className={`absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm ${c}`} /><p className="text-[10px] font-bold tracking-wider text-ink-500 uppercase">{l}</p><p className="flex items-baseline gap-2"><span className="num text-[15px] leading-tight font-bold text-navy-900 dark:text-white">{v || 0}</span><span className="truncate text-[10px] text-ink-500">{h}</span></p></div>
         ))}
       </div>
-      {tab === 'settings' && <div className="flex flex-col gap-2 xl:min-h-0 xl:flex-1"><SettingsForm compact allowBranchScope={false} sections={[{ title: 'SMS gateway', subtitle: 'Any HTTP SMS provider (DLT approved) - use {phone} and {message} in the URL', fields: [
+      {tab === 'settings' && <div className="flex flex-col gap-2 xl:min-h-0 xl:flex-1"><SettingsForm compact allowBranchScope={false} sections={[{ title: 'SMS gateway', subtitle: 'Any HTTP SMS provider (DLT approved) - use {phone}, {message} and {template_id} (the DLT template id of each message, from Templates) in the URL', fields: [
         { key: 'SMS_ENABLED', label: 'Enable SMS', type: 'bool' },
-        { key: 'SMS_PROVIDER_URL', label: 'Provider URL', wide: true, hint: 'https://api.provider.com/send?apikey=XXX&to={phone}&text={message}' },
+        { key: 'SMS_PROVIDER_URL', label: 'Provider URL', wide: true, hint: 'https://api.provider.com/send?apikey=XXX&sender=ABCDEF&to={phone}&text={message}&peid=ENTITY_ID&templateid={template_id}' },
+        { key: 'SMS_FAIL_TEXT', label: 'Failure text in the provider answer', wide: true, hint: 'Optional - words that mean "not sent", comma between (e.g. error, invalid, fail). Blank = any HTTP 200 counts as sent' },
         { key: 'SMS_ON_NEW_LOAN', label: 'On new loan', type: 'bool' }, { key: 'SMS_ON_INTEREST', label: 'On interest / part payment', type: 'bool' },
         { key: 'SMS_ON_RELEASE', label: 'On release', type: 'bool' }, { key: 'SMS_ON_DUE_REMINDER', label: 'Due reminders (with notices and daily)', type: 'bool' },
       ] }, { title: 'Daily due reminders', subtitle: 'Every day after the set time, the server sends a due-reminder SMS to customers who need one', fields: [
@@ -97,7 +98,7 @@ export default function MessagesPage() {
           columns={[{ key: 'event_key', label: 'Message', render: (r) => <span className="flex items-center gap-1.5"><span className={`rounded-sm px-1.5 py-px text-[10px] font-bold ${r.event_key.startsWith('WA_') ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}`}>{r.event_key.startsWith('WA_') ? 'WhatsApp' : 'SMS'}</span>{MSG[r.event_key]?.[0] || r.event_key}</span> },
             { key: 'name', label: 'Name' }, { key: 'body', label: 'Text', className: 'max-w-lg truncate text-xs' }, { key: 'is_active', label: 'On', render: (r) => (r.is_active ? 'Yes' : 'Off') }]}
           fields={[{ name: 'event_key', label: 'Message for', type: 'select', options: Object.entries(MSG).map(([value, [label]]) => ({ value, label })), required: true },
-            { name: 'name', label: 'Name', required: true }, { name: 'dlt_template_id', label: 'DLT template id' },
+            { name: 'name', label: 'Name', required: true }, { name: 'dlt_template_id', label: 'DLT template id', hint: 'From the DLT portal (e.g. BSNL) for this exact text - sent as {template_id}. The text must match the approved template word for word' },
             { name: 'body', label: 'Message', type: 'textarea', span: 'full', required: true, hint: (v) => (MSG[v.event_key] ? `You can use: ${MSG[v.event_key][1]}` : 'Choose what the message is for to see its variables') },
             { name: 'is_active', label: 'Active', type: 'switch' }]} /></div>
       )}

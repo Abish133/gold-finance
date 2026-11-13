@@ -13,7 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { printTable } from '@/lib/printTable';
 import { exportCsv } from '@/lib/exporters';
-import { amount, date, n, weight } from '@/lib/format';
+import { amount, date, n, rupees, weight } from '@/lib/format';
 import { ShareLinkModal } from './ShareLinkModal';
 
 const STATUS = { OPEN: ['Pending', 'bg-blue-600 text-white'], CLOSED: ['Released', 'bg-emerald-600 text-white'], RENEWED: ['Released', 'bg-emerald-600 text-white'], IN_BANK: ['In Bank', 'bg-violet-700 text-white'], AUCTIONED: ['Auctioned', 'bg-rose-600 text-white'], CANCELLED: ['Cancelled', 'bg-ink-400 text-white'] };
@@ -60,7 +60,7 @@ export function CustomerLedgerDrawer({ customerId, onClose }) {
   const printRows = rows.map((r) => ({ ...r, item_summary: r.items_text || r.item_summary, status: STATUS[r.status === 'OPEN' && r.bank_pledge_id ? 'IN_BANK' : r.status]?.[0] || r.status }));
   const print = () => printTable({ title: `Customer Ledger · ${c.name} (A/c ${c.customer_no})`, company, rows: printRows, columns: cols, totals: { net_wt: sum(rows, 'net_wt'), principal: sum(rows, 'principal'), interest_due: sum(rows, 'interest_due'), total_due: sum(rows, 'total_due') } });
   const whatsapp = () => {
-    const text = `${company?.name || ''}\nDear ${c.name}, your pending loans:\n${pending.map((l) => `Loan ${l.bill_no} (${date(l.loan_date)}) - Rs ${amount(l.principal)}, interest due Rs ${amount(l.interest_due)}`).join('\n')}`;
+    const text = `${company?.name || ''}\nDear ${c.name}, your pending loans:\n${pending.map((l) => `Loan ${l.bill_no} (${date(l.loan_date)}) - Rs ${rupees(l.principal)}, interest due Rs ${rupees(l.interest_due)}`).join('\n')}`;
     window.open(`https://wa.me/91${String(c.phone).replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`, '_blank');
   };
   const block = async () => {

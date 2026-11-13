@@ -42,6 +42,18 @@ export const queueMessage = async ({ branchId, event, phone, vars = {}, loanId =
   }
 };
 
+/**
+ * The provider link with this message filled in.
+ *   {phone} {message}  - always
+ *   {template_id}      - the DLT template id typed on that message's template (Settings > SMS Settings > Templates);
+ *                        DLT gateways (BSNL, Jio, Airtel, Vi registrations) reject an SMS without it
+ * Every placeholder is replaced wherever it appears.
+ */
+export const providerUrl = (link, { phone, message, templateId }) => String(link)
+  .split('{phone}').join(encodeURIComponent(phone))
+  .split('{message}').join(encodeURIComponent(message))
+  .split('{template_id}').join(encodeURIComponent(templateId || ''));
+
 /** Background sender: posts pending messages to the configured HTTP provider. */
 let running = false;
 export const processQueue = async () => {
@@ -56,11 +68,23 @@ export const processQueue = async () => {
         continue;
       }
       try {
-        const url = s.SMS_PROVIDER_URL
-          .replace('{phone}', encodeURIComponent(m.phone))
-          .replace('{message}', encodeURIComponent(m.message));
+        const tpl = m.event_key ? await queryOne('SELECT dlt_template_id FROM message_templates WHERE event_key = :e', { e: m.event_key }) : null;
+        const templateId = String(tpl?.dlt_template_id || '').trim();
+        if (s.SMS_PROVIDER_URL.includes('{template_id}') && !templateId) {
+          await query("UPDATE message_queue SET status = 'FAILED', tries = tries + 1, last_error = :e WHERE id = :id",
+            { id: m.id, e: `No DLT template id on the "${m.event_key}" template - type it in SMS Settings > Templates, then Retry failed` });
+          continue;
+        }
+        const url = providerUrl(s.SMS_PROVIDER_URL, { phone: m.phone, message: m.message, templateId });
         const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // many Indian gateways answer HTTP 200 with an error in the text - "Failure text" catches those
+        const failText = String(s.SMS_FAIL_TEXT || '').trim();
+        if (failText) {
+          const body = (await res.text()).slice(0, 2000);
+          const hit = failText.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean).find((x) => body.toLowerCase().includes(x));
+          if (hit) throw new Error(`Provider said: ${body.replace(/\s+/g, ' ').slice(0, 200)}`);
+        }
         await query("UPDATE message_queue SET status = 'SENT', sent_at = NOW(), tries = tries + 1 WHERE id = :id", { id: m.id });
       } catch (err) {
         await query(

@@ -71,7 +71,8 @@ export const DEFAULTS = {
   STICKER_HEIGHT_MM: '25',
   // messaging
   SMS_ENABLED: '0',
-  SMS_PROVIDER_URL: '',                    // e.g. https://api.example.com/send?to={phone}&msg={message}&key=XXX
+  SMS_PROVIDER_URL: '',
+  SMS_FAIL_TEXT: '',                       // words in the provider's answer that mean "not sent" (comma separated, e.g. error,invalid,fail)                    // e.g. https://api.example.com/send?to={phone}&msg={message}&key=XXX
   SMS_ON_NEW_LOAN: '1',
   SMS_ON_RELEASE: '1',
   SMS_ON_INTEREST: '1',

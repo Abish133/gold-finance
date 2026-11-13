@@ -7,6 +7,13 @@ screens: *
 
 A short tour of the newer parts of the app. Each line says where to find it; the chapters after this one explain the details.
 
+## SMS and WhatsApp
+| What | Where | What it does |
+|---|---|---|
+| **DLT template id** in the SMS link | Settings → SMS Settings → Auto SMS Rules, Templates | `{template_id}` in the provider link sends each SMS with its DLT template id (BSNL / any DLT). A message with no id is marked FAILED with the reason |
+| **Failure text** | Settings → SMS Settings → Auto SMS Rules | Words in the provider's answer that mean "not sent" - such SMS are marked FAILED and retried |
+| WhatsApp after saving | Settings → System Control → Messages | The message now starts with the shop name, shows whole rupees and says *for 15 days* when interest was taken by days |
+
 ## Every screen
 | What | Where | What it does |
 |---|---|---|

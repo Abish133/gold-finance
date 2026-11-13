@@ -557,6 +557,7 @@ router.get('/analytics/more', permitAny(['dashboard', 'reports_summary']), async
 /* WhatsApp message templates used at the counter after saving (only the WA_ texts, active ones) */
 router.get('/wa-templates', async (_req, res) => {
   const rows = await query("SELECT event_key, body FROM message_templates WHERE event_key LIKE 'WA\\_%' AND is_active = 1");
-  res.json({ data: Object.fromEntries(rows.map((r) => [r.event_key, r.body])) });
+  const company = await queryOne('SELECT name FROM company ORDER BY id LIMIT 1');
+  res.json({ data: Object.fromEntries(rows.map((r) => [r.event_key, r.body])), shop: company?.name || '' });
 });
 export default router;
