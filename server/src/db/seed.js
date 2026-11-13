@@ -25,7 +25,8 @@ const run = async () => {
       VALUES ('My Gold Finance', NULL, 'TN-0000000000', 'Door No 1, Main Road', 'Town - PIN 000000', 'District, State', '9000000000')`);
   }
   const branchId = await upsertOne('SELECT id FROM branches WHERE code = :code', { code: 'HO' },
-    "INSERT INTO branches (code, name, address, phone, loan_prefix) VALUES (:code, 'Head Office', 'Main Road', '9000000000', '')");
+    // every branch needs its licence no and at least one contact number (Settings > Branches)
+    `INSERT INTO branches (code, name, address, phone, phones, licence_no, loan_prefix) VALUES (:code, 'Head Office', 'Main Road', '9000000000', '["9000000000"]', 'TN-0000000000', '')`);
 
   /* financial year (Apr - Mar) */
   const now = dayjs();

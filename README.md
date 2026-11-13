@@ -62,6 +62,31 @@ npm run dev:client    # UI   -> http://localhost:5173
 
 Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env` (default `admin`).
 
+### Start again with full demo data
+```bash
+npm run db:reset --prefix server    # DELETES the database, creates it, migrates and seeds master data
+npm run dev:server                  # the demo seeder goes through the running API
+npm run db:demo                     # 4 branches, every role, ~8 months of business
+```
+`db:reset` wipes everything - take a backup first if the data matters (Settings → Backup).
+
+The demo has 4 branches (HO, KTR Kottar, MTM Marthandam, CLC Colachel) - each with its licence no and contact numbers - daily gold / silver
+rates from the start of the accounting year, customers, opening and new loans (gold, silver, gold + silver), advance interest, interest receipts
+by months / days / typed rate, part payments with interest, top-ups, releases (auto, by days, by another person), re-loans, UPI / bank payments,
+bank pledges, auction notices and sales, expense vouchers, staff attendance and salary, stock checks and cash counts.
+
+| Login | Role | Branches |
+|---|---|---|
+| `admin` (password from `.env`) | Super Admin | all |
+| `owner` | Super Admin | all |
+| `area.manager` | Branch Manager | HO + KTR |
+| `ho.manager`, `ktr.manager`, `mtm.manager`, `clc.manager` | Branch Manager | own branch |
+| `ho.cashier`, `ktr.cashier`, `mtm.cashier`, `clc.cashier` | Cashier | own branch |
+| `ho.accountant`, `ktr.accountant`, `mtm.accountant`, `clc.accountant` | Accountant | own branch |
+| `ho.viewer`, `ktr.viewer`, `mtm.viewer`, `clc.viewer` | Viewer | own branch |
+
+All demo logins use the password **Demo@123**.
+
 ### First steps after login
 1. **Company** – name, licence no, address, logo (printed on bills)
 2. **Branches** – add each branch (code, phone, loan prefix, opening cash)

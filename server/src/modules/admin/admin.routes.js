@@ -144,6 +144,13 @@ const saveUser = async (req, id) => {
     role_id: Number(b.role_id), employee_id: b.employee_id || null, default_branch_id: b.default_branch_id || branchIds[0] || null,
     is_active: b.is_active === false || b.is_active === 0 || b.is_active === '0' ? 0 : 1,
   };
+  // the system "Super Admin" role means full access: it has no screen list of its own, so the user needs the super admin flag.
+  // Only a super admin can make another one; moving a user to any other role takes the flag away.
+  const role = await queryOne('SELECT name, is_system FROM roles WHERE id = :r', { r: data.role_id });
+  const superRole = !!role?.is_system && role.name === 'Super Admin';
+  if (superRole && !req.user.is_super_admin) throw ApiError.forbidden('Only a Super Admin can give the Super Admin role');
+  if (Number(id) === Number(req.user.id) && req.user.is_super_admin && !superRole) throw ApiError.badRequest('You cannot remove your own Super Admin role');
+  data.is_super_admin = superRole ? 1 : 0;
   return withTransaction(async (tx) => {
     let userId = id;
     if (id) {
