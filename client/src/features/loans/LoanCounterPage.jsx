@@ -14,7 +14,8 @@ import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { money, date, grams, n, round2, today } from '@/lib/format';
 import { EditLoanDrawer } from './EditLoanDrawer';
-import { Panel, useAutoMode, AutoManualSwitch } from './desk';
+import { Panel, useAutoMode, AutoManualSwitch, useApproval } from './desk';
+import { useInterestChoice, InterestChoice, oldInterest } from './InterestChoice';
 import { ImagePreview } from '@/components/common/ImagePreview';
 import { addRecentRecord } from '@/lib/recent';
 
@@ -79,10 +80,15 @@ function ActionForm({ full, kind, onDone }) {
   const calc = useFetch(d !== today() ? `/loans/${full.loan.id}/calc` : null, { date: d });
   const cc = calc.data || c;
   const postage = full.notices?.reduce((s, x) => s + n(x.postage), 0) || 0;
+  const { data: settings } = useFetch('/admin/settings');
+  const approval = useApproval();
+  // interest: Auto (what is due) or Manual (months / days from the loan date, a typed amount, a typed rate); top-up deducts none unless chosen
+  const ic = useInterestChoice({ basis: ['RELEASE', 'RENEW'].includes(kind) ? 'DUE' : 'PAY', calc: cc, loan: full.loan, txns: full.transactions, settings, resetKey: `${kind}-${full.loan.id}-${d}`,
+    auto: kind === 'RENEW' ? round2(cc.interestDue + cc.penalDue) : cc.interestDue, allowNone: kind === 'TOPUP' || kind === 'PART', defaultMode: kind === 'TOPUP' ? 'NONE' : 'AUTO',
+    autoLabel: `${Math.max(1, n(cc.monthsDue))} month${n(cc.monthsDue) > 1 ? 's' : ''} due` });
 
   useEffect(() => {
     setV({
-      interest: kind === 'INTEREST' ? cc.interestDue : kind === 'PART' ? cc.interestDue : kind === 'RENEW' ? round2(cc.interestDue + cc.penalDue) : cc.interestDue,
       penal: cc.penalDue, discount: 0, charges: kind === 'RELEASE' ? postage : 0, principal: '', amount: '',
       new_principal: cc.principalOutstanding, scheme_id: full.loan.scheme_id, add_interest: false,
     });
@@ -91,37 +97,40 @@ function ActionForm({ full, kind, onDone }) {
   }, [kind, cc.interestDue, cc.principalOutstanding]);
   const s = (patch) => setV((x) => ({ ...x, ...patch }));
 
+  const vi = ic.interest;
   const totals = useMemo(() => {
     switch (kind) {
-      case 'INTEREST': return round2(n(v.interest) + n(v.penal) + n(v.charges) - n(v.discount));
-      case 'PART': return round2(n(v.principal) + n(v.interest) - n(v.discount));
-      case 'TOPUP': return round2(n(v.amount) - n(v.interest) - n(v.charges));
-      case 'RELEASE': return round2(cc.principalOutstanding + n(v.interest) + n(v.penal) + n(v.charges) - n(v.discount));
+      case 'INTEREST': return round2(vi + n(v.penal) + n(v.charges) - n(v.discount));
+      case 'PART': return round2(n(v.principal) + vi - n(v.discount));
+      case 'TOPUP': return round2(n(v.amount) - vi - n(v.charges));
+      case 'RELEASE': return round2(cc.principalOutstanding + vi + n(v.penal) + n(v.charges) - n(v.discount));
       case 'RENEW': {
-        const np = v.add_interest ? round2(cc.principalOutstanding + n(v.interest) - n(v.discount)) : n(v.new_principal);
-        return round2(np - cc.principalOutstanding - n(v.interest) + n(v.discount));
+        const np = v.add_interest ? round2(cc.principalOutstanding + vi - n(v.discount)) : n(v.new_principal);
+        return round2(np - cc.principalOutstanding - vi + n(v.discount));
       }
       default: return 0;
     }
-  }, [kind, v, cc]);
+  }, [kind, v, cc, vi]);
 
   const submit = useMutation({
-    mutationFn: () => {
+    mutationFn: () => approval.run((ap) => {
+      if (ic.error) throw new Error(ic.error);
       const id = full.loan.id;
-      const base = { date: d, payments, remarks: v.remarks };
-      if (kind === 'INTEREST') return api.post(`/loans/${id}/interest`, { ...base, interest_amount: v.interest, penal_amount: v.penal, charges: v.charges, discount: v.discount });
-      if (kind === 'PART') return api.post(`/loans/${id}/part-payment`, { ...base, principal_amount: v.principal, interest_amount: v.interest, discount: v.discount });
-      if (kind === 'TOPUP') return api.post(`/loans/${id}/topup`, { ...base, amount: v.amount, interest_amount: v.interest, charges: v.charges });
-      if (kind === 'RELEASE') return api.post(`/loans/${id}/release`, { ...base, interest_amount: v.interest, penal_amount: v.penal, charges: v.charges, discount: v.discount, released_by_other: other.enabled ? other : null });
-      return api.post(`/loans/${id}/renew`, { ...base, interest_amount: v.interest, discount: v.discount, add_interest: v.add_interest, new_principal: v.add_interest ? undefined : v.new_principal, scheme_id: v.scheme_id });
-    },
+      const base = { date: d, payments, remarks: v.remarks, approval: ap, ...ic.payload };
+      const int = { interest_amount: vi };
+      if (kind === 'INTEREST') return api.post(`/loans/${id}/interest`, { ...base, ...int, penal_amount: v.penal, charges: v.charges, discount: v.discount });
+      if (kind === 'PART') return api.post(`/loans/${id}/part-payment`, { ...base, ...int, principal_amount: v.principal, discount: v.discount });
+      if (kind === 'TOPUP') return api.post(`/loans/${id}/topup`, { ...base, ...int, amount: v.amount, charges: v.charges });
+      if (kind === 'RELEASE') return api.post(`/loans/${id}/release`, { ...base, ...(ic.manual ? int : {}), penal_amount: v.penal, charges: v.charges, discount: v.discount, released_by_other: other.enabled ? other : null });
+      return api.post(`/loans/${id}/renew`, { ...oldInterest(base), ...(ic.manual ? int : {}), discount: v.discount, add_interest: v.add_interest, new_principal: v.add_interest ? undefined : v.new_principal, scheme_id: v.scheme_id });
+    }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['/loans'] });
       qc.invalidateQueries({ queryKey: ['/dashboard'] });
       toast.success(kind === 'RENEW' ? `Renewed as loan #${r.data.loan.bill_no}` : 'Saved');
       onDone(r.data, kind);
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => { if (e.message !== 'Approval cancelled') toast.error(e.message); },
   });
 
   const label = { INTEREST: 'Receive interest', PART: 'Receive part payment', TOPUP: 'Pay top-up', RELEASE: 'Release loan', RENEW: 'Renew loan' }[kind];
@@ -149,8 +158,8 @@ function ActionForm({ full, kind, onDone }) {
             <Field label="New scheme"><Select value={v.scheme_id} onChange={(e) => s({ scheme_id: e.target.value })} options={(lk?.schemes || []).map((x) => ({ value: x.id, label: `${x.code} · ${x.name}` }))} /></Field>
           </>
         )}
+        <InterestChoice ic={ic} title={kind === 'TOPUP' ? 'Interest deducted' : 'Interest'} approvalLimit={['RELEASE', 'RENEW'].includes(kind) ? n(settings?.DISCOUNT_APPROVAL_LIMIT) : 0} />
         <div className="grid grid-cols-2 gap-2">
-          <Field label={kind === 'TOPUP' ? 'Interest deducted' : 'Interest'}><Input type="number" value={v.interest ?? ''} onChange={(e) => s({ interest: e.target.value })} /></Field>
           {['INTEREST', 'RELEASE'].includes(kind) && <Field label="Penal"><Input type="number" value={v.penal ?? ''} onChange={(e) => s({ penal: e.target.value })} /></Field>}
           {['INTEREST', 'RELEASE', 'TOPUP'].includes(kind) && <Field label={kind === 'RELEASE' && postage ? `Charges (notice ₹${postage})` : 'Charges'}><Input type="number" value={v.charges ?? ''} onChange={(e) => s({ charges: e.target.value })} /></Field>}
           {kind !== 'TOPUP' && <Field label="Discount"><Input type="number" value={v.discount ?? ''} onChange={(e) => s({ discount: e.target.value })} /></Field>}
@@ -175,10 +184,11 @@ function ActionForm({ full, kind, onDone }) {
         <div className={clsx('rounded-md px-4 py-3 text-white', cashOut ? 'bg-emerald-700' : 'bg-ink-900')}>
           <p className="text-[10px] font-bold tracking-wider uppercase opacity-70">{cashOut ? 'Pay to customer' : kind === 'RENEW' && totals < 0 ? 'Collect from customer' : 'Collect from customer'}</p>
           <p className="num mt-0.5 text-3xl font-extrabold">{money(Math.abs(totals))}</p>
-          {kind === 'RELEASE' && <p className="mt-2 text-xs opacity-80">Principal {money(cc.principalOutstanding)} + interest {money(v.interest)} + penal {money(v.penal)} + charges {money(v.charges)} − discount {money(v.discount)}</p>}
+          {kind === 'RELEASE' && <p className="mt-2 text-xs opacity-80">Principal {money(cc.principalOutstanding)} + interest {money(vi)} + penal {money(v.penal)} + charges {money(v.charges)} − discount {money(v.discount)}</p>}
         </div>
         {Math.abs(totals) > 0 && <PaymentSplit total={Math.abs(totals)} value={payments} onChange={setPayments} direction={cashOut ? 'paid' : 'received'} />}
         <Button variant="gold" size="lg" className="h-11 w-full" loading={submit.isPending} onClick={() => submit.mutate()}>{label}</Button>
+        {approval.ui}
       </div>
     </div>
   );

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Wallet, IndianRupee, Layers, Percent, TrendingUp, Receipt, BadgePercent } from 'lucide-react';
+import { Plus, IndianRupee, Layers, Percent, TrendingUp, Receipt, BadgePercent } from 'lucide-react';
 import { toast } from 'sonner';
-import clsx from 'clsx';
 import dayjs from 'dayjs';
 import { Button, Field, Input, Select } from '@/components/ui';
 import { useFetch, useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
+import { useInterestChoice, InterestChoice, oldInterest } from './InterestChoice';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, ItemEntry, LtvBar, useLoan, useApproval, PayDrawer, LoanHead, Chip, loanCustomer, INTEREST_TYPES, fineRate, valueOf } from './desk';
 
 const parseSlabs = (s) => (typeof s === 'string' ? JSON.parse(s) : s) || [];
@@ -25,7 +25,7 @@ export default function ReLoanPage() {
   const next = useFetch('/loans/next-number');
   const { printLoan, printerUi } = usePrinter();
   const approval = useApproval();
-  const [f, setF] = useState({ new_principal: '', interest_rate: '', interest_type: 'COMPOUND', doc_charges: '0', advance: true, discount: '', scheme_id: '' });
+  const [f, setF] = useState({ new_principal: '', interest_rate: '', interest_type: 'COMPOUND', doc_charges: '0', discount: '', scheme_id: '' });
   const [extra, setExtra] = useState([]);
   const [photo, setPhoto] = useState(null);
   const [payOpen, setPayOpen] = useState(false);
@@ -47,23 +47,35 @@ export default function ReLoanPage() {
   const goldRate = metalRate('GOLD');
   const silverRate = metalRate('SILVER');
   const itemRate = (i) => (i.metal_code === 'SILVER' ? silverRate : goldRate);
-  const oldTotal = c ? round2(c.principalOutstanding + c.interestDue + c.penalDue) : 0;
+  // interest to settle on the old loan: Auto (due + penal) or Manual (months / days / amount, typed rate)
+  const icOld = useInterestChoice({ basis: 'DUE', calc: c, loan: l, txns: full?.transactions, settings, resetKey: l?.id,
+    auto: c ? round2(c.interestDue + c.penalDue) : 0, autoLabel: c ? `${Math.max(1, c.monthsDue)} month${c.monthsDue > 1 ? 's' : ''}` : '' });
+  const oldTotal = c ? round2(c.principalOutstanding + icOld.interest) : 0;
   const valueToday = useMemo(() => round2((full?.items || []).reduce((s, i) => s + valueOf(n(i.net_wt) * n(i.purity) / 100, itemRate(i)), 0) + extra.reduce((s, i) => s + n(i.value), 0)), [full, extra, goldRate, silverRate]);
   const np = n(f.new_principal);
   const monthly = scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) / 100 : n(f.interest_rate) / 1200;
-  const adv = f.advance ? Math.round(np * monthly * (n(scheme?.advance_interest_months) || 1)) : 0;
+  // advance interest on the new loan: Auto (scheme months) / Manual / None
+  const advMonths = n(scheme?.advance_interest_months) || 1;
+  const icAdv = useInterestChoice({ basis: 'ADVANCE', settings, allowNone: true, resetKey: l?.id,
+    monthly: Math.round(np * monthly), loanRate: round2(scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) : n(f.interest_rate) / 12), base: np,
+    auto: Math.round(np * monthly * advMonths), autoLabel: `${advMonths} month${advMonths > 1 ? 's' : ''}`, defaultMonths: advMonths, defaultDays: 30 });
+  const adv = icAdv.interest;
   const deductions = round2(adv + n(f.doc_charges));
   const payToCustomer = round2(np - oldTotal + n(f.discount) - n(f.doc_charges) - adv);
   const rateOf = (code) => lk?.rates.find((r) => r.metal_id === lk.metals.find((m) => m.code === code)?.id);
   const otherOpen = (others.data || []).filter((x) => x.id !== l?.id);
-  const start = () => { if (!l || np <= 0) return toast.error('Enter new loan amount'); if (Math.abs(payToCustomer) > 0) setPayOpen(true); else save([]); };
+  const start = () => {
+    if (!l || np <= 0) return toast.error('Enter new loan amount');
+    if (icOld.error || icAdv.error) return toast.error(icOld.error || icAdv.error);
+    if (Math.abs(payToCustomer) > 0) setPayOpen(true); else save([]);
+  };
 
   const save = async (payments) => {
     if (!l || np <= 0) return toast.error('Enter new loan amount');
     setSaving(true);
     try {
       const r = await approval.run((ap) => api.post(`/loans/${l.id}/renew`, {
-        date: today(), new_principal: np, scheme_id: f.scheme_id, interest_rate: f.interest_rate, interest_type: f.interest_type, doc_charges: f.doc_charges, advance_interest: adv,
+        date: today(), new_principal: np, scheme_id: f.scheme_id, interest_rate: f.interest_rate, interest_type: f.interest_type, doc_charges: f.doc_charges, advance_interest: adv, ...oldInterest(icOld.payload),
         discount: f.discount, add_items: extra.map(({ key, metal, ...i }) => i), item_photo: photo, payments, rate_per_gram: goldRate, silver_rate: silverRate, rate_basis: 100, approval: ap,
       }));
       setPayOpen(false);
@@ -73,7 +85,7 @@ export default function ReLoanPage() {
       setSp({ loan: r.data.loan.id });
     } catch (e) { if (e.message !== 'Approval cancelled') toast.error(e.message); } finally { setSaving(false); }
   };
-  useKeys({ f2: start, f5: () => l && setLedger(true), f6: () => set({ advance: !f.advance }), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, f, extra, photo, payToCustomer]);
+  useKeys({ f2: start, f5: () => l && setLedger(true), f6: () => icAdv.set({ mode: icAdv.mode === 'NONE' ? 'AUTO' : 'NONE' }), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, f, extra, photo, payToCustomer, icAdv.mode, icOld.error, icAdv.error]);
 
   return (
     <>
@@ -108,15 +120,12 @@ export default function ReLoanPage() {
                 <Field label={`Interest % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input type="number" prefix={<Percent className="size-3.5" />} value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
                 <Field label="Calculation"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
                 <Field label="Doc charges"><Input type="number" prefix={<Receipt className="size-3.5" />} value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
-                <Field label="Advance interest (F6)">
-                  <div className="flex gap-1"><button type="button" onClick={() => set({ advance: !f.advance })} title="Advance interest (F6)"
-                    className={clsx('h-9 w-14 shrink-0 rounded-md border text-sm font-bold', f.advance ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300')}>{f.advance ? 'Yes' : 'No'}</button>
-                    <Input prefix={<Wallet className="size-3.5" />} readOnly className="bg-ink-50 text-right" value={amount(adv)} /></div>
-                </Field>
               </div>
+              <InterestChoice ic={icAdv} title="Advance interest (F6)" rate={false} disabled={!l} />
+              <InterestChoice ic={icOld} title="Interest on old loan" approvalLimit={n(settings?.DISCOUNT_APPROVAL_LIMIT)} disabled={!l} />
               <LtvBar value={valueToday ? (np / valueToday) * 100 : 0} max={n(scheme?.ltv_percent || 75)} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="(value today)" />
               <div className="flex min-h-28 flex-1 flex-col justify-evenly rounded-md border border-ink-200 bg-ink-50/50 px-2.5 py-1 dark:border-ink-800 dark:bg-ink-800/30 [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700">
-                <Line label="Old loan total" value={amount(oldTotal)} />
+                <Line label={`Old loan total (loan + interest ${amount(icOld.interest)})`} value={amount(oldTotal)} />
                 <div className="grid grid-cols-[1fr_120px] items-center gap-2 py-1 text-[13px]"><span>Less: discount on interest</span><Input type="number" prefix={<BadgePercent className="size-3.5" />} className="!h-8 text-right" value={f.discount} onChange={(e) => set({ discount: e.target.value })} /></div>
                 <Line label="Less: advance interest + charges" value={amount(deductions)} minus />
               </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, FileText, Search, BookOpen, Layers, IndianRupee, Percent, TrendingUp, Receipt, Wallet, Coins, StickyNote } from 'lucide-react';
+import { Plus, Printer, Tag, CheckCircle2, AlertTriangle, UserPlus, ListChecks, FileText, Search, BookOpen, Layers, IndianRupee, Percent, TrendingUp, Receipt, Coins, StickyNote } from 'lucide-react';
 import { toast } from 'sonner';
 import clsx from 'clsx';
 import dayjs from 'dayjs';
@@ -17,6 +17,7 @@ import { Stickers } from '@/features/print/Sticker';
 import { api } from '@/lib/api';
 import { money, amount, n, round2, today, weight, date } from '@/lib/format';
 import { whatsappAfterSave } from '@/lib/whatsapp';
+import { useInterestChoice, InterestChoice } from './InterestChoice';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, ItemPhotoPanel, ItemEntry, ItemsTable, LtvBar, CustomerCard, CustomerLedgerDrawer, computeItem, PayDrawer, INTEREST_TYPES, fineRate } from './desk';
 import { NeedBranch } from '@/components/common/NeedBranch';
 import { addRecentRecord } from '@/lib/recent';
@@ -247,7 +248,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
   const [schemeId, setSchemeId] = useState('');
-  const [f, setF] = useState({ principal: '', interest_rate: '', interest_type: '', doc_charges: '0', advance: true, other_charges: '', loan_date: today(), due_date: '', manual_bill_no: '', remarks: '', loan_no: '', gold_rate: '', silver_rate: '' });
+  const [f, setF] = useState({ principal: '', interest_rate: '', interest_type: '', doc_charges: '0', other_charges: '', loan_date: today(), due_date: '', manual_bill_no: '', remarks: '', loan_no: '', gold_rate: '', silver_rate: '' });
   const [photo, setPhoto] = useState(null);
   const [step, setStep] = useState(null); // 'book' | 'pay'
   const [done, setDone] = useState(null);
@@ -255,8 +256,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const [markOld, setMarkOld] = useState(false);
   const [ltvAsk, setLtvAsk] = useState(false);
   const set = (p) => setF((s) => ({ ...s, ...p }));
-  // default for the advance interest switch (Settings > Loan)
-  useEffect(() => { if (settings?.DEFAULT_ADVANCE_INTEREST != null) set({ advance: settings.DEFAULT_ADVANCE_INTEREST !== '0' }); }, [settings?.DEFAULT_ADVANCE_INTEREST]);
+  const [resetN, setResetN] = useState(0);   // each new loan starts the advance interest on its default again
   // customer already has old open loans (Settings > OLD_LOAN_WARN_MONTHS)
   const custLoans = useFetch(customer && !isOld ? '/loans' : null, { customer_id: customer?.id, status: 'OPEN', pageSize: 50 });
   const warnMonths = n(settings?.OLD_LOAN_WARN_MONTHS) || 12;
@@ -297,7 +297,12 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   const monthlyRate = scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) / 100 : n(f.interest_rate) / 100 / 12;
   const perMonth = round2(principal * monthlyRate);
   const advMonths = n(scheme?.advance_interest_months) || 1;
-  const advance = f.advance ? Math.round(perMonth * advMonths) : 0;
+  // advance interest: Auto (scheme months, on / off by default in Settings > Loan) or Manual (months / days / amount) or None
+  const icAdv = useInterestChoice({ basis: 'ADVANCE', settings, allowNone: true,
+    defaultMode: settings?.DEFAULT_ADVANCE_INTEREST === '0' ? 'NONE' : 'AUTO', resetKey: `${resetN}-${settings?.DEFAULT_ADVANCE_INTEREST}`,
+    monthly: Math.round(principal * monthlyRate), loanRate: round2(scheme?.rate_type === 'MONTHLY' ? n(f.interest_rate) : n(f.interest_rate) / 12), base: principal,
+    auto: Math.round(perMonth * advMonths), autoLabel: `${advMonths} month${advMonths > 1 ? 's' : ''}`, defaultMonths: advMonths, defaultDays: 30 });
+  const advance = icAdv.interest;
   const doc = n(f.doc_charges);
   const netPay = round2(principal - doc - advance - n(f.other_charges));
 
@@ -335,7 +340,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
     onError: (e) => toast.error(e.message),
   });
 
-  const reset = () => { setCustomer(null); setItems([]); setPhoto(null); setEditing(null); set({ principal: '', other_charges: '', manual_bill_no: '', remarks: '', loan_no: '' }); };
+  const reset = () => { setResetN((x) => x + 1); setCustomer(null); setItems([]); setPhoto(null); setEditing(null); set({ principal: '', other_charges: '', manual_bill_no: '', remarks: '', loan_no: '' }); };
   const clear = () => { setDone(null); setStep(null); setCustomer(null); setItems([]); setPhoto(null); setEditing(null); set({ principal: '', other_charges: '', manual_bill_no: '', remarks: '', loan_no: '' }); };
   const canSave = customer && scheme && principal > 0 && rows.length && (!isOld || f.manual_bill_no) && !save.isPending;
   const ltvWarn = n(settings?.LTV_WARN_PERCENT) || 0;
@@ -348,15 +353,16 @@ export default function NewLoanPage({ mode = 'NEW' }) {
   };
   const trySave = () => {
     if (!canSave) return;
+    if (icAdv.error) return toast.error(icAdv.error);
     if (!isOld && principal > eligible && settings?.ALLOW_LOAN_ABOVE_ELIGIBLE !== '1' && scheme?.calc_mode !== 'MYBOOK') return toast.error(`Loan amount is above the eligible amount ${money(eligible)}`);
     if (ltvWarn && ltv > ltvWarn) setLtvAsk(true); else proceed();
   };
   const printEstimate = () => printElement(<LoanEstimate company={company} customer={customer} scheme={scheme} items={rows} rates={rates}
     values={{ principal, eligible, value: tot.value, ltv, rate: f.interest_rate, perMonth, advance, doc, netPay, due: f.due_date, loanOn }} />, { title: 'Loan estimate' });
   useKeys({
-    f1: () => setNewCust(true), f2: trySave, 'ctrl+e': () => rows.length && printEstimate(), f6: () => set({ advance: !f.advance }), 'ctrl+n': clear,
+    f1: () => setNewCust(true), f2: trySave, 'ctrl+e': () => rows.length && printEstimate(), f6: () => icAdv.set({ mode: icAdv.mode === 'NONE' ? 'AUTO' : 'NONE' }), 'ctrl+n': clear,
     f4: () => isOld && document.getElementById('pledge-date')?.focus(), 'ctrl+m': () => isOld && setMarkOld(true), escape: () => navigate('/'),
-  }, [canSave, f.advance, isOld, ltv, ltvWarn]);
+  }, [canSave, icAdv.mode, icAdv.error, isOld, ltv, ltvWarn]);
 
   if (isLoading) return <Spinner />;
   if (isAllBranches) return <NeedBranch action="create loans" />;
@@ -373,13 +379,8 @@ export default function NewLoanPage({ mode = 'NEW' }) {
           <Field label={`Int. % ${scheme?.rate_type === 'MONTHLY' ? 'P.M.' : 'P.A.'}`}><Input prefix={<Percent className="size-3.5" />} type="number" step="0.01" value={f.interest_rate} onChange={(e) => set({ interest_rate: e.target.value })} /></Field>
           <Field label="Interest type"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
           <Field label="Doc. charges"><Input prefix={<Receipt className="size-3.5" />} type="number" value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
-          <Field label="Advance interest (F6)">
-            <div className="flex gap-1">
-              <button type="button" onClick={() => set({ advance: !f.advance })} className={clsx('h-9 w-14 shrink-0 rounded-md border text-sm font-bold', f.advance ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300')}>{f.advance ? 'Yes' : 'No'}</button>
-              <Input prefix={<Wallet className="size-3.5" />} readOnly className="bg-ink-50 text-right" value={amount(advance)} />
-            </div>
-          </Field>
         </div>
+        <InterestChoice ic={icAdv} title="Advance interest (F6)" rate={false} />
         <LtvBar value={ltv} max={ltvMax} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="of value" />
         <div className="overflow-hidden rounded-md border border-ink-200 text-[13px] dark:border-ink-800 [&>div]:flex [&>div]:items-center [&>div]:justify-between [&>div]:gap-3 [&>div]:px-2.5 [&>div:not(:last-child)]:border-b [&>div]:border-ink-100 dark:[&>div]:border-ink-800">
           <div className="py-1.5"><span className="text-ink-500">Eligible amount</span><span className="num font-bold text-navy-900 dark:text-white">{money(eligible)}</span></div>

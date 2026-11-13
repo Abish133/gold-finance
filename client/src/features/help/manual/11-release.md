@@ -22,16 +22,17 @@ screens: loan_release
 | − Advance interest | Taken when the loan was given |
 | − Interest already paid | Interest receipts (Part Payment screen) |
 | − Part amount paid | Loan amount already paid back |
-| **Charge interest** | **Full** (the system figure above), **Days** or **Amount** - see below |
+| **Charge interest** | **Auto** (the system figure above) or Manual: **Months**, **Days** or **Amount** - see below |
 | Against ticket / Post / other charge | Type if you collect any |
 | Discount | Above ₹500 (System Control) needs a manager's password |
 | **Total to receive** | What the customer pays now |
 
    **Charge interest** - how much interest to take now:
-   - **Full** (usual) - the system figure: every started month.
+   - **Auto** (usual) - the system figure: every started month.
+   - **Months** - months from the loan date at the loan's rate or a typed rate %, less interest already paid.
    - **Days** - type the days or press **7 / 15 / 30**, and the **rate %** (filled with the loan's rate; type e.g. 1.25 to charge a lower rate). Interest = interest per month at that rate ÷ 30 × days, less interest already paid (and advance). A typed rate is printed on the release receipt. Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
    - **Amount** - type the interest to take now.
-   - *Interest now* shows the amount taken. If it is **less than the system figure**, the line *Less than system* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
+   - The last line shows the amount taken (*Manual · 7 days ₹175*). If it is **less than Auto**, the line *Less than auto* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
    - A *minimum days* set in System Control cannot be gone under.
 3. **Customer unable to release** - tick it if the customer only signs (amount collected later).
 4. **Release Loan (F2)** → **Receive Payment · Loan 6 / Book 103**: Cash / UPI / Card / Cheque - press **Add (Enter)** for each part until Balance is 0.
@@ -46,7 +47,7 @@ Loan of ₹50,000 at 1.5% p.m. compound, advance ₹750, released after 3 months
 - − Advance interest ₹750
 - **Total to receive ₹50,000 + 2,250 = ₹52,250**
 
-Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per month → 750 ÷ 30 × 7 = **₹175** instead of ₹750 - *Less than system ₹575* (needs the manager's password when the limit is ₹500).
+Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per month → 750 ÷ 30 × 7 = **₹175** instead of ₹750 - *Less than auto ₹575* (needs the manager's password when the limit is ₹500).
 
 ## Good to know
 - Only look, no release? Load the loan, read the total, press **New / Clear (Ctrl+N)** - nothing is saved.

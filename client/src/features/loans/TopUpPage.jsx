@@ -9,6 +9,7 @@ import { useFetch, useLookups } from '@/hooks/useApi';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, date, money, n, round2, today, weight } from '@/lib/format';
+import { useInterestChoice, InterestChoice } from './InterestChoice';
 import { DeskScreen, Panel, Line, BigTotal, GoldButton, ExitButton, useKeys, LoanFinder, CustomerCard, CustomerLedgerDrawer, ItemPhotoPanel, LtvBar, useLoan, PayDrawer, LoanHead, ItemsSummary, Chip, loanCustomer, fineRate } from './desk';
 
 /** Top-up Loan (desktop: frmTopUp) - extra amount on the same loan number within allowed days. */
@@ -20,7 +21,6 @@ export default function TopUpPage() {
   const { data: settings } = useFetch('/admin/settings');
   const { printTxn, printerUi } = usePrinter();
   const [amt, setAmt] = useState('');
-  const [deduct, setDeduct] = useState('');
   const [payOpen, setPayOpen] = useState(false);
   const { data: lk } = useLookups();
   const others = useFetch(sp.get('loan') ? '/loans' : null, { customer_id: full?.loan?.customer_id, status: 'OPEN', pageSize: 50 }, { enabled: !!full });
@@ -28,7 +28,11 @@ export default function TopUpPage() {
   const [saving, setSaving] = useState(false);
   const l = full?.loan;
   const c = full?.calc;
-  useEffect(() => { setAmt(''); setDeduct(''); setPayOpen(false); }, [l?.id]);
+  useEffect(() => { setAmt(''); setPayOpen(false); }, [l?.id]);
+  // interest deducted from the top-up: None (default), Auto (interest due now) or Manual (months / days / amount, typed rate)
+  const ic = useInterestChoice({ basis: 'PAY', calc: c, loan: l, txns: full?.transactions, settings, allowNone: true, defaultMode: 'NONE', resetKey: l?.id,
+    autoLabel: c ? 'interest due now' : '' });
+  const deduct = c ? ic.interest : 0;
   const within = n(settings?.TOPUP_WITHIN_DAYS);
   const topups = (full?.transactions || []).filter((t) => t.txn_type === 'TOPUP' && !t.is_void);
   const newTotal = c ? round2(c.principalOutstanding + n(amt)) : 0;
@@ -42,18 +46,23 @@ export default function TopUpPage() {
   let after = n(l?.principal);
   const topupRows = topups.map((t) => { after += n(t.principal_amount); return { ...t, after }; });
 
-  const start = () => { if (!l || n(amt) <= 0) return toast.error('Enter top-up amount'); if (pay > 0) setPayOpen(true); else give([]); };
+  const start = () => {
+    if (!l || n(amt) <= 0) return toast.error('Enter top-up amount');
+    if (ic.error) return toast.error(ic.error);
+    if (pay < 0) return toast.error('Interest deducted is more than the top-up amount');
+    if (pay > 0) setPayOpen(true); else give([]);
+  };
   const give = async (payments) => {
     if (!l || n(amt) <= 0) return toast.error('Enter top-up amount');
     setSaving(true);
     try {
-      const r = await api.post(`/loans/${l.id}/topup`, { date: today(), amount: n(amt), interest_amount: n(deduct), payments });
+      const r = await api.post(`/loans/${l.id}/topup`, { date: today(), amount: n(amt), interest_amount: deduct, ...ic.payload, payments });
       setPayOpen(false);
       toast.success('Top-up given'); qc.invalidateQueries({ queryKey: ['/loans'] }); refresh();
       const last = r.data.loan.transactions.filter((t) => !t.is_void).at(-1); if (last && settings?.PRINT_AFTER_TOPUP !== '0') printTxn(r.data.loan, last);
     } catch (e) { toast.error(e.message); } finally { setSaving(false); }
   };
-  useKeys({ f2: start, f5: () => l && setLedger(true), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, amt, deduct, pay]);
+  useKeys({ f2: start, f5: () => l && setLedger(true), 'ctrl+n': () => setSp({}), escape: () => navigate('/') }, [l, amt, deduct, pay, ic.error]);
 
   return (
     <>
@@ -92,7 +101,7 @@ export default function TopUpPage() {
                 <Line label="Eligible (scheme LTV)" value={l ? amount(l.eligible_amount) : '-'} />
               </div>
               <Field label="Top-up amount"><Input type="number" prefix={<IndianRupee className="size-4" />} className="!h-11 text-right text-xl font-bold" value={amt} onChange={(e) => setAmt(e.target.value)} disabled={tooLate} /></Field>
-              <Field label="Interest deducted now (optional)"><Input type="number" prefix={<IndianRupee className="size-3.5" />} className="text-right" value={deduct} onChange={(e) => setDeduct(e.target.value)} /></Field>
+              <InterestChoice ic={ic} title="Interest deducted now" disabled={!l} />
               <div className="rounded-md border border-ink-200 px-2.5 py-1 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px] [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700">
                 <Line label="New loan total" value={amount(newTotal)} bold />
                 <Line label="Interest / month (new total)" value={amount(newTotal * rate)} />

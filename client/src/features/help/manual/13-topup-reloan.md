@@ -14,7 +14,8 @@ Rules (like MyBook):
 Steps
 1. Type the loan no → Enter. The right side shows *Loan amount now*, *Items value today*.
 2. **Top-up amount** - e.g. ₹1,000 → *New loan total* ₹51,000, *Interest / month (new total)* ₹765, LTV bar.
-3. **Give Top-up (F2)** → pay the customer (cash / UPI …). The full amount is paid; interest from now is on the new total.
+3. **Interest deducted now** - **None** by default (the full top-up is paid). Choose **Auto** to deduct the interest due, or **Months / Days / Amount** (with a rate %) to deduct what you agree; it is taken off the amount paid and printed on the receipt.
+4. **Give Top-up (F2)** → pay the customer (cash / UPI …). Interest from now is on the new total.
 
 # Re-loan
 
@@ -22,7 +23,7 @@ Steps
 
 Steps
 1. Type the **old loan no** → Enter. Top: *Interest · N months*, *Paid before*, *Old loan total*.
-2. **New loan amount** - same amount by default; type more or less. Interest % and Flat / Compound come from the old loan (change if needed). Advance interest on new loan (F6).
+2. **New loan amount** - same amount by default; type more or less. Interest % and Flat / Compound come from the old loan (change if needed). **Advance interest (F6)** on the new loan: Auto / Months / Days / Amount / None. **Interest on old loan**: Auto (due + penal) or Manual - months / days from the loan date at a typed rate, or a typed amount. Taking less than Auto needs the manager's login above the discount limit (see *Interest - Auto or Manual*).
 3. Add / remove items if the customer takes back or adds a jewel. Gold items are valued at today's gold rate and **silver items at today's silver rate**; a silver loan stays a silver loan.
    - The new loan gets the **next bill book no** when the old loan had one (example: old bill book 2 → new loan bill book 3).
 4. The box at the bottom says **Receive from customer** (green) or **Pay to customer**.

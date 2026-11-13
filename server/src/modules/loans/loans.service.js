@@ -440,7 +440,8 @@ export const topUp = async (req, id, body) => {
     const net = round2(amount - interest - charges);
     if (net < 0) throw ApiError.badRequest('Deductions exceed top-up amount');
     const payments = normalisePayments(body.payments, net);
-    const txn = await insertTxn(tx, req, loan, { date, type: 'TOPUP', principal: amount, interest, charges, total: net, upto: interest ? date : null, remarks: body.remarks }, payments);
+    const days = interest > 0 ? interestDays(body, settings) : null;
+    const txn = await insertTxn(tx, req, loan, { date, type: 'TOPUP', principal: amount, interest, charges, total: net, days, rate: interest > 0 ? typedRate(body) : null, upto: interest ? (body.interest_upto || date) : null, remarks: body.remarks }, payments);
     await tx.query('UPDATE loans SET current_principal = :p WHERE id = :id', { p: newPrincipal, id: loan.id });
     const fy = await getCurrentFy(tx);
     const narration = `Top-up ${loan.bill_no}`;
@@ -522,9 +523,17 @@ export const renewLoan = async (req, id, body) => {
   requireOpen(old.loan);
   if (old.loan.bank_pledge_id) throw ApiError.badRequest('Loan is pledged in bank. Release from bank first.');
   const calc = old.calc;
-  const interest = body.interest_amount != null && body.interest_amount !== '' ? round2(body.interest_amount) : round2(calc.interestDue + calc.penalDue);
+  const systemDue = round2(calc.interestDue + calc.penalDue);
+  const interest = body.interest_amount != null && body.interest_amount !== '' ? round2(body.interest_amount) : systemDue;
+  if (interest < 0) throw ApiError.badRequest('Interest cannot be below zero');
+  const days = interestDays(body, settings);
+  // body.interest_rate is the NEW loan's rate here; a rate typed for the old loan's interest comes as old_interest_rate
+  const rateUsed = typedRate({ interest_rate: body.old_interest_rate });
   const discount = round2(body.discount);
-  await checkApproval(req, discount, settings);
+  // interest taken below the system figure closes the old loan for less - a concession like a discount
+  const reduced = round2(Math.max(0, systemDue - interest));
+  await checkApproval(req, round2(discount + reduced), settings, reduced ? 'Interest reduction + discount' : 'Discount');
+  if (reduced) audit(req, 'INTEREST_REDUCED', 'loans', old.loan.id, { system: systemDue, charged: interest, days, rate: rateUsed, on: 'RENEW' });
   const newPrincipal = round2(body.new_principal || (body.add_interest ? calc.principalOutstanding + interest - discount : calc.principalOutstanding));
   const schemeId = body.scheme_id || old.loan.scheme_id;
 
@@ -540,7 +549,7 @@ export const renewLoan = async (req, id, body) => {
     const payments = normalisePayments(body.payments, Math.abs(net));
     const fy = await getCurrentFy(tx);
     const close = await insertTxn(tx, req, loan, {
-      date, type: 'RELEASE', principal: -calc.principalOutstanding, interest, discount, total: round2(calc.principalOutstanding + interest - discount), upto: date, remarks: 'Renewed',
+      date, type: 'RELEASE', principal: -calc.principalOutstanding, interest, discount, total: round2(calc.principalOutstanding + interest - discount), days, rate: rateUsed, upto: date, remarks: 'Renewed',
     }, []);
     // the desktop gives the old loan a release number too (Re-loan = release + new loan)
     const relNo = await nextNumber(tx, { branchId: loan.branch_id, key: 'RELEASE', fyId: fy.id });

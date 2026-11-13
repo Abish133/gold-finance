@@ -63,6 +63,19 @@ eq(t.interest_days, 7, 'release stores days');
 if (r.loan.status !== 'CLOSED') throw new Error('loan not closed');
 ok('loan closed');
 
+// 3b. top-up: interest deducted by days is stored
+const L3 = await newLoan();
+await call('POST', `/loans/${L3.id}/topup`, { date: day, amount: 1000, interest_amount: 150, interest_days: 10, payments: [{ mode: 'CASH', amount: 850 }] });
+t = (await call('GET', `/loans/${L3.id}`)).data.transactions.filter((x) => !x.is_void && x.txn_type === 'TOPUP').at(-1);
+eq(t.interest_days, 10, 'top-up stores days');
+
+// 3c. re-loan: a rate typed for the OLD loan's interest must not become the NEW loan's rate
+const L4 = await newLoan();
+const rn = (await call('POST', `/loans/${L4.id}/renew`, { date: day, new_principal: 30000, interest_rate: 1.5, interest_amount: 200, old_interest_rate: 1.2, advance_interest: 0, doc_charges: 0, payments: [{ mode: 'CASH', amount: 200 }] })).data;
+eq(rn.loan.interest_rate, 1.5, 'new loan keeps its own rate');
+const closeT = (await call('GET', `/loans/${L4.id}`)).data.transactions.filter((x) => !x.is_void && x.txn_type === 'RELEASE').at(-1);
+eq(closeT.interest_rate_used, 1.2, 'old loan interest rate stored on its closing receipt');
+
 // 4. minimum days rule
 const before = (await call('GET', '/admin/settings', undefined)).data.INTEREST_MIN_DAYS;
 await call('PUT', '/admin/settings?scope=global', { INTEREST_MIN_DAYS: '10' });

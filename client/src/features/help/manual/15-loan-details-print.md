@@ -5,6 +5,8 @@ screens: loan_list, loan_print, loan_sticker
 ---
 # Loan Details (Loan Counter)
 
+On the Loan Counter, every action (Interest, Part payment, Top-up, Release, Renew) has the **Interest** box: **Auto** or Manual **Months / Days / Amount** with a rate % (see *Interest - Auto or Manual*). A release or renew for less than Auto asks for the manager's login above the discount limit.
+
 **Loan → Loan Details** - everything about one loan in one place.
 
 1. Find the loan (loan no / bill book no / customer).

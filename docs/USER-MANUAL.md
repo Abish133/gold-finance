@@ -20,6 +20,7 @@ Step by step guide to every menu, with examples. The same manual is inside the a
 - [Top-up Loan and Re-loan](#top-up-loan)
 - [Interest Calculator, Old Loan Entry, Edit Loan](#interest-calculator)
 - [Loan Details, Stickers, Duplicate Bill](#loan-details-loan-counter)
+- [Interest - Auto or Manual](#interest-auto-or-manual)
 
 **Records**
 
@@ -311,6 +312,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 |---|---|---|
 | **Interest + part amount on one receipt** | Loan → Part Payment | Fill the interest and the part amount together - one receipt, both lines on it |
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
+| **Interest Auto or Manual everywhere** | New / Old Loan (advance), Part Payment, Top-up, Release, Re-loan, Loan Counter | One *Interest* box: Auto, or Months / Days / Amount with a rate % - chapter *Interest - Auto or Manual* |
 | **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
 | **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
 | **Approval** | Release | Interest below the system figure counts like a discount - above the limit it needs a manager's password |
@@ -344,7 +346,7 @@ Before you start: today's rate must be entered (header gold rate not red).
    - **Item templates** - for jewels that often come together. Add the items once, then **Templates ▾ → Save these N items as a template** and give a name (e.g. *Chain + 2 rings*). Next time: **Templates ▾ →** pick it - the first item fills in and the cursor waits in *Gross Wt*; weigh, press Enter, and the next item fills in by itself (a green *Next: …* bar shows what is coming, **Stop** ends it). Templates keep item names, pcs, metal and purity - **never weights**. Every counter shares them; ✕ (on hover) removes one.
 4. **Loan amount** - type the amount. The **Loan to value** bar turns green / orange / red. Above the warning limit (85%) the app asks *"Loan is xx% of item value. Continue?"* before saving.
 5. **Interest % p.m.** (from the scheme, can be changed) and **Interest type** - *Compound* or *Flat*.
-6. **Doc. charges** (if any) and **Advance interest** - with advance on, the first month's interest is taken now (F6 switches advance on / off).
+6. **Doc. charges** (if any) and **Advance interest** - **Auto** takes the scheme's advance months now; **Months / Days / Amount** take what you choose (e.g. 15 days); **None** takes nothing. F6 switches Auto ↔ None. See *Interest - Auto or Manual*.
 7. **Item photo** - Camera, Browse (choose a file) or Old Photo (the customer's last photo).
 8. **Save Loan (F2)** → enter the bill book no (if you use paper bill books) → **Pay customer**: choose Cash / UPI / Card / Cheque and the amount → **Confirm**.
 9. The loan bill prints (two copies if set). The message *Loan details saved* has **Print** (print again) and **Open loan** (Loan Counter) buttons. The sticker for the jewel packet can be printed from **Loan → Print → Jewel Packet Sticker (F9)**.
@@ -369,7 +371,7 @@ Due date is 12 months from the loan date.
 |---|---|
 | F1 | New customer |
 | F2 | Save loan |
-| F6 | Advance interest on / off |
+| F6 | Advance interest Auto ↔ None |
 | Ctrl+E | Print a loan estimate for the customer (before saving) |
 | Ctrl+N | Clear the screen |
 | F5 | Customer ledger (all loans of this customer) |
@@ -402,16 +404,17 @@ Due date is 12 months from the loan date.
 | − Advance interest | Taken when the loan was given |
 | − Interest already paid | Interest receipts (Part Payment screen) |
 | − Part amount paid | Loan amount already paid back |
-| **Charge interest** | **Full** (the system figure above), **Days** or **Amount** - see below |
+| **Charge interest** | **Auto** (the system figure above) or Manual: **Months**, **Days** or **Amount** - see below |
 | Against ticket / Post / other charge | Type if you collect any |
 | Discount | Above ₹500 (System Control) needs a manager's password |
 | **Total to receive** | What the customer pays now |
 
    **Charge interest** - how much interest to take now:
-   - **Full** (usual) - the system figure: every started month.
+   - **Auto** (usual) - the system figure: every started month.
+   - **Months** - months from the loan date at the loan's rate or a typed rate %, less interest already paid.
    - **Days** - type the days or press **7 / 15 / 30**, and the **rate %** (filled with the loan's rate; type e.g. 1.25 to charge a lower rate). Interest = interest per month at that rate ÷ 30 × days, less interest already paid (and advance). A typed rate is printed on the release receipt. Use it when the customer closes early - e.g. after 3 days, charge 7 or 15 days instead of a full month.
    - **Amount** - type the interest to take now.
-   - *Interest now* shows the amount taken. If it is **less than the system figure**, the line *Less than system* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
+   - The last line shows the amount taken (*Manual · 7 days ₹175*). If it is **less than Auto**, the line *Less than auto* shows the difference. That difference is counted like a **discount**: together with any discount, above the limit in System Control (e.g. ₹500) it needs a manager's password. It is saved in the audit trail.
    - A *minimum days* set in System Control cannot be gone under.
 3. **Customer unable to release** - tick it if the customer only signs (amount collected later).
 4. **Release Loan (F2)** → **Receive Payment · Loan 6 / Book 103**: Cash / UPI / Card / Cheque - press **Add (Enter)** for each part until Balance is 0.
@@ -426,7 +429,7 @@ Loan of ₹50,000 at 1.5% p.m. compound, advance ₹750, released after 3 months
 - − Advance interest ₹750
 - **Total to receive ₹50,000 + 2,250 = ₹52,250**
 
-Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per month → 750 ÷ 30 × 7 = **₹175** instead of ₹750 - *Less than system ₹575* (needs the manager's password when the limit is ₹500).
+Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per month → 750 ÷ 30 × 7 = **₹175** instead of ₹750 - *Less than auto ₹575* (needs the manager's password when the limit is ₹500).
 
 ## Good to know
 - Only look, no release? Load the loan, read the total, press **New / Clear (Ctrl+N)** - nothing is saved.
@@ -512,7 +515,8 @@ Rules (like MyBook):
 Steps
 1. Type the loan no → Enter. The right side shows *Loan amount now*, *Items value today*.
 2. **Top-up amount** - e.g. ₹1,000 → *New loan total* ₹51,000, *Interest / month (new total)* ₹765, LTV bar.
-3. **Give Top-up (F2)** → pay the customer (cash / UPI …). The full amount is paid; interest from now is on the new total.
+3. **Interest deducted now** - **None** by default (the full top-up is paid). Choose **Auto** to deduct the interest due, or **Months / Days / Amount** (with a rate %) to deduct what you agree; it is taken off the amount paid and printed on the receipt.
+4. **Give Top-up (F2)** → pay the customer (cash / UPI …). Interest from now is on the new total.
 
 # Re-loan
 
@@ -520,7 +524,7 @@ Steps
 
 Steps
 1. Type the **old loan no** → Enter. Top: *Interest · N months*, *Paid before*, *Old loan total*.
-2. **New loan amount** - same amount by default; type more or less. Interest % and Flat / Compound come from the old loan (change if needed). Advance interest on new loan (F6).
+2. **New loan amount** - same amount by default; type more or less. Interest % and Flat / Compound come from the old loan (change if needed). **Advance interest (F6)** on the new loan: Auto / Months / Days / Amount / None. **Interest on old loan**: Auto (due + penal) or Manual - months / days from the loan date at a typed rate, or a typed amount. Taking less than Auto needs the manager's login above the discount limit (see *Interest - Auto or Manual*).
 3. Add / remove items if the customer takes back or adds a jewel. Gold items are valued at today's gold rate and **silver items at today's silver rate**; a silver loan stays a silver loan.
    - The new loan gets the **next bill book no** when the old loan had one (example: old bill book 2 → new loan bill book 3).
 4. The box at the bottom says **Receive from customer** (green) or **Pay to customer**.
@@ -577,6 +581,8 @@ Changing the amount or rate reposts the accounts of that loan. Every edit is kep
 
 # Loan Details (Loan Counter)
 
+On the Loan Counter, every action (Interest, Part payment, Top-up, Release, Renew) has the **Interest** box: **Auto** or Manual **Months / Days / Amount** with a rate % (see *Interest - Auto or Manual*). A release or renew for less than Auto asks for the manager's login above the discount limit.
+
 **Loan → Loan Details** - everything about one loan in one place.
 
 1. Find the loan (loan no / bill book no / customer).
@@ -602,6 +608,46 @@ The bill heading shows the **licence number** and **contact numbers of the loan'
 1. Find by date, loan no or customer → **Search (F5)**.
 2. Tick the loans (Ctrl+A), options *Include released loans*, *Show bill book no*.
 3. **Preview & Print (F10)**.
+
+---
+
+# Interest - Auto or Manual
+
+Every screen that takes interest has the same **Interest** box. The app works out the interest by itself (**Auto**) from the scheme and the loan's rate - or you take it **Manual**, the way you agree with the customer.
+
+| Mode | What it charges |
+|---|---|
+| **Auto** (green) | What the app works out - the scheme rules (every started month, compound / flat, advance months). Same as before. |
+| **Months** | A number of months × interest per month. |
+| **Days** | A number of days × interest per month ÷ 30 (rounded to the rupee). Quick buttons **7 / 15 / 30**. |
+| **Amount** | The rupees you type. |
+| **None** | No interest (only where that makes sense: advance interest, interest deducted on a top-up, interest with a part amount). |
+
+Manual modes show **amber**. With **Months** and **Days** there is a **Rate % / m** box, filled with the loan's rate - type another rate (e.g. **1.25** instead of 1.5) to charge this entry at that rate. The typed rate is printed on the receipt.
+
+The line at the bottom always shows what will be charged: *Auto · 4 months ₹3,000* or *Manual · 15 days ₹375*, and **Auto would be ₹…** so you can compare.
+
+## Where it is
+| Screen | Box | Months / Days count from |
+|---|---|---|
+| **New Loan / Old Loan entry** | *Advance interest (F6)* - F6 switches Auto ↔ None | the coming period |
+| **Part Payment** | *Interest* (Months / Days / Amount, rate %) - see *Part Payment & Interest* | where the paid interest ends |
+| **Top-up** | *Interest deducted now* - **None** by default | where the paid interest ends |
+| **Release** | *Charge interest* | the loan date (interest already paid is taken off) |
+| **Re-loan** | *Interest on old loan* and *Advance interest (F6)* on the new loan | old loan: the loan date · advance: the coming period |
+| **Loan Counter** | *Interest* on Interest / Part payment / Top-up / Release / Renew | Interest, Part, Top-up: where paid interest ends · Release, Renew: the loan date |
+
+## Taking less than Auto
+- **While the loan stays open** (Part Payment, Top-up, Counter interest): what is not taken now **stays due** - it shows next time and at release. No approval needed.
+- **When the loan closes** (Release, Re-loan, Counter release / renew): the difference is a concession. The line *Less than auto* shows it. Together with any discount, above the limit in **System Control → Release: discount without admin** (e.g. ₹500) a manager / admin must type their login (**Admin approval**). Every reduction is written in the **Audit Trail** (*INTEREST_REDUCED*: system figure, charged, days, rate).
+- **Minimum days** (System Control → *Interest by days: minimum days*): Days cannot go below it.
+
+## Examples
+Loan ₹50,000 at 1.5% p.m. → ₹750 a month, ₹25 a day.
+- **Release after 3 days**: Auto = ₹750 (1 month). *Days* → **7** → ₹175. *Less than auto ₹575* - needs the manager's login when the limit is ₹500.
+- **Re-loan after 4 months at a lower rate**: *Interest on old loan* → *Months* 4, rate **1.2** → 50,000 × 1.2% × 4 = **₹2,400** instead of ₹3,000. The new loan keeps its own rate (Interest % box).
+- **New loan, advance for half a month**: *Advance interest* → *Days* **15** → ₹375 instead of ₹750.
+- **Top-up with 10 days' interest deducted**: top-up ₹5,000, *Interest deducted now* → *Days* **10** → ₹250 deducted, ₹4,750 paid out.
 
 ---
 
