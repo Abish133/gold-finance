@@ -84,6 +84,7 @@ After many wrong passwords (20 within 15 minutes) sign-in is blocked for 15 minu
 | **Header** | Company name, A/c year and the selected branch's **licence number** (and its contact numbers on a wide screen) · **Billing date**, **Gold / g**, **Silver / g** (click a rate to update it) · **Search** · **Branch** · full screen, light / dark, 🔔 reminders · your name and role |
 | **Search box** (Ctrl+K) | Loan no, customer name, mobile, barcode - or a screen name like *release*. With nothing typed it shows your **recent screens** and **recently opened** loans / customers |
 | **Body** | The screen you opened. Its dark **title bar** holds the screen's buttons (e.g. **Save F2**) and **⌨ Keys** - all shortcuts of that screen |
+| **Counter screens** (New Loan, Release, Part Payment, Top-up, Re-loan, Edit Loan) | Three columns. When a column has more than fits on the screen it **scrolls on its own** (mouse wheel over it) - nothing is cut off. The **total and the Save button stay at the bottom** of the right column all the time; F2 / F10 save from anywhere. Wide tables (items) scroll sideways on small screens. |
 | **Bottom bar** | **Today** loans / releases · **this month** · **Book** (open loans, outstanding, gold weight) · **Attention** (overdue, 12 months+, failed SMS) · Online / Offline · your name, branch, licence no and contact numbers · clock. Click a figure to open its screen |
 
 **Billing date** is the working day of the books. It moves to the next day only when you close the day (**Day End**). If it shows a date before today, the previous day is not closed yet.
@@ -281,6 +282,7 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 | **Bottom bar** | Bottom of the window | Today · this month · loan book · items needing attention - click any figure to open its screen |
 | **Drawers and popups** | Forms and questions | Side panels with **Full size** and **Close Esc** buttons; short questions as a small box in the middle |
 | **Phone / tablet** | Narrow screens | ☰ Menu button, tables become cards |
+| **Counter screens fit any screen** | New Loan, Release, Part Payment, Top-up, Re-loan, Edit Loan | Each column scrolls when it is full; the total and Save button stay in view at the bottom; weight, purity and value boxes are wide enough for big numbers |
 
 ## New screens
 | Screen | Menu | Chapter |

@@ -108,11 +108,11 @@ export default function ReleasePage() {
                 ['Running', l && (() => { const m = dayjs(d).diff(dayjs(l.loan_date), 'month'); return `${m} m ${dayjs(d).diff(dayjs(l.loan_date).add(m, 'month'), 'day')} d`; })()]]} />
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-[13px]">
-                <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="w-8 px-3 py-1.5 text-left font-semibold">#</th><th className="px-3 text-left font-semibold">Item</th><th className="px-3 text-left font-semibold">Metal</th><th className="px-3 text-right font-semibold">Pcs</th><th className="px-3 text-right font-semibold">Gross</th><th className="px-3 text-right font-semibold">Net wt</th><th className="px-3 text-right font-semibold">Purity</th><th className="px-3 text-right font-semibold">Value today</th></tr></thead>
+                <thead className="navy-gradient sticky top-0 z-10 text-[11px] tracking-wider text-white uppercase"><tr><th className="w-8 px-2 py-1.5 text-left font-semibold">#</th><th className="px-2 text-left font-semibold">Item</th><th className="px-2 text-left font-semibold">Metal</th><th className="px-2 text-right font-semibold">Pcs</th><th className="px-2 text-right font-semibold">Gross</th><th className="px-2 text-right font-semibold">Net wt</th><th className="px-2 text-right font-semibold">Purity</th><th className="px-2 text-right font-semibold">Value today</th></tr></thead>
                 <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
                   {(full?.items || []).map((i, k) => (
-                    <tr key={i.id}><td className="px-3 py-1.5">{k + 1}</td><td className="px-3 font-semibold uppercase">{i.item_name}</td><td className="px-3"><Chip tone="gold">{i.metal_code || l.loan_on}</Chip></td><td className="num px-3 text-right">{i.pcs}</td>
-                      <td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity).toFixed(2)}</td><td className="num px-3 text-right">{amount(i.value)}</td></tr>
+                    <tr key={i.id}><td className="px-2 py-1.5">{k + 1}</td><td className="px-2 font-semibold uppercase">{i.item_name}</td><td className="px-2"><Chip tone="gold">{i.metal_code || l.loan_on}</Chip></td><td className="num px-2 text-right">{i.pcs}</td>
+                      <td className="num px-2 text-right">{weight(i.gross_wt)}</td><td className="num px-2 text-right">{weight(i.net_wt)}</td><td className="num px-2 text-right">{n(i.purity).toFixed(2)}</td><td className="num px-2 text-right">{amount(i.value)}</td></tr>
                   ))}
                   {!full && <tr><td colSpan={8} className="py-10 text-center text-[13px] text-ink-400"><ScanLine className="mx-auto mb-1.5 size-5" />Enter or scan a loan number on the left to load it</td></tr>}
                 </tbody>
@@ -147,7 +147,7 @@ export default function ReleasePage() {
               <Checkbox className="pt-1" checked={v.unable} onChange={(x) => setV({ ...v, unable: x })} label="Customer unable to release (sign only)" />
             </div>
             {/* pinned to the bottom of the panel */}
-            <div className="mt-auto space-y-2 pt-1">
+            <div className="desk-actions space-y-2">
               <BigTotal label="Total to receive" value={total} />
               <GoldButton disabled={!open || saving} loading={saving && !pay} onClick={start}>Release Loan (F2)</GoldButton>
               {l?.bank_pledge_id && <Badge tone="violet">Jewels are in bank - release from bank first</Badge>}

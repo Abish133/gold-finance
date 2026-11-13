@@ -396,7 +396,7 @@ export default function NewLoanPage({ mode = 'NEW' }) {
         )}
       </div>
       {/* pinned to the bottom of the panel */}
-      <div className="mt-auto space-y-2 pt-1">
+      <div className="desk-actions space-y-2">
         <BigTotal label={isOld ? 'Opening entry · not in today\'s cash' : 'Amount to pay customer'} value={isOld ? principal : netPay} words={!isOld} />
         <GoldButton disabled={!canSave} loading={save.isPending && !step} onClick={trySave}>{isOld ? 'Save Old Loan (F2)' : 'Save Loan (F2)'}</GoldButton>
       </div>

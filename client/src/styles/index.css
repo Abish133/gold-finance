@@ -91,9 +91,13 @@
 }
 
 @layer components {
-  /* counter screen columns: panels stack, the last one fills the height */
+  /* counter screen columns: panels stack, the last one fills the height; a panel is never squeezed smaller than
+     its content (the column scrolls instead), so nothing at the bottom of a panel - like the Save button - is cut off */
   .desk-col { @apply flex min-w-0 flex-col gap-2 xl:min-h-0 xl:overflow-y-auto xl:overscroll-contain; }
-  .desk-col > :last-child { @apply flex-1; }
+  .desk-col > * { @apply shrink-0; }
+  .desk-col > :last-child { @apply grow; }
+  /* total + Save at the bottom of a counter panel: stays in view while the column scrolls */
+  .desk-actions { @apply sticky bottom-0 z-10 mt-auto bg-white pt-1 pb-0.5 shadow-[0_-10px_10px_-10px_rgba(15,23,42,0.25)] dark:bg-ink-900; }
   /* counter screens are denser than ordinary forms */
   .desk .input, .dense .input { @apply h-9; }
   .desk .label, .dense .label { @apply mb-0.5 text-[10px]; }

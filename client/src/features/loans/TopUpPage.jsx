@@ -77,9 +77,9 @@ export default function TopUpPage() {
           <Panel title="Loan" bodyClassName="flex flex-col p-0" className="[&>header]:hidden">
             <LoanHead loan={l} chips={<Chip tone={tooLate ? 'red' : 'green'}>{within ? `Day ${dayNo} of ${within} · ${tooLate ? 'not allowed' : 'allowed'}` : 'Allowed'}</Chip>}
               cells={[['Loan date', l && date(l.loan_date)], ['First amount', l && money(l.principal)], [`Interest · ${l ? (l.interest_type === 'COMPOUND' ? 'Compound' : 'Flat') : ''}`, l && `${n(l.interest_rate)}% ${l.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}`], ['Running', c && `${c.elapsedDays} days`]]} />
-            <div className="flex-1">
-              <table className="w-full text-sm"><thead className="navy-gradient text-white"><tr><th className="px-3 py-2 text-left">#</th><th className="px-3 text-left">Item</th><th className="px-3 text-left">Metal</th><th className="px-3 text-right">Pcs</th><th className="px-3 text-right">Gross</th><th className="px-3 text-right">Net wt</th><th className="px-3 text-right">Purity</th><th className="px-3 text-right">Value today</th></tr></thead>
-                <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-3 py-1.5">{k + 1}</td><td className="px-3 font-semibold">{i.item_name}</td><td className="px-3"><Chip tone="gold">{i.metal_code || l.loan_on}</Chip></td><td className="num px-3 text-right">{i.pcs}</td><td className="num px-3 text-right">{weight(i.gross_wt)}</td><td className="num px-3 text-right">{weight(i.net_wt)}</td><td className="num px-3 text-right">{n(i.purity)}</td><td className="num px-3 text-right">{amount(i.value)}</td></tr>)}
+            <div className="flex-1 overflow-x-auto">
+              <table className="w-full text-[13px]"><thead className="navy-gradient text-white"><tr><th className="px-2 py-2 text-left">#</th><th className="px-2 text-left">Item</th><th className="px-2 text-left">Metal</th><th className="px-2 text-right">Pcs</th><th className="px-2 text-right">Gross</th><th className="px-2 text-right">Net wt</th><th className="px-2 text-right">Purity</th><th className="px-2 text-right">Value today</th></tr></thead>
+                <tbody className="divide-y divide-ink-200">{(full?.items || []).map((i, k) => <tr key={i.id}><td className="px-2 py-1.5">{k + 1}</td><td className="px-2 font-semibold">{i.item_name}</td><td className="px-2"><Chip tone="gold">{i.metal_code || l.loan_on}</Chip></td><td className="num px-2 text-right">{i.pcs}</td><td className="num px-2 text-right">{weight(i.gross_wt)}</td><td className="num px-2 text-right">{weight(i.net_wt)}</td><td className="num px-2 text-right">{n(i.purity)}</td><td className="num px-2 text-right">{amount(i.value)}</td></tr>)}
                   {!full && <tr><td colSpan={8} className="py-16 text-center text-ink-400">Enter a loan number to load</td></tr>}</tbody></table>
             </div>
             <ItemsSummary items={full?.items} />
@@ -110,7 +110,7 @@ export default function TopUpPage() {
               {tooLate && <p className="rounded-md border-l-2 border-rose-600 bg-rose-50 px-2.5 py-1.5 text-[12px] text-rose-700 dark:bg-rose-950/30 dark:text-rose-200">Top-up allowed only within {within} days of loan date. Use Re-loan.</p>}
             </div>
             {/* pinned to the bottom of the panel */}
-            <div className="mt-auto space-y-2 pt-1">
+            <div className="desk-actions space-y-2">
               <BigTotal label="Pay to customer" value={Math.max(0, pay)} />
               <GoldButton disabled={!l || tooLate || saving} loading={saving && !payOpen} onClick={start}>Give Top-up (F2)</GoldButton>
             </div>

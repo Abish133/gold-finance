@@ -155,10 +155,10 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
           {ic.mode === 'DAYS' && (
             <div>
               <p className="label">{ic.basis === 'DUE' ? 'Days from loan date' : 'Days'}</p>
-              <div className="flex items-center gap-1">
-                <input type="number" min="0" inputMode="numeric" aria-label={`${title}: days`} className={clsx(box, 'w-16 shrink-0')} value={ic.days} onChange={(e) => ic.set({ days: e.target.value })} onFocus={(e) => e.target.select()} />
+              <div className="flex flex-wrap items-center gap-1">
+                <input type="number" min="0" inputMode="numeric" aria-label={`${title}: days`} className={clsx(box, 'w-14 shrink-0')} value={ic.days} onChange={(e) => ic.set({ days: e.target.value })} onFocus={(e) => e.target.select()} />
                 {[7, 15, 30].map((x) => (
-                  <Button key={x} size="sm" variant="outline" className="!h-8 flex-1 !px-1 text-[12px]" disabled={ic.minDays > 0 && x < ic.minDays} onClick={() => ic.set({ days: String(x) })}>{x}</Button>
+                  <Button key={x} size="sm" variant="outline" className="!h-8 min-w-8 flex-1 !shrink !px-1 text-[12px]" disabled={ic.minDays > 0 && x < ic.minDays} onClick={() => ic.set({ days: String(x) })}>{x}</Button>
                 ))}
               </div>
             </div>

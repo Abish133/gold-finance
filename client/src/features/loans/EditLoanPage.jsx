@@ -144,7 +144,7 @@ export default function EditLoanPage() {
             </div>
             <Field label="Remarks"><Input prefix={<StickyNote className="size-3.5" />} value={f.remarks || ''} onChange={(e) => setF({ ...f, remarks: e.target.value })} /></Field>
             {/* pinned to the bottom */}
-            <div className="mt-auto space-y-2 pt-1">
+            <div className="desk-actions space-y-2">
               <div className={clsx('rounded-md border px-2.5 py-1.5 text-[12px]', changes.length ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200' : 'border-ink-200 text-ink-500 dark:border-ink-800')}>
                 {!l ? 'Find a loan to start' : changes.length ? <><b>Changed:</b> {changes.join(', ')}</> : 'No changes yet'}
               </div>

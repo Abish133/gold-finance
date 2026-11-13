@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { ScanLine, LogOut, Plus, Search, ChevronDown, Hash, Scale, MinusCircle, Weight, MessageSquare, Gem, Coins, IndianRupee, Tag, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet, LayoutTemplate } from 'lucide-react';
+import { ScanLine, LogOut, Plus, Search, ChevronDown, MessageSquare, Tag, BookUser, ShieldCheck, ImagePlus, Camera, History, Trash2, Expand, UserRound, X, Check, Wallet, LayoutTemplate } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, Badge, Button, Drawer, Field, Input, Select, Spinner, StatusBadge, DataTable, Modal } from '@/components/ui';
 import { compressImage } from '@/components/ui/ImageCapture';
@@ -54,7 +54,7 @@ export function DeskScreen({ title, subtitle, tiles = [], left, center, right, f
 
 export function Panel({ title, actions, children, className, bodyClassName }) {
   return (
-    <section className={clsx('flex flex-col overflow-hidden rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900', className)}>
+    <section className={clsx('flex flex-col overflow-clip rounded-md border border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900', className)}>
       <header className="flex h-9 shrink-0 items-center gap-2 border-b border-ink-200 px-3 text-[11px] font-bold tracking-wider text-navy-900 uppercase dark:border-ink-800 dark:text-white">
         <span aria-hidden className="h-3.5 w-0.5 rounded-sm bg-navy-900 dark:bg-white" />
         <span className="flex-1 truncate">{title}</span>{actions}
@@ -650,30 +650,30 @@ export function ItemEntry({ loanOn, rates, lookups, onAdd, editing, currentItems
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_70px_1fr_1fr_1fr]">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.5fr)_56px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div>
-          <span className="label">Item <span className="normal-case text-ink-400">· type to search · F3 / + new</span></span>
+          <span className="label" title="Type to search · F3 / + = new item name">Item <span className="hidden normal-case text-ink-400 2xl:inline">· type to search · F3 / + new</span></span>
           <ItemPicker items={items} value={it.item_name} inputRef={first} onDone={() => pcsRef.current?.focus()}
             onPick={(m) => setIt({ ...it, item_name: m?.name || '', item_id: m?.id || null })}
             onNew={(name) => setNewName(name)} />
         </div>
-        <Field label="Pcs"><Input ref={pcsRef} prefix={<Hash className="size-3.5" />} type="number" min="1" value={it.pcs} onChange={(e) => setIt({ ...it, pcs: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Gross wt (g)"><Input ref={grossRef} prefix={<Scale className="size-3.5" />} type="number" step="0.001" value={it.gross_wt} onChange={(e) => setIt({ ...it, gross_wt: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Less wt"><Input prefix={<MinusCircle className="size-3.5" />} type="number" step="0.001" value={it.stone_wt} onChange={(e) => setIt({ ...it, stone_wt: e.target.value })} onKeyDown={enter} /></Field>
-        <Field label="Net wt (auto)"><Input prefix={<Weight className="size-3.5" />} readOnly value={c.net_wt ? weight(c.net_wt) : ''} className="bg-ink-50" /></Field>
+        <Field label="Pcs"><Input ref={pcsRef} type="number" min="1" value={it.pcs} onChange={(e) => setIt({ ...it, pcs: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Gross wt (g)"><Input ref={grossRef} type="number" step="0.001" value={it.gross_wt} onChange={(e) => setIt({ ...it, gross_wt: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Less wt"><Input type="number" step="0.001" value={it.stone_wt} onChange={(e) => setIt({ ...it, stone_wt: e.target.value })} onKeyDown={enter} /></Field>
+        <Field label="Net wt (auto)"><Input readOnly value={c.net_wt ? weight(c.net_wt) : ''} className="bg-ink-50" /></Field>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto] sm:items-end">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_70px_70px_minmax(110px,1.2fr)_auto] sm:items-end">
         <Field label="Remark"><Input prefix={<MessageSquare className="size-3.5" />} value={it.remarks} onChange={(e) => setIt({ ...it, remarks: e.target.value })} onKeyDown={enter} placeholder="Hallmark, damage, seal…" /></Field>
         <Field label="Purity %">
-          <Input prefix={<Gem className="size-3.5" />} type="number" step="0.01" list={`pur-${metalCode}`} value={it.purity} onChange={(e) => setIt({ ...it, purity: e.target.value })} onKeyDown={enter} />
+          <Input type="number" step="0.01" list={`pur-${metalCode}`} value={it.purity} onChange={(e) => setIt({ ...it, purity: e.target.value })} onKeyDown={enter} />
           <datalist id={`pur-${metalCode}`}>{purities.map((p) => <option key={p.id} value={p.purity}>{p.name}</option>)}</datalist>
         </Field>
         <Field label="Metal">
           {loanOn === 'MIX'
-            ? <Select prefix={<Coins className="size-3.5" />} value={it.metal} onChange={(e) => setIt({ ...it, metal: e.target.value, purity: e.target.value === 'SILVER' ? 92.5 : 91.6 })} options={['GOLD', 'SILVER']} />
-            : <Input prefix={<Coins className="size-3.5" />} readOnly value={metalCode} className="bg-ink-50" />}
+            ? <Select value={it.metal} onChange={(e) => setIt({ ...it, metal: e.target.value, purity: e.target.value === 'SILVER' ? 92.5 : 91.6 })} options={['GOLD', 'SILVER']} />
+            : <Input readOnly value={metalCode} className="bg-ink-50" />}
         </Field>
-        <Field label="Value"><Input prefix={<IndianRupee className="size-3.5" />} readOnly value={c.value ? amount(c.value) : ''} className="bg-ink-50" /></Field>
+        <Field label="Value (₹)"><Input readOnly value={c.value ? amount(c.value) : ''} className="bg-ink-50 text-right" title={c.value ? amount(c.value) : ''} /></Field>
         <Button onClick={add} className="h-10">{editing ? 'Update item' : 'Add item'}</Button>
       </div>
       <Modal open={tplName !== null} onClose={() => setTplName(null)} size="sm" icon={LayoutTemplate} title="Save as item template" subtitle={`${currentItems?.length || 0} items - names, pcs and purity (no weights)`}

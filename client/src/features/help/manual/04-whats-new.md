@@ -20,6 +20,7 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 | **Bottom bar** | Bottom of the window | Today · this month · loan book · items needing attention - click any figure to open its screen |
 | **Drawers and popups** | Forms and questions | Side panels with **Full size** and **Close Esc** buttons; short questions as a small box in the middle |
 | **Phone / tablet** | Narrow screens | ☰ Menu button, tables become cards |
+| **Counter screens fit any screen** | New Loan, Release, Part Payment, Top-up, Re-loan, Edit Loan | Each column scrolls when it is full; the total and Save button stay in view at the bottom; weight, purity and value boxes are wide enough for big numbers |
 
 ## New screens
 | Screen | Menu | Chapter |

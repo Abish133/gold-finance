@@ -357,7 +357,7 @@ export default function PartPaymentPage() {
                 {!lines.length && <tr><td colSpan={4} className="px-3 py-2 text-xs text-ink-400">No lines - full amount taken as cash</td></tr>}</tbody></table>
           </div>
           <div className="flex items-center justify-between text-[13px] font-bold"><span>Balance</span><span className={clsx('num', lines.length && balance !== 0 ? 'text-rose-600' : 'text-emerald-600')}>{money(lines.length ? balance : 0)} {(!lines.length || balance === 0) && '✓'}</span></div>
-          <div className="mt-auto space-y-1.5 pt-1">
+          <div className="desk-actions space-y-1.5">
             <GoldButton icon={Printer} loading={saving} disabled={!!blocked} onClick={() => save(true)}>Save &amp; Print Receipt (F10)</GoldButton>
             <div className="grid grid-cols-3 gap-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[12px]">
               <Button variant="outline" icon={RefreshCw} onClick={() => { setSp({}); setQ(''); }}>Refresh (F5)</Button>
