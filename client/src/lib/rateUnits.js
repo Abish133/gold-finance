@@ -32,6 +32,27 @@ export const ratePer = (base, rate, unit = 'PM') => {
   }
 };
 
+/** A rate moved to another unit with the same money (1.2% a month → 0.04% a day → 14.4% a year → ₹20 a day on ₹50,000). */
+export const convertRate = (rate, from, to, base) => {
+  if (from === to) return num(rate);
+  const b = num(base) || 1;
+  const r = num(rate);
+  // exact money a month and a day in the old unit (no rounding)
+  const month = { PM: (b * r) / 100, PA: (b * r) / 1200, PD: ((b * r) / 100) * 30, RD: r * 30, RM: r }[from] ?? (b * r) / 100;
+  const day = { PM: (b * r) / 100 / 30, PA: (b * r) / 100 / 365, PD: (b * r) / 100, RD: r, RM: r / 30 }[from] ?? (b * r) / 100 / 30;
+  const dayUnit = ['PD', 'RD'].includes(from);
+  const r4 = (x) => Math.round(x * 10000) / 10000;
+  const r2 = (x) => Math.round(x * 100) / 100;
+  switch (to) {
+    case 'PM': return r4((month / b) * 100);
+    case 'PA': return r2(dayUnit ? (day * 365 / b) * 100 : (month * 12 / b) * 100);
+    case 'PD': return r4((day / b) * 100);
+    case 'RD': return r2(day);
+    case 'RM': return r2(month);
+    default: return r;
+  }
+};
+
 /** The loan's rate (% per month) shown in another unit - the starting value when the unit is changed. */
 export const rateInUnit = (loanRatePm, unit, base) => {
   const pm = num(loanRatePm);

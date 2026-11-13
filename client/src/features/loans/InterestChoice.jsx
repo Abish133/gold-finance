@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { amount, n, round2 } from '@/lib/format';
-import { RATE_UNITS, ratePer, rateInUnit, rateText } from '@/lib/rateUnits';
+import { RATE_UNITS, ratePer, rateText, convertRate } from '@/lib/rateUnits';
 
 /**
  * One interest control for every screen that takes interest: Auto (the figure the scheme / system works out)
@@ -48,11 +48,13 @@ export function useInterestChoice({
   const minDays = n(settings?.INTEREST_MIN_DAYS);
   const autoMonths = defaultMonths ?? (!calc ? 1 : basis === 'PAY' ? Math.max(1, n(calc.monthsDue) - n(calc.monthsPaid)) : Math.max(1, n(calc.monthsDue)));
   const autoDays = defaultDays ?? (calc && basis === 'DUE' ? Math.max(1, n(calc.elapsedDays)) : 30);
-  const [s, setS] = useState({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM' });
+  const [s, setS] = useState({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM', touched: false });
   // a new loan / screen starts on Auto again
-  useEffect(() => { setS({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM' }); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setS({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM', touched: false }); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const rateTyped = ['MONTHS', 'DAYS'].includes(s.mode) && s.rate !== '' && n(s.rate) >= 0 && (s.unit !== 'PM' || round2(n(s.rate)) !== loanRate);
+  // the rate counts as typed only once the user types it - until then the loan's own rate is used exactly
+  // (the box shows it in the unit of the mode: % a month for Months, % a day for Days)
+  const rateTyped = ['MONTHS', 'DAYS'].includes(s.mode) && s.touched && s.rate !== '' && n(s.rate) >= 0;
   const typed = rateTyped ? ratePer(base, s.rate, s.unit) : null;
   const monthly = typed ? typed.monthly : sysMonthly;
   const perDay = typed ? typed.perDay : monthly / 30;
@@ -88,37 +90,57 @@ export function useInterestChoice({
 
   const set = (patch) => setS((x) => {
     const next = { ...x, ...patch };
-    // switching to Days / Months: start from the period so far, and the loan's rate
+    // switching to Days / Months: start from the period so far
     if (patch.mode === 'DAYS' && !x.days) next.days = String(Math.max(autoDays, minDays, 1));
     if (patch.mode === 'MONTHS' && !x.months) next.months = autoMonths;
-    if (['MONTHS', 'DAYS'].includes(patch.mode) && x.rate === '') next.rate = String(loanRate);
-    // a new unit starts from the loan's rate shown in that unit (1.5% a month = 18% a year = ₹25 a day on ₹50,000)
-    if (patch.unit && patch.unit !== x.unit && patch.rate == null) next.rate = String(rateInUnit(loanRate, patch.unit, base));
+    // until a rate is typed, the rate box follows the mode: Months -> % a month, Days -> % a day (the loan's rate in that unit)
+    if (['MONTHS', 'DAYS'].includes(patch.mode) && !x.touched) {
+      next.unit = patch.mode === 'DAYS' ? 'PD' : 'PM';
+      next.rate = String(convertRate(loanRate, 'PM', next.unit, base));
+    }
+    // typing a rate makes it the rate of this entry
+    if (patch.rate != null) next.touched = true;
+    // another unit: the same money in the new unit (1.2% a month -> 0.04% a day -> 14.4% a year -> ₹20 a day on ₹50,000)
+    if (patch.unit && patch.unit !== x.unit && patch.rate == null) {
+      next.rate = String(convertRate(x.touched && x.rate !== '' ? x.rate : loanRate, x.touched && x.rate !== '' ? x.unit : 'PM', patch.unit, base));
+    }
     return next;
   });
+  // back to the loan's own rate
+  const resetRate = () => setS((x) => ({ ...x, touched: false, unit: x.mode === 'DAYS' ? 'PD' : 'PM', rate: String(convertRate(loanRate, 'PM', x.mode === 'DAYS' ? 'PD' : 'PM', base)) }));
   const error = daysTooFew ? `At least ${minDays} days must be charged` : s.mode === 'DAYS' && !days ? 'Enter the number of days' : null;
 
   return {
-    ...s, set, basis, manual, interest, gross, paid, monthly, perDay, loanRate, rateTyped, base, reduced, autoAmount, autoLabel,
+    ...s, set, resetRate, basis, manual, interest, gross, paid, monthly, perDay, loanRate, rateTyped, base, reduced, autoAmount, autoLabel,
     label, payload, error, minDays, allowNone, modes: ['AUTO', 'MONTHS', 'DAYS', 'AMOUNT', ...(allowNone ? ['NONE'] : [])],
   };
 }
 
 const box = 'num h-8 w-full min-w-0 rounded-md border border-ink-200 bg-white px-2 text-center text-[15px] font-bold text-navy-900 outline-none [appearance:textfield] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-ink-700 dark:bg-ink-950 dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 
-/** Rate box with its unit (% a month / % a year / % a day / ₹ a day / ₹ a month). Used here and on Part Payment. */
-export function RateField({ title = 'Interest', rate, unit = 'PM', typed, placeholder, onRate, onUnit, className, big }) {
+/**
+ * Interest rate box with its unit (% a month / % a year / % a day / ₹ a day / ₹ a month) and what it comes to.
+ * Used in every Interest box and on Part Payment.
+ */
+export function RateField({ title = 'Interest', rate, unit = 'PM', typed, placeholder, onRate, onUnit, onReset, perDay, monthly, className, big, resetLabel = 'Use loan rate', idleLabel = 'loan rate - type to change' }) {
   return (
-    <div className={className}>
-      <p className="label">Rate</p>
-      <div className="flex items-center gap-1">
-        <input type="number" min="0" step="0.01" inputMode="decimal" aria-label={`${title}: rate`} className={clsx(box, big && '!h-9 !text-lg', 'w-16 shrink', typed && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')}
+    <div className={clsx('min-w-0', className)}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="label">Interest rate</p>
+        {typed ? <button type="button" className="text-[10px] font-bold text-amber-700 underline dark:text-amber-300" onClick={onReset}>{resetLabel}</button>
+          : <span className="text-[10px] text-ink-400">{idleLabel}</span>}
+      </div>
+      <div className="flex min-w-0 items-center gap-1">
+        <input type="number" min="0" step="0.01" inputMode="decimal" aria-label={`${title}: rate`} className={clsx(box, big && '!h-9 !text-lg', '!w-20 shrink-0', typed && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')}
           value={rate} placeholder={String(placeholder ?? '')} onChange={(e) => onRate(e.target.value)} onFocus={(e) => e.target.select()} />
         <select aria-label={`${title}: rate unit`} value={unit} onChange={(e) => onUnit(e.target.value)}
-          className={clsx('h-8 min-w-0 flex-1 rounded-md border border-ink-200 bg-white px-1 text-[12px] font-semibold text-ink-700 outline-none focus:border-emerald-500 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-200', big && '!h-9', unit !== 'PM' && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')}>
+          className={clsx('h-8 min-w-0 flex-1 rounded-md border border-ink-200 bg-white px-1 text-[12px] font-semibold text-ink-700 outline-none focus:border-emerald-500 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-200', big && '!h-9', typed && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')}>
           {RATE_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
         </select>
       </div>
+      {(perDay != null || monthly != null) && (
+        <p className="num mt-0.5 text-[11px] text-ink-500" title="What this rate comes to">= ₹{amount(perDay)} a day · ₹{amount(monthly)} a month</p>
+      )}
     </div>
   );
 }
@@ -141,7 +163,7 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
       </div>
 
       {ic.mode !== 'AUTO' && ic.mode !== 'NONE' && (
-        <div className={clsx('mt-1.5 grid items-end gap-1.5', showRate ? 'grid-cols-[1fr_150px]' : 'grid-cols-1')}>
+        <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)] items-end gap-1.5">
           {ic.mode === 'MONTHS' && (
             <div>
               <p className="label">{ic.basis === 'DUE' ? 'Months from loan date' : 'Months'}</p>
@@ -156,7 +178,7 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
             <div>
               <p className="label">{ic.basis === 'DUE' ? 'Days from loan date' : 'Days'}</p>
               <div className="flex flex-wrap items-center gap-1">
-                <input type="number" min="0" inputMode="numeric" aria-label={`${title}: days`} className={clsx(box, 'w-14 shrink-0')} value={ic.days} onChange={(e) => ic.set({ days: e.target.value })} onFocus={(e) => e.target.select()} />
+                <input type="number" min="0" inputMode="numeric" aria-label={`${title}: days`} className={clsx(box, '!w-16 shrink-0')} value={ic.days} onChange={(e) => ic.set({ days: e.target.value })} onFocus={(e) => e.target.select()} />
                 {[7, 15, 30].map((x) => (
                   <Button key={x} size="sm" variant="outline" className="!h-8 min-w-8 flex-1 !shrink !px-1 text-[12px]" disabled={ic.minDays > 0 && x < ic.minDays} onClick={() => ic.set({ days: String(x) })}>{x}</Button>
                 ))}
@@ -169,7 +191,8 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
               <input type="number" min="0" aria-label={`${title}: amount`} className={clsx(box, '!text-right')} value={ic.amount} placeholder={String(ic.autoAmount)} onChange={(e) => ic.set({ amount: e.target.value })} onFocus={(e) => e.target.select()} />
             </div>
           )}
-          {showRate && <RateField title={title} rate={ic.rate} unit={ic.unit} typed={ic.rateTyped} placeholder={ic.loanRate} onRate={(v) => ic.set({ rate: v })} onUnit={(u) => ic.set({ unit: u })} />}
+          {showRate && <RateField title={title} rate={ic.rate} unit={ic.unit} typed={ic.rateTyped} placeholder={ic.loanRate} perDay={ic.perDay} monthly={ic.monthly}
+            onRate={(v) => ic.set({ rate: v })} onUnit={(u) => ic.set({ unit: u })} onReset={ic.resetRate} />}
         </div>
       )}
 

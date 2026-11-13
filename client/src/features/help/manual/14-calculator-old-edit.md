@@ -1,7 +1,7 @@
 ---
 title: Interest Calculator, Old Loan Entry, Edit Loan
 group: Loan
-screens: interest_calculator, loan_old, loan_edit
+screens: interest_calculator, loan_old, loan_edit, loan_interest, loan_release
 ---
 # Interest Calculator
 
@@ -14,6 +14,13 @@ screens: interest_calculator, loan_old, loan_edit
 5. **Print Preview (F9)**, **PDF (Ctrl+P)**, **Excel (Ctrl+E)**.
 
 Example: ₹12,345 compound 1.5% pledged 05/01/2025, up to 05/11/2026 = 22 months → interest ₹4,407 − advance ₹185 = **₹4,222 due**.
+
+## Quote a customer - schemes and manual rate
+**Quote a customer** tab: loan amount, loan date, *Calculate till*.
+- **Calculate schemes** - every scheme side by side (days, charged days, rate, interest, total).
+- **Manual quote** - any **Interest rate** in any unit (% / month, % / year, % / day, ₹ / day, ₹ / month). It shows the interest three ways: **By days** (days × a day), **By full months** and **By started months** (every started month, like the scheme). *Default rate* goes back to the default rate in System Control.
+
+Example: ₹50,000 from 13/08/2026 to 13/11/2026 (92 days) at **₹20 / day** → by days **₹1,840**, by months 3 × ₹600 = **₹1,800**.
 
 # Old Loan Entry
 

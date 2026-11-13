@@ -316,6 +316,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
 | **Loan bill: terms, photos, contact** | Loan bill (A4) | Terms & conditions page prints by default; customer photo falls back to the customer's record; branch contact numbers on the acknowledge card |
 | **Interest Auto or Manual everywhere** | New / Old Loan (advance), Part Payment, Top-up, Release, Re-loan, Loan Counter | One *Interest* box: Auto, or Months / Days / Amount with a rate % - chapter *Interest - Auto or Manual* |
+| **Interest rate box everywhere** | Every Interest box (incl. advance interest), Part Payment, Interest Calculator → Quote | *Days* shows the rate per day, *Months* per month; type any rate; change the unit and the number converts; *= ₹ a day · ₹ a month* shows what it comes to |
 | **Rate in any unit** | Every Interest box (Months / Days) and Part Payment | % / month, % / year, % / day, ₹ / day or ₹ / month - printed on the receipt with its unit |
 | **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
 | **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
@@ -463,7 +464,7 @@ Type the **loan no** → **Load** (Enter). The **Interest months** strip shows e
 | **Days** | Type the days, or press **7 / 15 / 21 / 30 days** | interest per month ÷ 30 × days (rounded to the rupee) |
 | **Amount** | Type the interest amount | the amount you type |
 
-**Rate** and **unit** (next to Months / Days) - filled with the loan's rate (e.g. 1.5 % / month). Type another rate (e.g. **1.25**), or pick another unit - **% / year**, **% / day**, **₹ / day**, **₹ / month** - to charge this payment that way. Changing the unit first shows the loan's rate in that unit (1.5% a month = 18% a year). The boxes turn amber and the line *Rate ₹20 a day for this payment only (loan rate 1.5% p.m.)* appears; **Use loan rate** puts it back. See the unit table in *Interest - Auto or Manual*.
+**Interest rate** and **unit** (under Months / Days) - shows the loan's rate: **% / month** with Months, **% / day** with Days (e.g. 1.5% a month = 0.05% a day). Type another rate (e.g. **0.04** a day or **1.25** a month), or pick another unit - **% / year**, **% / day**, **₹ / day**, **₹ / month** - the number is converted so the money stays the same, then type yours. The boxes turn amber, the line *Rate 0.04% a day for this payment only (loan rate 1.5% p.m.)* appears, and **Use loan rate** (above the box) puts it back. *= ₹ a day · ₹ a month* under the box shows what the rate comes to. See the step-by-step in *Interest - Auto or Manual*.
 - The typed rate is used **only for this receipt** and printed on it with its unit (*Interest Rate 1.25% p.m.*, *₹20 a day*). The loan keeps its own rate - to change the rate for good use **Loan → Edit Loan Record**.
 - Interest taken at a lower rate is counted as paid; what the loan rate still asks for stays due (it shows as *due* next time and at release, where it can be settled with *Days* / *Amount*).
 
@@ -493,6 +494,7 @@ Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
 - **Days:** 15 days = 27.50 × 15 = **₹413**.
 - **Typed rate:** 1 month at **1.25%** = 55,000 × 1.25% = **₹688** (instead of ₹825).
 - **Rupees a day:** 10 days at **₹20 / day** = **₹200**.
+- **Daily %:** loan ₹30,000, 10 days at **0.04% a day** = 30,000 × 0.04% × 10 = **₹120**.
 - **Both on one bill:** 15 days interest ₹413 + part amount ₹5,000 = **₹5,413** - one receipt, new outstanding ₹50,000.
 
 ## Good to know
@@ -558,6 +560,13 @@ Example (silver, flat 2%, same day): old loan ₹3,000 on a 50 g silver article 
 5. **Print Preview (F9)**, **PDF (Ctrl+P)**, **Excel (Ctrl+E)**.
 
 Example: ₹12,345 compound 1.5% pledged 05/01/2025, up to 05/11/2026 = 22 months → interest ₹4,407 − advance ₹185 = **₹4,222 due**.
+
+## Quote a customer - schemes and manual rate
+**Quote a customer** tab: loan amount, loan date, *Calculate till*.
+- **Calculate schemes** - every scheme side by side (days, charged days, rate, interest, total).
+- **Manual quote** - any **Interest rate** in any unit (% / month, % / year, % / day, ₹ / day, ₹ / month). It shows the interest three ways: **By days** (days × a day), **By full months** and **By started months** (every started month, like the scheme). *Default rate* goes back to the default rate in System Control.
+
+Example: ₹50,000 from 13/08/2026 to 13/11/2026 (92 days) at **₹20 / day** → by days **₹1,840**, by months 3 × ₹600 = **₹1,800**.
 
 # Old Loan Entry
 
@@ -628,7 +637,13 @@ Every screen that takes interest has the same **Interest** box. The app works ou
 | **Amount** | The rupees you type. |
 | **None** | No interest (only where that makes sense: advance interest, interest deducted on a top-up, interest with a part amount). |
 
-Manual modes show **amber**. With **Months** and **Days** there is a **Rate** box and a **unit** list next to it, filled with the loan's rate (e.g. 1.5 % / month). Type another rate, or pick another unit, to charge this entry that way. The typed rate and its unit are printed on the receipt (*Interest Rate ₹20 a day*) and shown in Payment history (*10 days at ₹20 a day*). The loan keeps its own rate.
+Manual modes show **amber**. With **Months** and **Days** the box has an **Interest rate** row: a number box and a **unit** list.
+
+- It **follows the mode** until you type: **Months** shows the loan's rate **% / month** (e.g. 1.5), **Days** shows it **% / day** (e.g. 0.05). The small text *loan rate - type to change* means the loan's own rate is used.
+- **Type a rate** to charge this entry at your rate - the boxes turn amber and *Use loan rate* appears (click it to go back).
+- **Change the unit** any time - the number is converted so the money stays the same (1.2 % / month → 0.04 % / day → 14.4 % / year → ₹20 / day on ₹50,000). Then type your rate in that unit.
+- The line under it shows what the rate comes to: **= ₹25.00 a day · ₹750.00 a month**.
+- The typed rate and its unit are printed on the receipt (*Interest Rate 0.04% a day*) and shown in Payment history (*10 days at 0.04% a day*). The loan keeps its own rate.
 
 ## Rate units
 | Unit | Example | A month | A day |
@@ -642,6 +657,30 @@ Manual modes show **amber**. With **Months** and **Days** there is a **Rate** bo
 When you change the unit, the box first shows the loan's own rate in that unit (1.5% a month = 18% a year = ₹25 a day on ₹50,000); then type your rate. Months use the monthly figure, Days the daily figure. % / year counts a day as 1/365 of the year, so 30 days come to a little less than a month (₹740 against ₹750).
 
 The line at the bottom always shows what will be charged: *Auto · 4 months ₹3,000* or *Manual · 15 days ₹375*, and **Auto would be ₹…** so you can compare.
+
+## How to - step by step
+**A. Charge some days at a daily rate** (customer closes / pays after a few days)
+1. In the Interest box press **Days** (Part Payment: F2 until *Days*).
+2. Type the days (or press **7 / 15 / 30**). The rate shows the loan's rate per day.
+3. To use your own rate, type it in **Interest rate** - e.g. **0.04** with **% / day**.
+4. Check the lines: *= ₹… a day*, *10 days × ₹… a day*, and the bold *Manual · 10 days at 0.04% a day ₹…*. Save.
+
+**B. Charge some days at a monthly rate** (the shop thinks in % a month)
+1. **Days**, type the days.
+2. Change the unit to **% / month** and type the rate - e.g. **1.25**. The days are charged at 1.25% a month ÷ 30 a day.
+
+**C. Charge rupees a day** (fixed amount a day)
+1. **Days**, type the days, unit **₹ / day**, type the rupees - e.g. **20**. 10 days = ₹200.
+
+**D. Charge months at a different rate**
+1. **Months**, type the months (+ / −). The rate shows the loan's **% / month**.
+2. Type your rate (e.g. **1.25**), or pick **% / year** (e.g. 15) or **₹ / month** (e.g. 700).
+
+**E. Take a fixed interest amount** - **Amount**, type the rupees. No rate is needed.
+
+**F. Advance interest at New Loan / Re-loan** - **Advance interest (F6)**: Auto (scheme months), or **Days** / **Months** with any rate and unit (e.g. 15 days at 0.05% a day), **Amount**, or **None**.
+
+**G. Quote before deciding** - **Loan → Interest Calculator → Quote a customer**: *Manual quote* takes any rate and unit and shows the interest **by days**, **by full months** and **by started months** for the dates you set. Use the same mode, rate and unit in the Interest box.
 
 ## Where it is
 | Screen | Box | Months / Days count from |
@@ -661,7 +700,7 @@ The line at the bottom always shows what will be charged: *Auto · 4 months ₹3
 ## By role
 | Role | What to know |
 |---|---|
-| **Cashier** | Leave it on **Auto** unless the shop agreed otherwise. For a short loan use **Days** (7 / 15 / 30); for a special rate type it with the right unit. Closing a loan for less than Auto above the limit asks for a manager's login - ask the manager to type it on your screen. |
+| **Cashier** | Leave it on **Auto** unless the shop agreed otherwise. For a short loan use **Days** (7 / 15 / 30) - the rate box switches to % / day by itself; for a special rate type it (and pick the unit the customer agreed). Check the *= ₹ a day · ₹ a month* line before saving. Closing a loan for less than Auto above the limit asks for a manager's login - ask the manager to type it on your screen. |
 | **Branch Manager** | Approves reductions (*Admin approval* box: your username and password). Sets **Interest by days: minimum days** and **Release: discount without admin** in **Settings → System Control**. Checks reductions in **Settings → Audit Trail** (action *INTEREST_REDUCED*). |
 | **Owner / Super Admin** | Same as Branch Manager, for all branches. Decides which roles may take interest (**Interest Receipt** permission) and part amounts (**Part Payment** permission) in **Users & Roles**. |
 | **Accountant** | The accounts show the interest actually taken (interest income = what was received). A reduction is not posted as a discount - it is simply less interest income; only the *Discount* box goes to the discount account. Receipts show the days, rate and unit used. |

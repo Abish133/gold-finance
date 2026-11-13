@@ -23,7 +23,7 @@ Type the **loan no** → **Load** (Enter). The **Interest months** strip shows e
 | **Days** | Type the days, or press **7 / 15 / 21 / 30 days** | interest per month ÷ 30 × days (rounded to the rupee) |
 | **Amount** | Type the interest amount | the amount you type |
 
-**Rate** and **unit** (next to Months / Days) - filled with the loan's rate (e.g. 1.5 % / month). Type another rate (e.g. **1.25**), or pick another unit - **% / year**, **% / day**, **₹ / day**, **₹ / month** - to charge this payment that way. Changing the unit first shows the loan's rate in that unit (1.5% a month = 18% a year). The boxes turn amber and the line *Rate ₹20 a day for this payment only (loan rate 1.5% p.m.)* appears; **Use loan rate** puts it back. See the unit table in *Interest - Auto or Manual*.
+**Interest rate** and **unit** (under Months / Days) - shows the loan's rate: **% / month** with Months, **% / day** with Days (e.g. 1.5% a month = 0.05% a day). Type another rate (e.g. **0.04** a day or **1.25** a month), or pick another unit - **% / year**, **% / day**, **₹ / day**, **₹ / month** - the number is converted so the money stays the same, then type yours. The boxes turn amber, the line *Rate 0.04% a day for this payment only (loan rate 1.5% p.m.)* appears, and **Use loan rate** (above the box) puts it back. *= ₹ a day · ₹ a month* under the box shows what the rate comes to. See the step-by-step in *Interest - Auto or Manual*.
 - The typed rate is used **only for this receipt** and printed on it with its unit (*Interest Rate 1.25% p.m.*, *₹20 a day*). The loan keeps its own rate - to change the rate for good use **Loan → Edit Loan Record**.
 - Interest taken at a lower rate is counted as paid; what the loan rate still asks for stays due (it shows as *due* next time and at release, where it can be settled with *Days* / *Amount*).
 
@@ -53,6 +53,7 @@ Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
 - **Days:** 15 days = 27.50 × 15 = **₹413**.
 - **Typed rate:** 1 month at **1.25%** = 55,000 × 1.25% = **₹688** (instead of ₹825).
 - **Rupees a day:** 10 days at **₹20 / day** = **₹200**.
+- **Daily %:** loan ₹30,000, 10 days at **0.04% a day** = 30,000 × 0.04% × 10 = **₹120**.
 - **Both on one bill:** 15 days interest ₹413 + part amount ₹5,000 = **₹5,413** - one receipt, new outstanding ₹50,000.
 
 ## Good to know

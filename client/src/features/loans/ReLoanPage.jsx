@@ -121,7 +121,7 @@ export default function ReLoanPage() {
                 <Field label="Calculation"><Select prefix={<TrendingUp className="size-3.5" />} value={f.interest_type} onChange={(e) => set({ interest_type: e.target.value })} options={INTEREST_TYPES} /></Field>
                 <Field label="Doc charges"><Input type="number" prefix={<Receipt className="size-3.5" />} value={f.doc_charges} onChange={(e) => set({ doc_charges: e.target.value })} /></Field>
               </div>
-              <InterestChoice ic={icAdv} title="Advance interest (F6)" rate={false} disabled={!l} />
+              <InterestChoice ic={icAdv} title="Advance interest (F6)" disabled={!l} />
               <InterestChoice ic={icOld} title="Interest on old loan" approvalLimit={n(settings?.DISCOUNT_APPROVAL_LIMIT)} disabled={!l} />
               <LtvBar value={valueToday ? (np / valueToday) * 100 : 0} max={n(scheme?.ltv_percent || 75)} safe={settings?.LTV_SAFE_PERCENT} warn={settings?.LTV_WARN_PERCENT} suffix="(value today)" />
               <div className="flex min-h-28 flex-1 flex-col justify-evenly rounded-md border border-ink-200 bg-ink-50/50 px-2.5 py-1 dark:border-ink-800 dark:bg-ink-800/30 [&>div:not(:last-child)]:border-b [&>div]:border-dashed [&>div]:border-ink-200 dark:[&>div]:border-ink-700">
