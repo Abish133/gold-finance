@@ -5,6 +5,8 @@ screens: reports_loan, reports_release, reports_collection, reports_summary, rep
 ---
 # Reports
 
+Interest figures in the reports are the amounts actually received - Auto or Manual. A receipt taken by days or at a typed rate shows it in Loan Details / Payment history (*10 days at ₹20 a day*).
+
 Every report has: date range with quick buttons (Today, This month, Last month, A/c year), filters, tiles with totals, a table, a side panel for the selected row, **Print Preview (F9)**, **PDF (Ctrl+P)**, **Excel (Ctrl+E)** (real .xlsx with totals).
 
 | Report | Menu | Shows |

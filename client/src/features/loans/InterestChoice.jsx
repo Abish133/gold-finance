@@ -4,10 +4,12 @@ import dayjs from 'dayjs';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { amount, n, round2 } from '@/lib/format';
+import { RATE_UNITS, ratePer, rateInUnit, rateText } from '@/lib/rateUnits';
 
 /**
  * One interest control for every screen that takes interest: Auto (the figure the scheme / system works out)
- * or Manual - by Months, by Days or a typed Amount, at the loan's rate or a typed rate % per month.
+ * or Manual - by Months, by Days or a typed Amount, at the loan's rate or a typed rate in any unit
+ * (% a month, % a year, % a day, ₹ a day, ₹ a month - see lib/rateUnits).
  *
  *   const ic = useInterestChoice({ basis: 'DUE', calc, loan, txns, settings, resetKey: loan?.id });
  *   ic.interest  -> amount to use          ic.payload -> fields for the API (empty when Auto)
@@ -23,7 +25,7 @@ import { amount, n, round2 } from '@/lib/format';
 const MODE_LABEL = { AUTO: 'Auto', MONTHS: 'Months', DAYS: 'Days', AMOUNT: 'Amount', NONE: 'None' };
 
 /** Re-loan: interest_rate is the new loan's rate, so a rate typed for the old loan's interest goes as old_interest_rate. */
-export const oldInterest = ({ interest_rate: rate, ...rest }) => (rate == null ? rest : { ...rest, old_interest_rate: rate });
+export const oldInterest = ({ interest_rate: rate, interest_rate_unit: unit, ...rest }) => (rate == null ? rest : { ...rest, old_interest_rate: rate, old_interest_rate_unit: unit });
 
 /** Loan rate % per month and the amount interest is worked on (MyBook: loan amount with top-ups, part payments do not lower it). */
 export const rateInfo = (calc, loan, txns = []) => {
@@ -46,13 +48,14 @@ export function useInterestChoice({
   const minDays = n(settings?.INTEREST_MIN_DAYS);
   const autoMonths = defaultMonths ?? (!calc ? 1 : basis === 'PAY' ? Math.max(1, n(calc.monthsDue) - n(calc.monthsPaid)) : Math.max(1, n(calc.monthsDue)));
   const autoDays = defaultDays ?? (calc && basis === 'DUE' ? Math.max(1, n(calc.elapsedDays)) : 30);
-  const [s, setS] = useState({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '' });
+  const [s, setS] = useState({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM' });
   // a new loan / screen starts on Auto again
-  useEffect(() => { setS({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '' }); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setS({ mode: defaultMode, months: autoMonths, days: '', amount: '', rate: '', unit: 'PM' }); }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const rateTyped = ['MONTHS', 'DAYS'].includes(s.mode) && s.rate !== '' && n(s.rate) >= 0 && round2(n(s.rate)) !== loanRate;
-  const monthly = rateTyped ? Math.round((base * n(s.rate)) / 100) : sysMonthly;
-  const perDay = monthly / 30;
+  const rateTyped = ['MONTHS', 'DAYS'].includes(s.mode) && s.rate !== '' && n(s.rate) >= 0 && (s.unit !== 'PM' || round2(n(s.rate)) !== loanRate);
+  const typed = rateTyped ? ratePer(base, s.rate, s.unit) : null;
+  const monthly = typed ? typed.monthly : sysMonthly;
+  const perDay = typed ? typed.perDay : monthly / 30;
   const paid = basis === 'DUE' && calc ? n(calc.interestPaid) : 0;
   const months = Math.max(0, Math.floor(n(s.months)));
   const days = Math.max(0, Math.floor(n(s.days)));
@@ -68,8 +71,9 @@ export function useInterestChoice({
   const manual = s.mode !== 'AUTO';
   const daysTooFew = s.mode === 'DAYS' && days > 0 && minDays > 0 && days < minDays;
   const reduced = basis === 'DUE' && manual ? round2(Math.max(0, autoAmount - interest)) : 0;
-  const label = s.mode === 'MONTHS' ? `${months} month${months === 1 ? '' : 's'}${rateTyped ? ` at ${n(s.rate)}%` : ''}`
-    : s.mode === 'DAYS' ? `${days} day${days === 1 ? '' : 's'}${rateTyped ? ` at ${n(s.rate)}%` : ''}`
+  const at = rateTyped ? ` at ${rateText(s.rate, s.unit)}` : '';
+  const label = s.mode === 'MONTHS' ? `${months} month${months === 1 ? '' : 's'}${at}`
+    : s.mode === 'DAYS' ? `${days} day${days === 1 ? '' : 's'}${at}`
       : s.mode === 'AMOUNT' ? 'typed amount' : s.mode === 'NONE' ? 'none' : autoLabel || 'auto';
   // PAY: the new paid-up date - from where the paid months end, plus the months / days paid now
   const paidFrom = basis === 'PAY' && calc && loan ? dayjs(loan.loan_date).add(n(calc.monthsPaid), 'month') : null;
@@ -79,7 +83,7 @@ export function useInterestChoice({
     ...(upto && interest > 0 ? { interest_upto: upto.format('YYYY-MM-DD') } : {}),
     ...(s.mode === 'DAYS' && days ? { interest_days: days } : {}),
     ...(s.mode === 'MONTHS' && basis !== 'DUE' ? { months_paid: months } : {}),
-    ...(rateTyped ? { interest_rate: n(s.rate) } : {}),
+    ...(rateTyped ? { interest_rate: n(s.rate), interest_rate_unit: s.unit } : {}),
   };
 
   const set = (patch) => setS((x) => {
@@ -88,17 +92,36 @@ export function useInterestChoice({
     if (patch.mode === 'DAYS' && !x.days) next.days = String(Math.max(autoDays, minDays, 1));
     if (patch.mode === 'MONTHS' && !x.months) next.months = autoMonths;
     if (['MONTHS', 'DAYS'].includes(patch.mode) && x.rate === '') next.rate = String(loanRate);
+    // a new unit starts from the loan's rate shown in that unit (1.5% a month = 18% a year = ₹25 a day on ₹50,000)
+    if (patch.unit && patch.unit !== x.unit && patch.rate == null) next.rate = String(rateInUnit(loanRate, patch.unit, base));
     return next;
   });
   const error = daysTooFew ? `At least ${minDays} days must be charged` : s.mode === 'DAYS' && !days ? 'Enter the number of days' : null;
 
   return {
-    ...s, set, basis, manual, interest, gross, paid, monthly, perDay, loanRate, rateTyped, reduced, autoAmount, autoLabel,
+    ...s, set, basis, manual, interest, gross, paid, monthly, perDay, loanRate, rateTyped, base, reduced, autoAmount, autoLabel,
     label, payload, error, minDays, allowNone, modes: ['AUTO', 'MONTHS', 'DAYS', 'AMOUNT', ...(allowNone ? ['NONE'] : [])],
   };
 }
 
 const box = 'num h-8 w-full min-w-0 rounded-md border border-ink-200 bg-white px-2 text-center text-[15px] font-bold text-navy-900 outline-none [appearance:textfield] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-ink-700 dark:bg-ink-950 dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+
+/** Rate box with its unit (% a month / % a year / % a day / ₹ a day / ₹ a month). Used here and on Part Payment. */
+export function RateField({ title = 'Interest', rate, unit = 'PM', typed, placeholder, onRate, onUnit, className, big }) {
+  return (
+    <div className={className}>
+      <p className="label">Rate</p>
+      <div className="flex items-center gap-1">
+        <input type="number" min="0" step="0.01" inputMode="decimal" aria-label={`${title}: rate`} className={clsx(box, big && '!h-9 !text-lg', 'w-16 shrink', typed && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')}
+          value={rate} placeholder={String(placeholder ?? '')} onChange={(e) => onRate(e.target.value)} onFocus={(e) => e.target.select()} />
+        <select aria-label={`${title}: rate unit`} value={unit} onChange={(e) => onUnit(e.target.value)}
+          className={clsx('h-8 min-w-0 flex-1 rounded-md border border-ink-200 bg-white px-1 text-[12px] font-semibold text-ink-700 outline-none focus:border-emerald-500 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-200', big && '!h-9', unit !== 'PM' && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')}>
+          {RATE_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 /** The control itself: mode switch, the inputs of the mode, and one summary line. */
 export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled, className, hideSummary, rate = true }) {
@@ -118,7 +141,7 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
       </div>
 
       {ic.mode !== 'AUTO' && ic.mode !== 'NONE' && (
-        <div className={clsx('mt-1.5 grid items-end gap-1.5', showRate ? 'grid-cols-[1fr_88px]' : 'grid-cols-1')}>
+        <div className={clsx('mt-1.5 grid items-end gap-1.5', showRate ? 'grid-cols-[1fr_150px]' : 'grid-cols-1')}>
           {ic.mode === 'MONTHS' && (
             <div>
               <p className="label">{ic.basis === 'DUE' ? 'Months from loan date' : 'Months'}</p>
@@ -146,12 +169,7 @@ export function InterestChoice({ ic, title = 'Interest', approvalLimit, disabled
               <input type="number" min="0" aria-label={`${title}: amount`} className={clsx(box, '!text-right')} value={ic.amount} placeholder={String(ic.autoAmount)} onChange={(e) => ic.set({ amount: e.target.value })} onFocus={(e) => e.target.select()} />
             </div>
           )}
-          {showRate && (
-            <div>
-              <p className="label">Rate % / m</p>
-              <input type="number" min="0" step="0.01" inputMode="decimal" aria-label={`${title}: rate percent per month`} className={clsx(box, ic.rateTyped && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')} value={ic.rate} placeholder={String(ic.loanRate)} onChange={(e) => ic.set({ rate: e.target.value })} onFocus={(e) => e.target.select()} />
-            </div>
-          )}
+          {showRate && <RateField title={title} rate={ic.rate} unit={ic.unit} typed={ic.rateTyped} placeholder={ic.loanRate} onRate={(v) => ic.set({ rate: v })} onUnit={(u) => ic.set({ unit: u })} />}
         </div>
       )}
 

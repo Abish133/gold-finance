@@ -3,6 +3,7 @@
  * Top-up, Re-loan, Old Loan, Edit). Layout and shortcuts follow the desktop app:
  * navy title bar with info tiles, three panels, bottom action bar with key hints.
  */
+import { rateText } from '@/lib/rateUnits';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -803,7 +804,7 @@ export function PaymentsGrid({ transactions = [], loan, advanceMode = 'at loan',
         <tbody className="divide-y divide-ink-100 dark:divide-ink-800">
           {!rows.length && <tr><td colSpan={5} className="py-6 text-center text-[12px] text-ink-400">No payments yet</td></tr>}
           {rows.map((t) => (
-            <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.interest_days) ? `${n(t.interest_days)} day${n(t.interest_days) > 1 ? 's' : ''}` : n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}{n(t.interest_rate_used) > 0 && <span className="block text-[10px] text-amber-700 dark:text-amber-300">at {n(t.interest_rate_used)}%</span>}</td>
+            <tr key={t.id}><td className="px-3 py-1.5">{date(t.txn_date)}</td><td className="px-3">{t.txn_type === 'ADVANCE' ? 'Advance interest' : TXN_LABEL[t.txn_type] || t.txn_type.replace('_', ' ')}</td><td className="num px-3 text-right">{n(t.interest_days) ? `${n(t.interest_days)} day${n(t.interest_days) > 1 ? 's' : ''}` : n(t.months_paid) ? `${n(t.months_paid)} month${n(t.months_paid) > 1 ? 's' : ''}` : ''}{n(t.interest_rate_used) > 0 && <span className="block text-[10px] text-amber-700 dark:text-amber-300">at {rateText(t.interest_rate_used, t.interest_rate_unit)}</span>}</td>
               <td className="num px-3 text-right">{amount(t.total_amount)}{t.txn_type === 'PART_PAYMENT' && n(t.interest_amount) > 0 && <span className="block text-[10px] text-ink-500">Int {amount(t.interest_amount).replace('.00', '')} + Part {amount(Math.abs(n(t.principal_amount))).replace('.00', '')}</span>}</td><td className="px-3">{(t.payments || []).map((p) => (p.amount ? <span key={p.id || p.mode} className="mr-1 rounded bg-emerald-50 px-1 text-[10px] font-semibold text-emerald-700">{PAY_WORD[p.mode] || p.mode} ₹{amount(p.amount).replace('.00', '')}</span> : p.mode))}</td></tr>
           ))}
         </tbody>

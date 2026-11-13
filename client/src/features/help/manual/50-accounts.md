@@ -19,6 +19,8 @@ Example: Jama · Capital · ₹10,000 · Cash · "Capital introduced" → Jama t
 
 Example: Payment · Rent · ₹8,000 · Cash · "Shop rent November".
 
+> **Interest in the accounts** - every receipt posts the interest actually taken to *Interest income*: Auto or Manual (months, days, typed amount, typed rate). Taking less than Auto at release / re-loan is not a discount entry - it is simply less interest income. Only the **Discount** box is posted to the *Discount* account.
+
 ## Account Master
 **Accounts → Account Master** - add accounts (ledgers) under a group: Rent, Electricity, Capital A/c (owner), Staff advance …
 

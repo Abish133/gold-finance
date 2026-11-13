@@ -144,8 +144,8 @@ Your **role** decides which menus you see. A cashier does not see accounts or se
 | Role | Usually does |
 |---|---|
 | Super Admin (owner) | Everything, all branches, settings, users, year end |
-| Branch Manager | Counter + approvals + day end + auction + masters of the branch |
-| Cashier | Loans, part payment, release, re-loan, top-up, stickers, cash count |
+| Branch Manager | Counter + approvals (discounts, interest below Auto) + day end + auction + masters of the branch |
+| Cashier | Loans, part payment, release, re-loan, top-up, stickers, cash count; interest Auto or Manual (asks the manager above the limit) |
 | Accountant | Vouchers, cash book, ledgers, final accounts, bank, salary |
 | Viewer | Look up loans, customers and reports only |
 
@@ -314,6 +314,7 @@ Old branches keep their phone as the first contact number. Fill the licence numb
 | **Interest by Months / Days / Amount** | Loan → Part Payment, *Interest* (F2 changes) | Charge whole months, a number of days (7, 15, 21, 30 or any), or type the amount |
 | **Loan bill: terms, photos, contact** | Loan bill (A4) | Terms & conditions page prints by default; customer photo falls back to the customer's record; branch contact numbers on the acknowledge card |
 | **Interest Auto or Manual everywhere** | New / Old Loan (advance), Part Payment, Top-up, Release, Re-loan, Loan Counter | One *Interest* box: Auto, or Months / Days / Amount with a rate % - chapter *Interest - Auto or Manual* |
+| **Rate in any unit** | Every Interest box (Months / Days) and Part Payment | % / month, % / year, % / day, ₹ / day or ₹ / month - printed on the receipt with its unit |
 | **Rate % / month for this payment** | Loan → Part Payment (Months / Days), Release (Days) | Type a rate such as 1.25 instead of the loan's 1.5 - used for that receipt only and printed on it |
 | **Charge interest at release** | Loan → Release Loan, *Charge interest* | Full (system) / Days / Amount - e.g. closed after 3 days, charge 7 or 15 days |
 | **Approval** | Release | Interest below the system figure counts like a discount - above the limit it needs a manager's password |
@@ -445,7 +446,7 @@ Same loan closed after **3 days**, charged **7 days** (no advance): ₹750 per m
 **Loan → Part Payment** - the customer pays interest, pays back part of the loan amount, or **both on one receipt**, and keeps the loan open.
 
 The **Receive** panel on the right has two parts:
-- **Interest** - charged by **Months**, **Days** or a typed **Amount** (the small switch next to *Interest*; F2 changes between them), at the loan's rate or a **rate % / month** you type.
+- **Interest** - charged by **Months**, **Days** or a typed **Amount** (the small switch next to *Interest*; F2 changes between them), at the loan's rate or a rate you type in any unit (% / month, % / year, % / day, ₹ / day, ₹ / month).
 - **Part amount** - optional (F3 goes to the box). Leave it 0 to take interest only.
 
 **Total to receive** = interest + part amount (when both are taken, the split is shown under the total).
@@ -460,8 +461,8 @@ Type the **loan no** → **Load** (Enter). The **Interest months** strip shows e
 | **Days** | Type the days, or press **7 / 15 / 21 / 30 days** | interest per month ÷ 30 × days (rounded to the rupee) |
 | **Amount** | Type the interest amount | the amount you type |
 
-**Rate % / month** (next to Months / Days) - filled with the loan's rate (e.g. 1.5). Type another rate to charge this payment at that rate, e.g. **1.25**. The box turns amber and the line *Rate 1.25% for this payment only (loan rate 1.5%)* appears; **Use loan rate** puts it back.
-- The typed rate is used **only for this receipt** and printed on it (*Interest Rate 1.25% per month*). The loan keeps its own rate - to change the rate for good use **Loan → Edit Loan Record**.
+**Rate** and **unit** (next to Months / Days) - filled with the loan's rate (e.g. 1.5 % / month). Type another rate (e.g. **1.25**), or pick another unit - **% / year**, **% / day**, **₹ / day**, **₹ / month** - to charge this payment that way. Changing the unit first shows the loan's rate in that unit (1.5% a month = 18% a year). The boxes turn amber and the line *Rate ₹20 a day for this payment only (loan rate 1.5% p.m.)* appears; **Use loan rate** puts it back. See the unit table in *Interest - Auto or Manual*.
+- The typed rate is used **only for this receipt** and printed on it with its unit (*Interest Rate 1.25% p.m.*, *₹20 a day*). The loan keeps its own rate - to change the rate for good use **Loan → Edit Loan Record**.
 - Interest taken at a lower rate is counted as paid; what the loan rate still asks for stays due (it shows as *due* next time and at release, where it can be settled with *Days* / *Amount*).
 
 *Paid up to (after save)* moves on by the months or days charged (for *Amount*, by the days that amount covers).
@@ -489,6 +490,7 @@ Loan ₹55,000 at 1.5% → interest per month ₹825, a day ₹27.50.
 - **Months:** 3 months = **₹2,475**.
 - **Days:** 15 days = 27.50 × 15 = **₹413**.
 - **Typed rate:** 1 month at **1.25%** = 55,000 × 1.25% = **₹688** (instead of ₹825).
+- **Rupees a day:** 10 days at **₹20 / day** = **₹200**.
 - **Both on one bill:** 15 days interest ₹413 + part amount ₹5,000 = **₹5,413** - one receipt, new outstanding ₹50,000.
 
 ## Good to know
@@ -620,11 +622,22 @@ Every screen that takes interest has the same **Interest** box. The app works ou
 |---|---|
 | **Auto** (green) | What the app works out - the scheme rules (every started month, compound / flat, advance months). Same as before. |
 | **Months** | A number of months × interest per month. |
-| **Days** | A number of days × interest per month ÷ 30 (rounded to the rupee). Quick buttons **7 / 15 / 30**. |
+| **Days** | A number of days × the interest of one day (a month ÷ 30, or the day figure of the unit you pick - see *Rate units*), rounded to the rupee. Quick buttons **7 / 15 / 30**. |
 | **Amount** | The rupees you type. |
 | **None** | No interest (only where that makes sense: advance interest, interest deducted on a top-up, interest with a part amount). |
 
-Manual modes show **amber**. With **Months** and **Days** there is a **Rate % / m** box, filled with the loan's rate - type another rate (e.g. **1.25** instead of 1.5) to charge this entry at that rate. The typed rate is printed on the receipt.
+Manual modes show **amber**. With **Months** and **Days** there is a **Rate** box and a **unit** list next to it, filled with the loan's rate (e.g. 1.5 % / month). Type another rate, or pick another unit, to charge this entry that way. The typed rate and its unit are printed on the receipt (*Interest Rate ₹20 a day*) and shown in Payment history (*10 days at ₹20 a day*). The loan keeps its own rate.
+
+## Rate units
+| Unit | Example | A month | A day |
+|---|---|---|---|
+| **% / month** (the loan's own) | 1.5% on ₹50,000 | ₹750 | ₹25 (month ÷ 30) |
+| **% / year** | 18% on ₹50,000 | ₹750 | ₹24.66 (year ÷ 365) |
+| **% / day** | 0.05% on ₹50,000 | ₹750 (× 30) | ₹25 |
+| **₹ / day** | ₹20 | ₹600 (× 30) | ₹20 |
+| **₹ / month** | ₹700 | ₹700 | ₹23.33 (÷ 30) |
+
+When you change the unit, the box first shows the loan's own rate in that unit (1.5% a month = 18% a year = ₹25 a day on ₹50,000); then type your rate. Months use the monthly figure, Days the daily figure. % / year counts a day as 1/365 of the year, so 30 days come to a little less than a month (₹740 against ₹750).
 
 The line at the bottom always shows what will be charged: *Auto · 4 months ₹3,000* or *Manual · 15 days ₹375*, and **Auto would be ₹…** so you can compare.
 
@@ -632,7 +645,7 @@ The line at the bottom always shows what will be charged: *Auto · 4 months ₹3
 | Screen | Box | Months / Days count from |
 |---|---|---|
 | **New Loan / Old Loan entry** | *Advance interest (F6)* - F6 switches Auto ↔ None | the coming period |
-| **Part Payment** | *Interest* (Months / Days / Amount, rate %) - see *Part Payment & Interest* | where the paid interest ends |
+| **Part Payment** | *Interest* (Months / Days / Amount, rate + unit) - see *Part Payment & Interest* | where the paid interest ends |
 | **Top-up** | *Interest deducted now* - **None** by default | where the paid interest ends |
 | **Release** | *Charge interest* | the loan date (interest already paid is taken off) |
 | **Re-loan** | *Interest on old loan* and *Advance interest (F6)* on the new loan | old loan: the loan date · advance: the coming period |
@@ -643,11 +656,22 @@ The line at the bottom always shows what will be charged: *Auto · 4 months ₹3
 - **When the loan closes** (Release, Re-loan, Counter release / renew): the difference is a concession. The line *Less than auto* shows it. Together with any discount, above the limit in **System Control → Release: discount without admin** (e.g. ₹500) a manager / admin must type their login (**Admin approval**). Every reduction is written in the **Audit Trail** (*INTEREST_REDUCED*: system figure, charged, days, rate).
 - **Minimum days** (System Control → *Interest by days: minimum days*): Days cannot go below it.
 
+## By role
+| Role | What to know |
+|---|---|
+| **Cashier** | Leave it on **Auto** unless the shop agreed otherwise. For a short loan use **Days** (7 / 15 / 30); for a special rate type it with the right unit. Closing a loan for less than Auto above the limit asks for a manager's login - ask the manager to type it on your screen. |
+| **Branch Manager** | Approves reductions (*Admin approval* box: your username and password). Sets **Interest by days: minimum days** and **Release: discount without admin** in **Settings → System Control**. Checks reductions in **Settings → Audit Trail** (action *INTEREST_REDUCED*). |
+| **Owner / Super Admin** | Same as Branch Manager, for all branches. Decides which roles may take interest (**Interest Receipt** permission) and part amounts (**Part Payment** permission) in **Users & Roles**. |
+| **Accountant** | The accounts show the interest actually taken (interest income = what was received). A reduction is not posted as a discount - it is simply less interest income; only the *Discount* box goes to the discount account. Receipts show the days, rate and unit used. |
+| **Viewer** | Payment history (Loan Details, Part Payment) shows the period (*10 days*), the rate (*at 1.25% p.m.*) and *Int + Part* when both were taken on one receipt. |
+
 ## Examples
 Loan ₹50,000 at 1.5% p.m. → ₹750 a month, ₹25 a day.
 - **Release after 3 days**: Auto = ₹750 (1 month). *Days* → **7** → ₹175. *Less than auto ₹575* - needs the manager's login when the limit is ₹500.
 - **Re-loan after 4 months at a lower rate**: *Interest on old loan* → *Months* 4, rate **1.2** → 50,000 × 1.2% × 4 = **₹2,400** instead of ₹3,000. The new loan keeps its own rate (Interest % box).
 - **New loan, advance for half a month**: *Advance interest* → *Days* **15** → ₹375 instead of ₹750.
+- **₹20 a day for 10 days** (special rate): *Days* **10**, unit **₹ / day**, rate **20** → **₹200**.
+- **15% a year at release after 196 days** on ₹40,000: *Days* **196**, unit **% / year**, rate **15** → 40,000 × 15% ÷ 365 × 196 = **₹3,222**.
 - **Top-up with 10 days' interest deducted**: top-up ₹5,000, *Interest deducted now* → *Days* **10** → ₹250 deducted, ₹4,750 paid out.
 
 ---
@@ -784,6 +808,8 @@ Example: Jama · Capital · ₹10,000 · Cash · "Capital introduced" → Jama t
 
 Example: Payment · Rent · ₹8,000 · Cash · "Shop rent November".
 
+> **Interest in the accounts** - every receipt posts the interest actually taken to *Interest income*: Auto or Manual (months, days, typed amount, typed rate). Taking less than Auto at release / re-loan is not a discount entry - it is simply less interest income. Only the **Discount** box is posted to the *Discount* account.
+
 ## Account Master
 **Accounts → Account Master** - add accounts (ledgers) under a group: Rent, Electricity, Capital A/c (owner), Staff advance …
 
@@ -881,6 +907,8 @@ Profit & Loss: income 895 + 555 = ₹1,450, expenses ₹100, **net profit ₹1,3
 ---
 
 # Reports
+
+Interest figures in the reports are the amounts actually received - Auto or Manual. A receipt taken by days or at a typed rate shows it in Loan Details / Payment history (*10 days at ₹20 a day*).
 
 Every report has: date range with quick buttons (Today, This month, Last month, A/c year), filters, tiles with totals, a table, a side panel for the selected row, **Print Preview (F9)**, **PDF (Ctrl+P)**, **Excel (Ctrl+E)** (real .xlsx with totals).
 
@@ -1067,6 +1095,7 @@ Search (F3), Save Changes (F2), Print settings (F9).
 # User Log and Audit Trail
 - **User Log** - sign-ins and sign-outs.
 - **Audit Trail** - every save, edit, delete, backup, restore … with user, time and details. Filter by user, action, date.
+  - **INTEREST_REDUCED** - a release or re-loan that took less interest than Auto: system figure, interest charged, days, rate and unit. **APPROVAL** - who approved it and the amount.
 
 # Appearance
 **Settings → Appearance** - the look of the app. Changes apply at once.

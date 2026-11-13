@@ -1,7 +1,7 @@
 ---
 title: Settings
 group: Settings
-screens: s_users, s_system, s_print, s_company, s_audit
+screens: s_users, s_system, s_print, s_company, s_audit, s_branches, s_roles
 ---
 # Users & Roles
 
@@ -75,6 +75,7 @@ Search (F3), Save Changes (F2), Print settings (F9).
 # User Log and Audit Trail
 - **User Log** - sign-ins and sign-outs.
 - **Audit Trail** - every save, edit, delete, backup, restore … with user, time and details. Filter by user, action, date.
+  - **INTEREST_REDUCED** - a release or re-loan that took less interest than Auto: system figure, interest charged, days, rate and unit. **APPROVAL** - who approved it and the amount.
 
 # Appearance
 **Settings → Appearance** - the look of the app. Changes apply at once.

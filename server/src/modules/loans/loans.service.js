@@ -78,12 +78,19 @@ const interestDays = (body, settings) => {
   return days;
 };
 
-/** Rate % per month typed for this payment (e.g. 1.25 instead of the loan's 1.5). null = the loan's own rate. */
+/**
+ * Rate typed for this entry instead of the loan's own (e.g. 1.25% a month, 15% a year, ₹20 a day). null = the loan's rate.
+ * Units: PM % a month · PA % a year · PD % a day · RD ₹ a day · RM ₹ a month.
+ */
+const RATE_LIMITS = { PM: [20, '% a month'], PA: [240, '% a year'], PD: [1, '% a day'], RD: [100000, '₹ a day'], RM: [3000000, '₹ a month'] };
 const typedRate = (body) => {
   if (body.interest_rate == null || body.interest_rate === '') return null;
-  const r = round2(num(body.interest_rate) * 1000) / 1000;
-  if (!(r >= 0) || r > 20) throw ApiError.badRequest('Interest rate must be between 0 and 20 % per month');
-  return r;
+  const unit = String(body.interest_rate_unit || 'PM').toUpperCase();
+  if (!RATE_LIMITS[unit]) throw ApiError.badRequest('Unknown interest rate unit');
+  const r = Math.round(num(body.interest_rate) * 1000) / 1000;
+  const [max, word] = RATE_LIMITS[unit];
+  if (!(r >= 0) || r > max) throw ApiError.badRequest(`Interest rate must be between 0 and ${max} ${word}`);
+  return { rate: r, unit };
 };
 
 /** Desktop rule: no new loan until today's gold / silver rate is entered. */
@@ -135,12 +142,12 @@ const insertTxn = async (tx, req, loan, t, payments) => {
   const rno = await nextNumber(tx, { branchId: loan.branch_id, key: 'RECEIPT', fyId: fy.id });
   const r = await tx.query(
     `INSERT INTO loan_transactions (branch_id, loan_id, receipt_no, txn_date, txn_type, principal_amount, interest_amount, penal_amount,
-       charges, discount, total_amount, months_paid, interest_days, interest_rate_used, interest_upto, remarks, created_by)
-     VALUES (:b, :l, :rno, :d, :t, :p, :i, :pe, :c, :dis, :tot, :m, :days, :rate, :upto, :rem, :u)`,
+       charges, discount, total_amount, months_paid, interest_days, interest_rate_used, interest_rate_unit, interest_upto, remarks, created_by)
+     VALUES (:b, :l, :rno, :d, :t, :p, :i, :pe, :c, :dis, :tot, :m, :days, :rate, :runit, :upto, :rem, :u)`,
     {
       b: loan.branch_id, l: loan.id, rno: `${settings.RECEIPT_PREFIX || ''}${rno}`, d: t.date, t: t.type,
       p: round2(t.principal || 0), i: round2(t.interest || 0), pe: round2(t.penal || 0), c: round2(t.charges || 0),
-      dis: round2(t.discount || 0), tot: round2(t.total || 0), m: t.months || 0, days: t.days || null, rate: t.rate ?? null, upto: t.upto || null, rem: t.remarks || null, u: req.user.id,
+      dis: round2(t.discount || 0), tot: round2(t.total || 0), m: t.months || 0, days: t.days || null, rate: t.rate?.rate ?? null, runit: t.rate?.unit ?? null, upto: t.upto || null, rem: t.remarks || null, u: req.user.id,
     },
   );
   for (const p of payments || []) {
@@ -528,7 +535,7 @@ export const renewLoan = async (req, id, body) => {
   if (interest < 0) throw ApiError.badRequest('Interest cannot be below zero');
   const days = interestDays(body, settings);
   // body.interest_rate is the NEW loan's rate here; a rate typed for the old loan's interest comes as old_interest_rate
-  const rateUsed = typedRate({ interest_rate: body.old_interest_rate });
+  const rateUsed = typedRate({ interest_rate: body.old_interest_rate, interest_rate_unit: body.old_interest_rate_unit });
   const discount = round2(body.discount);
   // interest taken below the system figure closes the old loan for less - a concession like a discount
   const reduced = round2(Math.max(0, systemDue - interest));

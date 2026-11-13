@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { rateText } from '@/lib/rateUnits';
 import { amount, inWords, n, weight } from '@/lib/format';
 
 const TITLES = {
@@ -50,7 +51,7 @@ function PaymentReceipt({ data }) {
       {n(txn.interest_amount) > 0 && (<>
         {months > 0 && <Row k="Interest Months" v={`${months}${from ? `  (${d(from)} to ${d(txn.interest_upto)})` : ''}`} />}
         {n(txn.interest_days) > 0 && <Row k="Interest Days" v={`${n(txn.interest_days)}${txn.interest_upto ? `  (up to ${d(txn.interest_upto)})` : ''}`} />}
-        {n(txn.interest_rate_used) > 0 && <Row k="Interest Rate" v={`${n(txn.interest_rate_used)}% per month`} />}
+        {n(txn.interest_rate_used) > 0 && <Row k="Interest Rate" v={rateText(txn.interest_rate_used, txn.interest_rate_unit)} />}
         {months > 0 && monthly > 0 && <Row k="Interest / Month" v={rs(n(txn.interest_rate_used) > 0 ? Math.round(n(txn.interest_amount) / months) : monthly)} />}
         <Row k="Interest Received" v={rs(n(txn.interest_amount) + n(txn.penal_amount))} bold />
       </>)}
@@ -83,7 +84,7 @@ function ReleaseReceipt({ data }) {
       <div className="mt-2 flex justify-between text-lg font-bold"><span>RELEASE RECEIPT</span><span>No {loan.release_no ?? txn.release_no ?? txn.receipt_no}</span></div>
       <div className="flex justify-between font-bold"><span>Loan No {loan.bill_no}{loan.manual_bill_no ? `  ·  Bill Book ${loan.manual_bill_no}` : ''}</span><span>Date {d(txn.txn_date)}</span></div>
       <p>Customer: {loan.customer_title ? `${loan.customer_title} ` : ''}{loan.customer_name}   (A/c {loan.customer_no})</p>
-      <p className="text-[13px] text-ink-600">Loan date {d(loan.loan_date)}  ·  Interest {n(txn.interest_rate_used) > 0 ? `${n(txn.interest_rate_used).toFixed(2)}% p.m. (this release)` : `${n(loan.interest_rate).toFixed(2)}% ${loan.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}`}</p>
+      <p className="text-[13px] text-ink-600">Loan date {d(loan.loan_date)}  ·  Interest {n(txn.interest_rate_used) > 0 ? `${rateText(txn.interest_rate_used, txn.interest_rate_unit)} (this release)` : `${n(loan.interest_rate).toFixed(2)}% ${loan.rate_type === 'MONTHLY' ? 'p.m.' : 'p.a.'}`}</p>
       <div className="my-2 border-t border-ink-400" />
       {items.map((i) => <Row key={i.id} k={`${String(i.item_name || '').toUpperCase()}  x${i.pcs}`} v={`${weight(i.net_wt)} g`} />)}
       <div className="my-2 border-t border-ink-400" />

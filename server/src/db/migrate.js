@@ -41,7 +41,9 @@ const COLUMNS = [
   // interest charged by days (7, 15 ...) instead of whole months
   ['loan_transactions', 'interest_days', 'INT NULL AFTER months_paid'],
   // rate % per month typed for this payment (null = the loan's own rate)
-  ['loan_transactions', 'interest_rate_used', 'DECIMAL(6,3) NULL AFTER interest_days'],
+  ['loan_transactions', 'interest_rate_used', 'DECIMAL(12,3) NULL AFTER interest_days'],
+  // unit of the typed rate: PM % a month (default) · PA % a year · PD % a day · RD ₹ a day · RM ₹ a month
+  ['loan_transactions', 'interest_rate_unit', 'VARCHAR(4) NULL AFTER interest_rate_used'],
 ];
 
 const TABLES = `
@@ -103,6 +105,8 @@ const run = async () => {
   // branch contact numbers: carry the old single phone into the list
   await conn.query("UPDATE branches SET phones = JSON_ARRAY(phone) WHERE phones IS NULL AND phone IS NOT NULL AND phone <> ''");
   await conn.query("INSERT IGNORE INTO schema_migrations (version, description) VALUES (4, 'Branch licence no and contact numbers')");
+  // a typed rate can be ₹ a month (thousands) - widen the column made for % a month
+  await conn.query('ALTER TABLE loan_transactions MODIFY interest_rate_used DECIMAL(12,3) NULL');
   await conn.end();
   console.log(`✔ Database "${env.db.database}" is up to date`);
 };

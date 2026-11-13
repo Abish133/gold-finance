@@ -10,6 +10,8 @@ import { Button, Field, Input, Select } from '@/components/ui';
 import { useFetch } from '@/hooks/useApi';
 import { useLookups } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
+import { ratePer, rateInUnit, rateText as rateText2 } from '@/lib/rateUnits';
+import { RateField } from './InterestChoice';
 import { usePrinter } from '@/features/print/usePrinter';
 import { api } from '@/lib/api';
 import { amount, money, date, n, round2, today, weight } from '@/lib/format';
@@ -42,6 +44,7 @@ export default function PartPaymentPage() {
   const [intAmt, setIntAmt] = useState('');
   const [partAmt, setPartAmt] = useState('');
   const [rateText, setRateText] = useState('');
+  const [rateUnit, setRateUnit] = useState('PM');   // % a month (loan's unit) / % a year / % a day / ₹ a day / ₹ a month
   const [pay, setPay] = useState({ mode: 'CASH', amount: '', reference: '', bank_account_id: '' });
   const [lines, setLines] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -49,7 +52,7 @@ export default function PartPaymentPage() {
   const l = full?.loan;
   const c = full?.calc;
 
-  const reset = () => { setMode('MONTHS'); setMonths(0); setDays(''); setIntAmt(''); setPartAmt(''); setRateText(''); setLines([]); setPay({ mode: 'CASH', amount: '', reference: '', bank_account_id: '' }); };
+  const reset = () => { setMode('MONTHS'); setMonths(0); setDays(''); setIntAmt(''); setPartAmt(''); setRateText(''); setRateUnit('PM'); setLines([]); setPay({ mode: 'CASH', amount: '', reference: '', bank_account_id: '' }); };
   useEffect(reset, [loanId]);
   // desktop: opens with all due months ready to pay
   useEffect(() => { if (c) { setMonths(Math.max(0, (c.monthsDue || 0) - (c.monthsPaid || 0))); setRateText(String(round2(c.rateType === 'MONTHLY' ? n(c.rate) : n(c.rate) / 12))); } }, [loanId, !!c]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -60,13 +63,14 @@ export default function PartPaymentPage() {
   const sysPerDay = sysMonthly / 30;
   const minDays = n(settings?.INTEREST_MIN_DAYS);
   const topupsAmt = round2((full?.transactions || []).filter((t) => !t.is_void && t.txn_type === 'TOPUP').reduce((s, t) => s + n(t.principal_amount), 0));
-  // rate % per month for this payment: the loan's rate, or typed by the shop (e.g. 1.25 instead of 1.5)
+  // rate for this payment: the loan's rate (% a month), or typed by the shop in any unit (1.25% a month, 15% a year, ₹20 a day …)
   const loanRate = c ? round2(c.rateType === 'MONTHLY' ? n(c.rate) : n(c.rate) / 12) : 0;
-  const rateTyped = rateText !== '' && n(rateText) >= 0 && round2(n(rateText)) !== loanRate;
+  const rateTyped = rateText !== '' && n(rateText) >= 0 && (rateUnit !== 'PM' || round2(n(rateText)) !== loanRate);
   const ratePct = rateTyped ? n(rateText) : loanRate;
   const rateBase = c ? (c.mode === 'MYBOOK' ? n(l.principal) + topupsAmt : n(c.principalOutstanding)) : 0;
-  const monthly = rateTyped ? Math.round((rateBase * ratePct) / 100) : sysMonthly;
-  const perDay = monthly / 30;
+  const typedPer = rateTyped ? ratePer(rateBase, ratePct, rateUnit) : null;
+  const monthly = typedPer ? typedPer.monthly : sysMonthly;
+  const perDay = typedPer ? typedPer.perDay : monthly / 30;
   const paidMonths = c?.monthsPaid || 0;
   const dueMonths = Math.max(0, (c?.monthsDue || 0) - paidMonths);
   // interest already paid, as whole months + the days left over (when earlier interest was taken by days)
@@ -124,6 +128,7 @@ export default function PartPaymentPage() {
       months_paid: mode === 'MONTHS' && interest > 0 ? months : 0,
       interest_days: mode === 'DAYS' && interest > 0 ? dayCount : undefined,
       interest_rate: mode !== 'AMOUNT' && interest > 0 && rateTyped ? ratePct : undefined,
+      interest_rate_unit: mode !== 'AMOUNT' && interest > 0 && rateTyped ? rateUnit : undefined,
     };
     setSaving(true);
     try {
@@ -143,7 +148,7 @@ export default function PartPaymentPage() {
     f2: () => canInt && setMode((m) => MODES_INT[(MODES_INT.indexOf(m) + 1) % MODES_INT.length]), f3: () => document.getElementById('part-amount')?.focus(),
     '+': () => mode === 'MONTHS' && setMonths((m) => m + 1), '-': () => mode === 'MONTHS' && setMonths((m) => Math.max(0, m - 1)),
     f4: addLine, f5: () => { setSp({}); setQ(''); }, f10: () => save(true), escape: () => navigate('/'),
-  }, [l, months, mode, days, intAmt, partAmt, rateText, lines, pay, total]);
+  }, [l, months, mode, days, intAmt, partAmt, rateText, rateUnit, lines, pay, total]);
 
   const banks = (lk?.banks || []).map((b) => ({ value: b.id, label: b.bank_name }));
   const cell = { adv: 'bg-violet-200 text-violet-900', paid: 'bg-emerald-200 text-emerald-900', now: 'bg-ink-900 text-white', due: 'bg-rose-100 text-rose-800', not: 'bg-ink-100 text-ink-400' };
@@ -262,7 +267,7 @@ export default function PartPaymentPage() {
           {!canInt && <p className="rounded-md bg-ink-50 px-2.5 py-1.5 text-[12px] text-ink-500 dark:bg-ink-800">You can take the part amount only - your role cannot receive interest.</p>}
           {canInt && <>
           {/* one row: count (months / days) or amount + rate % per month */}
-          <div className={clsx('grid gap-2', mode === 'AMOUNT' ? 'grid-cols-1' : 'grid-cols-[1fr_108px]')}>
+          <div className={clsx('grid gap-2', mode === 'AMOUNT' ? 'grid-cols-1' : 'grid-cols-[1fr_160px]')}>
             {mode === 'MONTHS' && (
               <div>
                 <p className="label">Months</p>
@@ -290,12 +295,8 @@ export default function PartPaymentPage() {
               </div>
             )}
             {mode !== 'AMOUNT' && (
-              <div>
-                <p className="label">Rate % / month</p>
-                <input type="number" min="0" step="0.01" inputMode="decimal" aria-label="Interest rate percent per month" value={rateText} placeholder={l ? String(loanRate) : '0'}
-                  onChange={(e) => setRateText(e.target.value)} onFocus={(e) => e.target.select()}
-                  className={clsx(numBox, rateTyped && '!border-amber-400 !bg-amber-50 dark:!bg-amber-950/30')} />
-              </div>
+              <RateField title="Interest" big rate={rateText} unit={rateUnit} typed={rateTyped} placeholder={l ? loanRate : 0}
+                onRate={setRateText} onUnit={(u) => { setRateUnit(u); setRateText(String(rateInUnit(loanRate, u, rateBase))); }} />
             )}
           </div>
           {mode === 'MONTHS' && (
@@ -314,8 +315,8 @@ export default function PartPaymentPage() {
           {daysTooFew && <p className="text-[12px] font-semibold text-rose-600">At least {minDays} days must be charged.</p>}
           {rateTyped && (
             <p className="flex items-center gap-1.5 text-[11px] text-amber-800 dark:text-amber-300">
-              <span>Rate {ratePct}% for this payment only (loan rate {loanRate}%).</span>
-              <button type="button" className="font-bold underline" onClick={() => setRateText('')}>Use loan rate</button>
+              <span>Rate {rateText2(ratePct, rateUnit)} for this payment only (loan rate {loanRate}% p.m.).</span>
+              <button type="button" className="font-bold underline" onClick={() => { setRateUnit('PM'); setRateText(String(loanRate)); }}>Use loan rate</button>
             </p>
           )}
           <div className="rounded-md border border-ink-200 px-2.5 py-0.5 dark:border-ink-800 [&>div]:py-0.5 [&>div]:text-[13px]">

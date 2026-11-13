@@ -50,6 +50,19 @@ t = (await call('GET', `/loans/${L1.id}`)).data.transactions.filter((x) => !x.is
 eq(t.interest_rate_used, 1.25, 'typed rate stored');
 await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 10, interest_rate: 99 }, true);
 ok('rate above 20% refused');
+// rate units: % a year, ₹ a day; limits per unit
+await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 100, interest_days: 10, interest_rate: 15, interest_rate_unit: 'PA' });
+t = (await call('GET', `/loans/${L1.id}`)).data.transactions.filter((x) => !x.is_void).at(-1);
+if (t.interest_rate_unit !== 'PA' || Number(t.interest_rate_used) !== 15) throw new Error('% a year not stored');
+ok('15% a year stored with its unit');
+await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 200, interest_days: 10, interest_rate: 20, interest_rate_unit: 'RD' });
+t = (await call('GET', `/loans/${L1.id}`)).data.transactions.filter((x) => !x.is_void).at(-1);
+if (t.interest_rate_unit !== 'RD') throw new Error('₹ a day not stored');
+ok('₹20 a day stored with its unit');
+await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 10, interest_rate: 2, interest_rate_unit: 'PD' }, true);
+ok('2% a day refused (limit 1% a day)');
+await call('POST', `/loans/${L1.id}/interest`, { date: day, interest_amount: 10, interest_rate: 2, interest_rate_unit: 'XX' }, true);
+ok('unknown unit refused');
 
 // 3. release: interest by days (lower than the full month) - admin passes approval itself
 const L2 = await newLoan();

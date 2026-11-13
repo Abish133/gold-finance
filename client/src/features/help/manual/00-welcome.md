@@ -87,8 +87,8 @@ Your **role** decides which menus you see. A cashier does not see accounts or se
 | Role | Usually does |
 |---|---|
 | Super Admin (owner) | Everything, all branches, settings, users, year end |
-| Branch Manager | Counter + approvals + day end + auction + masters of the branch |
-| Cashier | Loans, part payment, release, re-loan, top-up, stickers, cash count |
+| Branch Manager | Counter + approvals (discounts, interest below Auto) + day end + auction + masters of the branch |
+| Cashier | Loans, part payment, release, re-loan, top-up, stickers, cash count; interest Auto or Manual (asks the manager above the limit) |
 | Accountant | Vouchers, cash book, ledgers, final accounts, bank, salary |
 | Viewer | Look up loans, customers and reports only |
 

@@ -330,7 +330,8 @@ CREATE TABLE IF NOT EXISTS loan_transactions (
   total_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
   months_paid DECIMAL(6,2) NOT NULL DEFAULT 0,
   interest_days INT NULL,                     -- interest charged by days (7, 15 ...) instead of months
-  interest_rate_used DECIMAL(6,3) NULL,       -- rate % per month typed for this payment (null = loan rate)
+  interest_rate_used DECIMAL(12,3) NULL,      -- rate typed for this entry (null = loan rate)
+  interest_rate_unit VARCHAR(4) NULL,         -- PM % a month · PA % a year · PD % a day · RD ₹ a day · RM ₹ a month
   interest_upto DATE NULL,
   remarks VARCHAR(250),
   voucher_id INT NULL,
