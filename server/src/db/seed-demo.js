@@ -20,6 +20,8 @@
  * the loan history is only created for a branch that has no customers yet.
  */
 import 'dotenv/config';
+import { query, queryOne, pool } from '#config/db.js';
+import { daySummary } from '#modules/accounts/accounts.service.js';
 
 const B = `${process.env.API_URL || `http://localhost:${process.env.PORT || 5000}`}/api`;
 const DEMO_PASSWORD = 'Demo@123';
@@ -48,6 +50,7 @@ const step = async (name, fn) => {
 /* ---------- dates (India time) ---------- */
 const ist = (d = new Date()) => new Date(d.getTime() + 5.5 * 3600e3).toISOString().slice(0, 10);
 const TODAY = ist();
+const ymd = (v) => (v instanceof Date ? new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 10) : String(v).slice(0, 10));
 const addDays = (s, n) => { const d = new Date(`${s}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const addMonths = (s, n) => { const d = new Date(`${s}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
 const daysBetween = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000);
@@ -72,13 +75,13 @@ const fineRate = (metal, date) => {
 /* ---------- branches ---------- */
 const BRANCHES = [
   { code: 'HO', name: 'Head Office - Karungal', local_name: 'தலைமை அலுவலகம் - கருங்கல்', city: 'Karungal', pincode: '629157', address: 'Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road, Karungal (PO)', manager_name: 'Raja Sekar',
-    licence_no: 'TN-2020260601126', licence_valid_till: '2027-12-31', phones: ['7708950919', '7708734965', '9436118203'], loan_prefix: '', opening_cash: 800000, email: 'ho@example.com' },
+    licence_no: 'TN-2020260601126', licence_valid_till: '2027-12-31', phones: ['7708950919', '7708734965', '9436118203'], loan_prefix: '', opening_cash: 2500000, email: 'ho@example.com' },
   { code: 'KTR', name: 'Kottar Branch', local_name: 'கோட்டார் கிளை', city: 'Nagercoil', pincode: '629002', address: '40, West Car Street, Kottar', manager_name: 'Murali Krishnan',
-    licence_no: 'TN-KK-PB-2022-0518', licence_valid_till: '2027-03-31', phones: ['9443300001', '04652 245566'], loan_prefix: 'K', opening_cash: 500000 },
+    licence_no: 'TN-KK-PB-2022-0518', licence_valid_till: '2027-03-31', phones: ['9443300001', '04652 245566'], loan_prefix: 'K', opening_cash: 2000000 },
   { code: 'MTM', name: 'Marthandam Branch', local_name: 'மார்த்தாண்டம் கிளை', city: 'Marthandam', pincode: '629165', address: '7, Market Road, Marthandam', manager_name: 'Jeba Singh',
-    licence_no: 'TN-KK-PB-2023-0644', licence_valid_till: '2028-06-30', phones: ['9443400001'], loan_prefix: 'M', opening_cash: 400000 },
+    licence_no: 'TN-KK-PB-2023-0644', licence_valid_till: '2028-06-30', phones: ['9443400001'], loan_prefix: 'M', opening_cash: 1500000 },
   { code: 'CLC', name: 'Colachel Branch', local_name: 'குளச்சல் கிளை', city: 'Colachel', pincode: '629251', address: '3, Beach Road, Colachel', manager_name: 'Antony Raj',
-    licence_no: 'TN-KK-PB-2024-0712', licence_valid_till: '2029-03-31', phones: ['9443500001', '9443500002'], loan_prefix: 'C', opening_cash: 350000 },
+    licence_no: 'TN-KK-PB-2024-0712', licence_valid_till: '2029-03-31', phones: ['9443500001', '9443500002'], loan_prefix: 'C', opening_cash: 2000000 },
 ];
 
 /* ---------- people ---------- */
@@ -179,6 +182,25 @@ const main = async () => {
     if (have.length) { console.log(`${b.name}: customers already there - loan history skipped`); continue; }
     await branchYear({ b, n, schemes: { GL000, GL001, GL002, SL001 } });
   }
+
+  /* Day End for every past day of every branch, as the shop would have done - so each branch's billing date is today */
+  const admin = await queryOne('SELECT id FROM users WHERE username = :u', { u: username });
+  for (const b of BRANCHES) {
+    const id = byCode[b.code].id;
+    const first = (await queryOne("SELECT MIN(txn_date) d FROM loan_transactions WHERE branch_id = :b AND is_void = 0 AND NOT (txn_type = 'DISBURSE' AND COALESCE(remarks, '') = 'Old loan entry')", { b: id }))?.d;
+    if (!first) continue;
+    const last = (await queryOne('SELECT MAX(close_date) d FROM day_closes WHERE branch_id = :b', { b: id }))?.d;
+    let d = last ? addDays(ymd(last), 1) : ymd(first);
+    let closed = 0;
+    for (; d < TODAY; d = addDays(d, 1)) {
+      const sm = await daySummary([id], d);
+      await query('INSERT IGNORE INTO day_closes (branch_id, close_date, opening_cash, closing_cash, summary, closed_by) VALUES (:b, :d, :o, :c, :s, :u)',
+        { b: id, d, o: sm.cash.opening, c: sm.cash.closing, s: JSON.stringify(sm), u: admin?.id || null });
+      closed += 1;
+    }
+    console.log(`${b.name}: ${closed} days closed (Day End) - billing date ${TODAY}`);
+  }
+  await pool.end();
 
   console.log(`\n✔ ${ok.length} demo entries`);
   if (failed.length) { console.log(`✖ ${failed.length} not added:`); failed.slice(0, 60).forEach((f) => console.log(`  - ${f}`)); }
@@ -422,7 +444,11 @@ async function branchYear({ b, n, schemes }) {
   for (const l of rowsOf(await call('GET', '/loans?status=OPEN&pageSize=300')).slice(0, 8)) {
     await step(`${code} stock check #${l.bill_no}`, () => call('POST', '/auction/stock-check', { code: l.bill_no, date: TODAY }));
   }
-  await step(`${code} cash denominations`, () => call('POST', '/accounts/denominations', { date: TODAY, notes: { 500: 100 + n * 20, 200: 40, 100: 60, 50: 25, 20: 20, 10: 30 } }));
+  /* cash count today = the book balance in notes (Colachel counts ₹100 short, to show a difference) */
+  const cashBook = Math.max(0, Math.round(Number((await call('GET', `/accounts/denominations?date=${TODAY}`)).data?.bookBalance || 0)) - (code === 'CLC' ? 100 : 0));
+  const notes = {}; let left = cashBook;
+  for (const v of [500, 200, 100, 50, 20, 10]) { notes[v] = Math.floor(left / v); left -= notes[v] * v; }
+  await step(`${code} cash denominations`, () => call('POST', '/accounts/denominations', { date: TODAY, notes, coins: left }));
   console.log(`${b.name}: ${cust.length} customers, ${oldLoans.length} old + ${loans.length} new loans, ${events.length} receipts / releases`);
 }
 

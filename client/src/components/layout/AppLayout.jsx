@@ -588,7 +588,7 @@ export function AppLayout() {
   const [panel, setPanel] = useState(null);
   const [dark, setDark] = useTheme();
   const navigate = useNavigate();
-  const { can, logout } = useAuth();
+  const { can, logout, branch } = useAuth();
   const { data: alerts = [] } = useFetch('/dashboard/alerts', undefined, { refetchInterval: 5 * 60_000 });
 
   useEffect(() => { syncAppearance(); loadWaTemplates(); }, []); // the user's own look (or the shop default) + WhatsApp texts after login
@@ -608,7 +608,8 @@ export function AppLayout() {
         <HeaderStrip dark={dark} setDark={setDark} onSearch={() => setPanel('search')} onProfile={() => setPanel('profile')} onAlerts={() => setPanel('alerts')} alertCount={alerts.length} />
       </div>
       <main className="w-full min-w-0 flex-1 p-2 sm:p-3 xl:has-[.fit-screen]:flex xl:has-[.fit-screen]:min-h-0 xl:has-[.fit-screen]:flex-col xl:has-[.fit-screen]:overflow-hidden">
-        <Suspense fallback={<Spinner label="Loading screen…" />}><Outlet /></Suspense>
+        {/* key = branch: a branch change rebuilds the open screen, so no screen keeps another branch's loans, lists or dates */}
+        <Suspense fallback={<Spinner label="Loading screen…" />}><Outlet key={branch || 'none'} /></Suspense>
       </main>
       <div className="sticky bottom-0 z-20"><StatusBar /></div>
 

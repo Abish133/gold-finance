@@ -7,6 +7,11 @@ screens: *
 
 A short tour of the newer parts of the app. Each line says where to find it; the chapters after this one explain the details.
 
+## Branch switch
+| What | Where | What it does |
+|---|---|---|
+| **Changing branch reloads the open screen** | Branch box in the header | Auction list, Interest Calculator, Release, Part Payment and every other screen show only the new branch's loans, dates and totals - nothing stays from the old branch |
+
 ## Company name and logo everywhere
 | What | Where | What it does |
 |---|---|---|

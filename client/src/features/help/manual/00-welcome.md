@@ -79,6 +79,8 @@ On a narrow screen the menu becomes a **☰ Menu** button (with search and recen
 
 If you work in more than one branch, the **Branch** box in the header changes branch. Owners can choose **All Branches** to see everything together (entries are always made in one branch).
 
+**Everything follows the branch you choose:** loans, customers, the billing date, cash, reports, the Auction list, the 🔔 reminders and the Morning briefing. Changing the branch reloads the screen you are on, so a loan, list or date of the old branch never stays on screen - type the loan no again in the new branch. Each branch closes its own day (Day End) and has its own billing date and loan numbers (e.g. HO 1, 2 … · Kottar K1, K2 …).
+
 Every branch has its own **licence number** and **contact numbers** (1 to 5). Point the mouse at the Branch box to see them; the list in the box also shows each branch's licence number. Bills, receipts, notices and printed reports use the numbers of the branch - see *First-time setup, Step 2*.
 
 ## 6. Who can see what
