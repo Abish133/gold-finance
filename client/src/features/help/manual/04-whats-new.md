@@ -7,6 +7,13 @@ screens: *
 
 A short tour of the newer parts of the app. Each line says where to find it; the chapters after this one explain the details.
 
+## Company name and logo everywhere
+| What | Where | What it does |
+|---|---|---|
+| **Sign-in page** shows the company logo and name | Sign in | Taken from Masters → Company Information (logo and name) |
+| **Browser tab** shows the company name | Every screen | e.g. *RJM Gold Finance* |
+| **Every SMS ends with the company name** | Settings → SMS Settings → Templates | `- {company}` at the end of New loan, Interest, Loan closed and Due reminder; filled from Company Information |
+
 ## SMS and WhatsApp
 | What | Where | What it does |
 |---|---|---|

@@ -13,7 +13,7 @@ export const SETUP = [
   { key: 'company', title: 'Company details', path: '/settings/company', time: '3 min',
     why: 'Your shop name, address, licence number and logo are printed on every loan bill and receipt.',
     what: ['Masters → Company Information', 'Type the shop name, address lines, mobile and pawn-broker licence number', 'Add the logo (optional) and press Save (F2)'],
-    sample: 'Sri Lakshmi Gold Finance · 12, Main Road, Nagercoil · 94430 12345 · Licence TN-NGL-0421' },
+    sample: 'RJM Gold Finance · 5/175C, JM Tower, Aiyan Vilai Road, Karungal 629157 · 7708734965 · Licence TN-2020260601126' },
   { key: 'branch', title: 'Branch and opening cash', path: '/settings/branches', time: '2 min',
     why: 'Every loan belongs to a branch. The branch licence no and contact numbers are printed on its bills. Opening cash is the money in the drawer on the first day - Day Report starts from it.',
     what: ['Settings → More → Branches', 'Edit "Head Office": code, name, pawn broker licence no and contact numbers (1 must be filled, up to 5 with + Add number), loan number prefix', 'Enter Opening cash (cash in drawer today) and Save', 'More shops? Add one branch for each'],

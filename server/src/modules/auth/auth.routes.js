@@ -86,6 +86,11 @@ router.get('/appearance/public', async (_req, res) => {
   const st = await getSettings(0);
   res.json({ data: parseJson(st.APPEARANCE_DEFAULT) });
 });
+// the company name and logo for the sign-in page (no sign-in yet) - nothing private
+router.get('/brand', async (_req, res) => {
+  const c = await queryOne('SELECT name, logo_path FROM company ORDER BY id LIMIT 1');
+  res.json({ data: { name: c?.name || '', logo_path: c?.logo_path || null } });
+});
 router.get('/appearance', authenticate, async (req, res) => {
   const row = await queryOne('SELECT appearance FROM users WHERE id = :id', { id: req.user.id });
   const st = await getSettings(0);

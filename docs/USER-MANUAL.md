@@ -170,7 +170,7 @@ Sign in as the owner (Super Admin). The first sign-in on a new install opens Get
 3. Logo (optional) - click the logo box and choose an image.
 4. **Save (F2)**.
 
-Example: *Sri Lakshmi Gold Finance, 12 Main Road, Nagercoil 629001, 94430 12345, Licence TN-NGL-0421.*
+Example: *RJM Gold Finance, Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road, Karungal (PO) - 629157, Kanyakumari District, mobile 7708734965, 9436118203, Licence TN-2020260601126* - with the RJM logo.
 
 ## Step 2 - Branch and opening cash
 **Settings → More → Branches**
@@ -268,6 +268,13 @@ Rent, salary, electricity, tea … → **Accounts → Voucher Entry (F6)** → P
 # What's new
 
 A short tour of the newer parts of the app. Each line says where to find it; the chapters after this one explain the details.
+
+## Company name and logo everywhere
+| What | Where | What it does |
+|---|---|---|
+| **Sign-in page** shows the company logo and name | Sign in | Taken from Masters → Company Information (logo and name) |
+| **Browser tab** shows the company name | Every screen | e.g. *RJM Gold Finance* |
+| **Every SMS ends with the company name** | Settings → SMS Settings → Templates | `- {company}` at the end of New loan, Interest, Loan closed and Due reminder; filled from Company Information |
 
 ## SMS and WhatsApp
 | What | Where | What it does |
@@ -1244,18 +1251,18 @@ Every business SMS in India must be registered on a DLT portal. A registration o
 
 | App message | Register on DLT as |
 |---|---|
-| New loan | Dear {#var#}, your gold loan {#var#} of Rs.{#var#} dated {#var#} is sanctioned. Net wt {#var#} g. Thank you. - Sri Lakshmi Gold Finance |
-| Interest received | Dear {#var#}, received Rs.{#var#} towards loan {#var#} on {#var#}. Thank you. - Sri Lakshmi Gold Finance |
-| Loan closed | Dear {#var#}, your loan {#var#} is closed on {#var#}. Amount received Rs.{#var#}. Thank you. - Sri Lakshmi Gold Finance |
-| Due reminder | Dear {#var#}, your loan {#var#} is overdue. Please pay the interest / renew at the earliest to avoid auction. - Sri Lakshmi Gold Finance |
+| New loan | Dear {#var#}, your gold loan {#var#} of Rs.{#var#} dated {#var#} is sanctioned. Net wt {#var#} g. Thank you. - RJM Gold Finance |
+| Interest received | Dear {#var#}, received Rs.{#var#} towards loan {#var#} on {#var#}. Thank you. - RJM Gold Finance |
+| Loan closed | Dear {#var#}, your loan {#var#} is closed on {#var#}. Amount received Rs.{#var#}. Thank you. - RJM Gold Finance |
+| Due reminder | Dear {#var#}, your loan {#var#} is overdue. Please pay the interest / renew at the earliest to avoid auction. - RJM Gold Finance |
 | Birthday wishes | Dear {#var#}, warm birthday wishes from {#var#}! |
 
-   Use your own shop name. After approval each template gets a **Template ID** (about 19 digits).
+   The app ends every SMS with ` - {company}`, which it fills with the company name from Company Information (RJM Gold Finance). On DLT write the name itself, not `{#var#}`, exactly as it is spelt in Company Information. After approval each template gets a **Template ID** (about 19 digits).
 4. **Telemarketer / chain** - add your SMS provider as the telemarketer of your entity (the provider tells you its TM id). Without it, messages are blocked even with approved templates.
 
 **In this app** (Settings → SMS Settings)
 1. **Auto SMS Rules** - Enable SMS, paste the provider link with `{phone}`, `{message}` and `templateid={template_id}` (the provider's own name for each part, e.g. `mobile=`, `msg=`, `dlt_template_id=`), your PE ID and sender id typed in. Optional *Failure text*. Save.
-2. **Templates** - open each SMS template: make the **Message** exactly the approved text, with the app's words in place of `{#var#}` - e.g. `Dear {name}, received Rs.{amount} towards loan {loan_no} on {date}. Thank you. - Sri Lakshmi Gold Finance`. Type its **DLT template id**. Switch **off** every SMS template you did not register.
+2. **Templates** - open each SMS template: make the **Message** exactly the approved text, with the app's words in place of `{#var#}` - e.g. `Dear {name}, received Rs.{amount} towards loan {loan_no} on {date}. Thank you. - {company}` (the app's default text already looks like this). Type its **DLT template id**. Switch **off** every SMS template you did not register.
 3. Test with your own mobile and look at **Queue & Log** (above).
 
 > The text must match the approved template **word for word** - one extra space, comma or word and the operator drops it. Change the text in DLT first, then here.

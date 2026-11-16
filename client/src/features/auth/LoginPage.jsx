@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Navigate, useNavigate } from 'react-router';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   Lock,
   User,
@@ -53,6 +53,10 @@ export default function LoginPage() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  // the shop's own name and logo (Company Information); the generic name until it loads
+  const { data: brand } = useQuery({ queryKey: ['/auth/brand'], queryFn: () => api.get('/auth/brand').then((r) => r.data), staleTime: 5 * 60_000 });
+  const shopName = brand?.name || 'Gold Finance';
+  useEffect(() => { if (brand?.name) document.title = brand.name; }, [brand?.name]);
 
   const login = useMutation({
     mutationFn: (values) => api.post('/auth/login', values),
@@ -86,12 +90,12 @@ export default function LoginPage() {
         {/* Brand Logo */}
 
         <div className="relative z-10 flex shrink-0 items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-2xl bg-white">
-            <Gem className="size-6 text-[#10252c]" />
+          <div className="grid size-12 place-items-center overflow-hidden rounded-2xl bg-white">
+            {brand?.logo_path ? <img src={brand.logo_path} alt="" className="size-full object-contain p-0.5" /> : <Gem className="size-6 text-[#10252c]" />}
           </div>
 
           <div>
-            <h2 className="text-lg font-bold tracking-wide">GOLD FINANCE</h2>
+            <h2 className="text-lg font-bold tracking-wide uppercase">{shopName}</h2>
 
             <p className="text-[10px] font-semibold uppercase tracking-[3px] text-white/55">
               Pawn Broking Suite
@@ -151,7 +155,7 @@ export default function LoginPage() {
         {/* Left Footer */}
 
         <div className="relative z-10 flex shrink-0 items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-500">
-          <span>© {new Date().getFullYear()} Gold Finance</span>
+          <span>© {new Date().getFullYear()} {shopName}</span>
 
           <span className="flex items-center gap-2">
             <ShieldCheck className="size-4 text-white/60" />
@@ -168,12 +172,12 @@ export default function LoginPage() {
         {/* Mobile Branding */}
 
         <div className="absolute left-6 top-6 flex items-center gap-3 lg:hidden">
-          <div className="grid size-11 place-items-center rounded-xl bg-[#10252c]">
-            <Gem className="size-5 text-white" />
+          <div className="grid size-11 place-items-center overflow-hidden rounded-xl bg-[#10252c]">
+            {brand?.logo_path ? <img src={brand.logo_path} alt="" className="size-full bg-white object-contain p-0.5" /> : <Gem className="size-5 text-white" />}
           </div>
 
           <div>
-            <p className="font-bold text-[#10252c]">GOLD FINANCE</p>
+            <p className="font-bold uppercase text-[#10252c]">{shopName}</p>
 
             <p className="text-[10px] uppercase tracking-widest text-slate-500">
               Pawn Broking Suite
@@ -291,7 +295,7 @@ export default function LoginPage() {
             {/* Right Footer */}
 
             <p className="mt-10 text-center text-xs text-slate-400">
-              © {new Date().getFullYear()} Gold Finance. All rights reserved.
+              © {new Date().getFullYear()} {shopName}. All rights reserved.
             </p>
           </div>
         </div>

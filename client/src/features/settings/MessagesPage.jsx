@@ -11,10 +11,10 @@ import { SettingsForm } from './SettingsForm';
 
 /* every message the app sends: [what it is for, the {variables} it can use] - same list as the server */
 const MSG = {
-  NEW_LOAN: ['New loan (SMS)', '{name} {loan_no} {amount} {date} {weight} {due_date}'],
-  INTEREST: ['Interest / part payment (SMS)', '{name} {loan_no} {amount} {date}'],
-  RELEASE: ['Loan closed (SMS)', '{name} {loan_no} {amount} {date}'],
-  DUE_REMINDER: ['Due reminder / auction notice (SMS)', '{name} {loan_no} {amount} {date} {due_date}'],
+  NEW_LOAN: ['New loan (SMS)', '{name} {loan_no} {amount} {date} {weight} {due_date} {company}'],
+  INTEREST: ['Interest / part payment (SMS)', '{name} {loan_no} {amount} {date} {company}'],
+  RELEASE: ['Loan closed (SMS)', '{name} {loan_no} {amount} {date} {company}'],
+  DUE_REMINDER: ['Due reminder / auction notice (SMS)', '{name} {loan_no} {amount} {date} {due_date} {company}'],
   BIRTHDAY: ['Birthday wishes (SMS)', '{name} {company}'],
   OWNER_SUMMARY: ['Daily summary to owner (SMS)', '{branch} {date} {loans} {lent} {releases} {released} {interest} {cash} {open} {open_amount} {overdue}'],
   WA_NEW_LOAN: ['New loan (WhatsApp)', '{shop} {name} {loan_no} {amount} {date} {items} {due_date}'],

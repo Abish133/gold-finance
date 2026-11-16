@@ -6,10 +6,10 @@ export const render = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => (vars[k
 
 /** Every message the app can send - SMS (sent by the server) and WhatsApp (opened at the counter). Bodies are the defaults. */
 export const TEMPLATE_DEFS = [
-  ['NEW_LOAN', 'New loan (SMS)', 'Dear {name}, your gold loan {loan_no} of Rs.{amount} dated {date} is sanctioned. Net wt {weight} g. Thank you.'],
-  ['INTEREST', 'Interest received (SMS)', 'Dear {name}, received Rs.{amount} towards loan {loan_no} on {date}. Thank you.'],
-  ['RELEASE', 'Loan closed (SMS)', 'Dear {name}, your loan {loan_no} is closed on {date}. Amount received Rs.{amount}. Thank you.'],
-  ['DUE_REMINDER', 'Due reminder / auction notice (SMS)', 'Dear {name}, your loan {loan_no} is overdue. Please pay the interest / renew at the earliest to avoid auction.'],
+  ['NEW_LOAN', 'New loan (SMS)', 'Dear {name}, your gold loan {loan_no} of Rs.{amount} dated {date} is sanctioned. Net wt {weight} g. Thank you. - {company}'],
+  ['INTEREST', 'Interest received (SMS)', 'Dear {name}, received Rs.{amount} towards loan {loan_no} on {date}. Thank you. - {company}'],
+  ['RELEASE', 'Loan closed (SMS)', 'Dear {name}, your loan {loan_no} is closed on {date}. Amount received Rs.{amount}. Thank you. - {company}'],
+  ['DUE_REMINDER', 'Due reminder / auction notice (SMS)', 'Dear {name}, your loan {loan_no} is overdue. Please pay the interest / renew at the earliest to avoid auction. - {company}'],
   ['BIRTHDAY', 'Birthday wishes (SMS)', 'Dear {name}, warm birthday wishes from {company}!'],
   ['OWNER_SUMMARY', 'Daily summary to owner (SMS)', '{branch} {date}: Loans {loans} Rs.{lent}, Releases {releases} Rs.{released}, Interest Rs.{interest}, Cash Rs.{cash}. Open {open} loans Rs.{open_amount}, overdue {overdue}.'],
   ['WA_NEW_LOAN', 'New loan (WhatsApp)', '{shop}\nDear {name}, your loan {loan_no} of Rs {amount} is given on {date} ({items}). Settle before {due_date}.'],
@@ -33,6 +33,8 @@ export const queueMessage = async ({ branchId, event, phone, vars = {}, loanId =
     if (flag && s[flag] !== '1') return;
     const tpl = await queryOne('SELECT body FROM message_templates WHERE event_key = :e AND is_active = 1', { e: event });
     if (!tpl) return;
+    // {company} = the company name (Company Information) in every SMS, unless the caller gave one
+    if (vars.company == null) vars = { ...vars, company: (await queryOne('SELECT name FROM company ORDER BY id LIMIT 1'))?.name || '' };
     await query(
       'INSERT INTO message_queue (branch_id, event_key, phone, message, loan_id) VALUES (:b, :e, :p, :m, :l)',
       { b: branchId, e: event, p: phone, m: render(tpl.body, vars), l: loanId },

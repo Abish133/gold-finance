@@ -36,7 +36,7 @@ export async function chartPng(el, scale = 2) {
 export async function downloadWorkbook(filename, { title, subtitle, sheets }) {
   const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Gold Finance'; wb.created = new Date();
+  wb.creator = 'Gold Finance App'; wb.created = new Date();
   for (const sh of sheets) {
     const ws = wb.addWorksheet(sh.name.slice(0, 31));
     let r = 1;

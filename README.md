@@ -70,7 +70,8 @@ npm run db:demo                     # 4 branches, every role, ~8 months of busin
 ```
 `db:reset` wipes everything - take a backup first if the data matters (Settings → Backup).
 
-The demo has 4 branches (HO, KTR Kottar, MTM Marthandam, CLC Colachel) - each with its licence no and contact numbers - daily gold / silver
+The company is **RJM Gold Finance** (Karungal, licence TN-2020260601126) with its logo (`server/src/db/assets/company-logo.png`, copied to the uploads folder by `db:reset`).
+The demo has 4 branches (HO Head Office - Karungal, KTR Kottar, MTM Marthandam, CLC Colachel) - each with its licence no and contact numbers - daily gold / silver
 rates from the start of the accounting year, customers, opening and new loans (gold, silver, gold + silver), advance interest, interest receipts
 by months / days / typed rate, part payments with interest, top-ups, releases (auto, by days, by another person), re-loans, UPI / bank payments,
 bank pledges, auction notices and sales, expense vouchers, staff attendance and salary, stock checks and cash counts.

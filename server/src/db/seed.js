@@ -7,10 +7,15 @@
  *   - ledger groups + system ledgers for automatic double-entry posting
  *   - SMS templates
  */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import dayjs from 'dayjs';
+import { env } from '#config/env.js';
 import { pool, query, queryOne } from '#config/db.js';
 import { SCREENS } from '#config/screens.js';
+import { ensureTemplates } from '#services/message.service.js';
 
 const upsertOne = async (sqlFind, params, sqlInsert) => {
   const row = await queryOne(sqlFind, params);
@@ -18,15 +23,43 @@ const upsertOne = async (sqlFind, params, sqlInsert) => {
   return (await query(sqlInsert, params)).insertId;
 };
 
+/* the shop this install is for - change any of it later in Masters > Company Information and Settings > Branches */
+export const COMPANY = {
+  name: 'RJM Gold Finance',
+  local_name: 'RJM கோல்ட் பைனான்ஸ்',
+  licence_no: 'TN-2020260601126',
+  address1: 'Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road',
+  address2: 'Karungal (PO) - 629157',
+  address3: 'Kanyakumari District, Tamil Nadu',
+  mobile: '7708734965, 9436118203',
+};
+export const HEAD_OFFICE = {
+  name: 'Head Office - Karungal', city: 'Karungal', pincode: '629157',
+  address: 'Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road, Karungal (PO)',
+  phones: ['7708950919', '7708734965', '9436118203'],
+};
+
+/** The company logo (server/src/db/assets/company-logo.png) copied into the uploads folder; returns its public path. */
+export const installLogo = () => {
+  const from = path.join(path.dirname(fileURLToPath(import.meta.url)), 'assets', 'company-logo.png');
+  if (!fs.existsSync(from)) return null;
+  const dir = path.join(path.resolve(env.uploadDir), 'common');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(from, path.join(dir, 'company-logo.png'));
+  return '/uploads/common/company-logo.png';
+};
+
 const run = async () => {
   /* company + branch */
   if (!(await queryOne('SELECT id FROM company LIMIT 1'))) {
-    await query(`INSERT INTO company (name, local_name, licence_no, address1, address2, address3, mobile)
-      VALUES ('My Gold Finance', NULL, 'TN-0000000000', 'Door No 1, Main Road', 'Town - PIN 000000', 'District, State', '9000000000')`);
+    await query(`INSERT INTO company (name, local_name, licence_no, address1, address2, address3, mobile, logo_path)
+      VALUES (:name, :local_name, :licence_no, :address1, :address2, :address3, :mobile, :logo)`, { ...COMPANY, logo: installLogo() });
   }
-  const branchId = await upsertOne('SELECT id FROM branches WHERE code = :code', { code: 'HO' },
+  const branchId = await upsertOne('SELECT id FROM branches WHERE code = :code',
+    { code: 'HO', ...HEAD_OFFICE, phone: HEAD_OFFICE.phones[0], phones: JSON.stringify(HEAD_OFFICE.phones), licence: COMPANY.licence_no },
     // every branch needs its licence no and at least one contact number (Settings > Branches)
-    `INSERT INTO branches (code, name, address, phone, phones, licence_no, loan_prefix) VALUES (:code, 'Head Office', 'Main Road', '9000000000', '["9000000000"]', 'TN-0000000000', '')`);
+    `INSERT INTO branches (code, name, address, city, pincode, phone, phones, licence_no, loan_prefix)
+     VALUES (:code, :name, :address, :city, :pincode, :phone, :phones, :licence, '')`);
 
   /* financial year (Apr - Mar) */
   const now = dayjs();
@@ -156,14 +189,8 @@ const run = async () => {
     if (!(await queryOne('SELECT id FROM ledgers WHERE name = :n', { n: name }))) await query('INSERT INTO ledgers (group_id, name) VALUES (:g, :n)', { g: await gid('Indirect Expenses'), n: name });
   }
 
-  /* SMS templates */
-  const tpls = [
-    ['NEW_LOAN', 'New loan', 'Dear {name}, your gold loan {loan_no} of Rs.{amount} dated {date} is sanctioned. Net wt {weight} g. Thank you.'],
-    ['INTEREST', 'Interest received', 'Dear {name}, received Rs.{amount} towards loan {loan_no} on {date}. Thank you.'],
-    ['RELEASE', 'Loan closed', 'Dear {name}, your loan {loan_no} is closed on {date}. Amount received Rs.{amount}. Thank you.'],
-    ['DUE_REMINDER', 'Due reminder', 'Dear {name}, your loan {loan_no} is overdue. Please pay the interest / renew at the earliest to avoid auction.'],
-  ];
-  for (const [k, n, b] of tpls) await query('INSERT IGNORE INTO message_templates (event_key, name, body) VALUES (:k, :n, :b)', { k, n, b });
+  /* SMS / WhatsApp templates - one list for the whole app (services/message.service.js) */
+  await ensureTemplates();
 
   console.log('✔ Seed complete');
   console.log(`  Login with username "${username}" and the ADMIN_PASSWORD from server/.env`);

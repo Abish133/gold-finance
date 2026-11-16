@@ -1,7 +1,7 @@
 /**
  * Full demo data: 4 branches, a user for every role, and about 8 months of business that touches every screen.
  *
- *   Company       name, licence, address, logo-less letterhead
+ *   Company       name, licence, address, logo (from the base seed)
  *   Branches      HO Head Office, KTR Kottar, MTM Marthandam, CLC Colachel - each with its licence no and 1-3 contact numbers
  *   Users         owner (Super Admin), area manager (2 branches), and for every branch: manager, cashier, accountant, viewer
  *                 password for all demo users: Demo@123   (admin keeps ADMIN_PASSWORD from server/.env)
@@ -71,8 +71,8 @@ const fineRate = (metal, date) => {
 
 /* ---------- branches ---------- */
 const BRANCHES = [
-  { code: 'HO', name: 'Head Office', local_name: 'தலைமை அலுவலகம்', city: 'Nagercoil', pincode: '629001', address: '12, Main Road, Vadasery', manager_name: 'Raja Sekar',
-    licence_no: 'TN-KK-PB-2021-0421', licence_valid_till: '2027-12-31', phones: ['9443012345', '04652 231122', '9787594818'], loan_prefix: '', opening_cash: 800000, email: 'ho@example.com' },
+  { code: 'HO', name: 'Head Office - Karungal', local_name: 'தலைமை அலுவலகம் - கருங்கல்', city: 'Karungal', pincode: '629157', address: 'Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road, Karungal (PO)', manager_name: 'Raja Sekar',
+    licence_no: 'TN-2020260601126', licence_valid_till: '2027-12-31', phones: ['7708950919', '7708734965', '9436118203'], loan_prefix: '', opening_cash: 800000, email: 'ho@example.com' },
   { code: 'KTR', name: 'Kottar Branch', local_name: 'கோட்டார் கிளை', city: 'Nagercoil', pincode: '629002', address: '40, West Car Street, Kottar', manager_name: 'Murali Krishnan',
     licence_no: 'TN-KK-PB-2022-0518', licence_valid_till: '2027-03-31', phones: ['9443300001', '04652 245566'], loan_prefix: 'K', opening_cash: 500000 },
   { code: 'MTM', name: 'Marthandam Branch', local_name: 'மார்த்தாண்டம் கிளை', city: 'Marthandam', pincode: '629165', address: '7, Market Road, Marthandam', manager_name: 'Jeba Singh',
@@ -86,7 +86,7 @@ const FIRST_M = ['Murugan', 'Arul Raj', 'Prakash', 'Senthil Kumar', 'Anthony', '
 const FIRST_F = ['Lakshmi', 'Selvi', 'Divya', 'Vasanthi', 'Kalaiselvi', 'Jeya', 'Viji Mol', 'Mary', 'Sheela', 'Anitha', 'Revathi', 'Shanthi', 'Priya', 'Malar', 'Gowri', 'Beula'];
 const FATHERS = ['Selvaraj', 'Ramesh', 'Joseph', 'Kannan', 'Mani', 'Subramani', 'Palani', 'Raja', 'Xavier', 'Murali', 'Velu', 'Stephen', 'Suresh Kumar', 'Chellappan'];
 const STREETS = ['Main Road', 'Church Street', 'Temple Street', 'Bazaar Road', 'North Street', 'Market Road', 'School Lane', 'Canal Road', 'Hospital Road', 'Beach Road'];
-const AREAS = { HO: ['Vadasery', 'Parvathipuram', 'Suchindram', 'Kappiyarai'], KTR: ['Kottar', 'Ozhuginasery', 'Vetturnimadam'], MTM: ['Marthandam', 'Kuzhithurai', 'Thuckalay'], CLC: ['Colachel', 'Muttom', 'Eraniel'] };
+const AREAS = { HO: ['Karungal', 'Kappiyarai', 'Thiruvithancode', 'Mulagumoodu'], KTR: ['Kottar', 'Ozhuginasery', 'Vetturnimadam'], MTM: ['Marthandam', 'Kuzhithurai', 'Thuckalay'], CLC: ['Colachel', 'Muttom', 'Eraniel'] };
 const JOBS = ['Farmer', 'Teacher', 'Fisherman', 'Tailor', 'Shop owner', 'Nurse', 'Driver', 'Home maker', 'Boat owner', 'Vendor', 'Mason', 'Clerk'];
 const STAFF = [['Manager', 'Branch Manager', 26000], ['Cashier', 'Cashier', 16000], ['Appraiser', 'Appraiser', 17000], ['Assistant', 'Office Assistant', 12000]];
 
@@ -105,8 +105,8 @@ const main = async () => {
 
   /* ---------- company ---------- */
   await step('company details', () => call('PUT', '/admin/company', {
-    name: 'Sri Lakshmi Gold Finance', local_name: 'ஸ்ரீ லக்ஷ்மி கோல்டு பைனான்ஸ்', proprietor: 'S. Lakshmanan', licence_no: 'TN-KK-PB-2021-0421', licence_valid_till: '2027-12-31',
-    address1: '12, Main Road, Vadasery', address2: 'Nagercoil - 629001', address3: 'Kanyakumari District, Tamil Nadu', phone: '04652 231122', mobile: '9443012345',
+    name: 'RJM Gold Finance', local_name: 'RJM கோல்ட் பைனான்ஸ்', proprietor: '', licence_no: 'TN-2020260601126', licence_valid_till: '2027-12-31',
+    address1: 'Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road', address2: 'Karungal (PO) - 629157', address3: 'Kanyakumari District, Tamil Nadu', phone: '7708950919', mobile: '7708734965, 9436118203',
     email: 'info@example.com', gstin: '', website: '',
   }));
 
@@ -159,7 +159,7 @@ const main = async () => {
     if (users.some((x) => x.username === u)) return;
     await step(`user ${u}`, () => call('POST', '/admin/users', { full_name, username: u, password: DEMO_PASSWORD, role_id: role(roleName), branch_ids: codes.map((c) => byCode[c].id), phone, is_active: 1 }));
   };
-  await addUser('owner', 'S. Lakshmanan (Owner)', 'Super Admin', BRANCHES.map((b) => b.code), '9443012300');
+  await addUser('owner', 'Owner (RJM Gold Finance)', 'Super Admin', BRANCHES.map((b) => b.code), '9443012300');
   await addUser('area.manager', 'Area Manager (HO + Kottar)', 'Branch Manager', ['HO', 'KTR'], '9443012301');
   let ph = 9443600000;
   for (const b of BRANCHES) {
@@ -193,8 +193,8 @@ async function branchYear({ b, n, schemes }) {
 
   /* bank accounts */
   const bankDefs = [
-    { bank_name: 'State Bank of India', bank_branch: `${b.city} Main`, account_name: `Sri Lakshmi Gold Finance - ${b.code}`, account_no: `3021987${n}543`, ifsc: 'SBIN0000876', used_for: 'BOTH', opened_on: addDays(FY_START, -300) },
-    { bank_name: 'Indian Bank', bank_branch: b.city, account_name: `Sri Lakshmi Gold Finance - ${b.code}`, account_no: `675432${n}098`, ifsc: 'IDIB000K042', used_for: 'BOTH', opened_on: addDays(FY_START, -200) },
+    { bank_name: 'State Bank of India', bank_branch: `${b.city} Main`, account_name: `RJM Gold Finance - ${b.code}`, account_no: `3021987${n}543`, ifsc: 'SBIN0000876', used_for: 'BOTH', opened_on: addDays(FY_START, -300) },
+    { bank_name: 'Indian Bank', bank_branch: b.city, account_name: `RJM Gold Finance - ${b.code}`, account_no: `675432${n}098`, ifsc: 'IDIB000K042', used_for: 'BOTH', opened_on: addDays(FY_START, -200) },
   ];
   for (const bd of bankDefs) await step(`${code} bank ${bd.bank_name}`, () => call('POST', '/masters/bank-accounts', bd));
   const banks = rowsOf(await call('GET', '/masters/bank-accounts?pageSize=50'));

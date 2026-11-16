@@ -592,6 +592,8 @@ export function AppLayout() {
   const { data: alerts = [] } = useFetch('/dashboard/alerts', undefined, { refetchInterval: 5 * 60_000 });
 
   useEffect(() => { syncAppearance(); loadWaTemplates(); }, []); // the user's own look (or the shop default) + WhatsApp texts after login
+  const { data: shop } = useCompany();
+  useEffect(() => { if (shop?.name) document.title = shop.name; }, [shop?.name]);   // browser tab = the company name
   useHotkey('ctrl+k', () => setPanel('search'));
   for (const h of HOTKEYS) {
     // eslint-disable-next-line react-hooks/rules-of-hooks

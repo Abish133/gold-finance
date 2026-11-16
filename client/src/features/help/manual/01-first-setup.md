@@ -16,7 +16,7 @@ Sign in as the owner (Super Admin). The first sign-in on a new install opens Get
 3. Logo (optional) - click the logo box and choose an image.
 4. **Save (F2)**.
 
-Example: *Sri Lakshmi Gold Finance, 12 Main Road, Nagercoil 629001, 94430 12345, Licence TN-NGL-0421.*
+Example: *RJM Gold Finance, Door No 5/175C, JM Tower, Pathan Pulli Vilai, Aiyan Vilai Road, Karungal (PO) - 629157, Kanyakumari District, mobile 7708734965, 9436118203, Licence TN-2020260601126* - with the RJM logo.
 
 ## Step 2 - Branch and opening cash
 **Settings → More → Branches**
