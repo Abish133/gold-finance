@@ -406,7 +406,11 @@ router.post('/reminders/run', permit('s_messages', 'edit'), requireBranch, async
 
 router.get('/backup', permit('s_backup', 'export'), async (req, res) => {
   const out = { generated_at: new Date().toISOString(), branches: req.branchIds, tables: {} };
-  for (const t of GLOBAL_TABLES) out.tables[t] = await query(`SELECT * FROM ${t}`);
+  // shared tables; the ones with a branch column keep only the shared rows and the chosen branches' own rows
+  const OWN = { ledgers: 'branch_id IS NULL', schemes: 'branch_id IS NULL', settings: 'COALESCE(branch_id, 0) = 0' };
+  for (const t of GLOBAL_TABLES) {
+    out.tables[t] = OWN[t] ? await query(`SELECT * FROM ${t} WHERE ${OWN[t]} OR branch_id IN (:b)`, { b: req.branchIds }) : await query(`SELECT * FROM ${t}`);
+  }
   for (const t of BACKUP_TABLES) {
     const hasBranch = !['loan_items', 'transaction_payments'].includes(t);
     out.tables[t] = hasBranch

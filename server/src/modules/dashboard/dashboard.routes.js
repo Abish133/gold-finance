@@ -104,12 +104,18 @@ router.get('/search', async (req, res) => {
 router.get('/alerts', async (req, res) => {
   const b = req.branchIds;
   const [overdue, rateMissing, notClosed] = await Promise.all([
-    queryOne("SELECT COUNT(*) c FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date <= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)", { b }),
+    queryOne(`SELECT COUNT(*) c, COALESCE(SUM(current_principal), 0) amt,
+        SUBSTRING_INDEX(GROUP_CONCAT(bill_no ORDER BY loan_date SEPARATOR ', '), ', ', 5) nos
+      FROM loans WHERE branch_id IN (:b) AND status = 'OPEN' AND loan_date <= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)`, { b }),
     queryOne('SELECT COUNT(*) c FROM metal_rates WHERE rate_date = :d', { d: await workDate(req.branchId) }),
     req.branchId ? queryOne('SELECT MAX(close_date) d FROM day_closes WHERE branch_id = :b', { b: req.branchId }) : null,
   ]);
   const alerts = [];
-  if (overdue.c) alerts.push({ type: 'warning', key: 'overdue', text: `${overdue.c} loans are open for over 12 months`, link: '/auction' });
+  // amount + loan nos, so each branch's reminder says which loans it means
+  const rs = (v) => `Rs ${Math.round(Number(v) || 0).toLocaleString('en-IN')}`;
+  const plural = (c, one, many) => (Number(c) === 1 ? one : many);
+  const more = (c, nos) => `${nos}${Number(c) > 5 ? ' …' : ''}`;
+  if (overdue.c) alerts.push({ type: 'warning', key: 'overdue', text: `${overdue.c} ${plural(overdue.c, 'loan is', 'loans are')} open for over 12 months - ${rs(overdue.amt)} (loan no ${more(overdue.c, overdue.nos)})`, link: '/auction' });
   if (!rateMissing.c) alerts.push({ type: 'info', key: 'rate', text: `Gold rate for ${dayjs(await workDate(req.branchId)).format('DD/MM/YYYY')} is not updated`, link: '/masters/rates' });
   if (notClosed && notClosed.d && dayjs().diff(dayjs(notClosed.d), 'day') > 1) {
     alerts.push({ type: 'info', key: 'dayclose', text: `Day close pending since ${dayjs(notClosed.d).add(1, 'day').format('DD/MM/YYYY')}`, link: '/accounts/day-close' });
@@ -128,9 +134,13 @@ router.get('/alerts', async (req, res) => {
       const t = dayjs().format('YYYY-MM-DD');
       const r = await nowRates(t);
       const w = await queryOne(`SELECT COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE} * 0.85),0) close_to,
-          COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE}),0) over_value ${RISK_FROM}`, { b, t, ...r });
-      if (Number(w.over_value)) alerts.push({ type: 'warning', key: 'ratewatch', text: `${w.over_value} loans are now worth less than the loan + interest at today's rate`, link: '/analytics' });
-      else if (Number(w.close_to)) alerts.push({ type: 'info', key: 'ratewatch', text: `${w.close_to} loans are close to the value of their gold at today's rate`, link: '/analytics' });
+          COALESCE(SUM((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE}),0) over_value,
+          COALESCE(SUM(IF((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE}, l.current_principal, 0)),0) over_amt,
+          COALESCE(SUM(IF((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE} * 0.85, l.current_principal, 0)),0) close_amt,
+          SUBSTRING_INDEX(GROUP_CONCAT(IF((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE}, l.bill_no, NULL) ORDER BY l.loan_date SEPARATOR ', '), ', ', 5) over_nos,
+          SUBSTRING_INDEX(GROUP_CONCAT(IF((l.current_principal + ${RISK_ACCRUED}) >= ${RISK_VALUE} * 0.85, l.bill_no, NULL) ORDER BY l.loan_date SEPARATOR ', '), ', ', 5) close_nos ${RISK_FROM}`, { b, t, ...r });
+      if (Number(w.over_value)) alerts.push({ type: 'warning', key: 'ratewatch', text: `${w.over_value} ${plural(w.over_value, 'loan is', 'loans are')} now worth less than the loan + interest at today's rate - ${rs(w.over_amt)} (loan no ${more(w.over_value, w.over_nos)})`, link: '/stock/analysis' });
+      else if (Number(w.close_to)) alerts.push({ type: 'info', key: 'ratewatch', text: `${w.close_to} ${plural(w.close_to, 'loan is', 'loans are')} close to the value of their gold at today's rate - ${rs(w.close_amt)} (loan no ${more(w.close_to, w.close_nos)})`, link: '/stock/analysis' });
     } catch { /* rates not set yet */ }
   }
   // desktop: the last year is over and not closed - remind to run Year End (YE..)

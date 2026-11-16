@@ -251,7 +251,12 @@ async function branchYear({ b, n, schemes }) {
   /* opening (old) loans: entered on paper before the software - some over 12 months (auction list) */
   let book = 1000 + n * 1000;
   const oldLoans = [];
-  const OLD = [[16, 'GOLD', GL000], [14, 'GOLD', GL001], [13, 'SILVER', SL001], [10, 'GOLD', GL000], [9, 'GOLD', GL002], [8, 'MIX', GL000]];
+  const OLD = {
+    HO: [[16, 'GOLD', GL000], [14, 'GOLD', GL001], [13, 'SILVER', SL001], [10, 'GOLD', GL000], [9, 'GOLD', GL002], [8, 'MIX', GL000]],
+    KTR: [[18, 'GOLD', GL000], [15, 'GOLD', GL001], [14, 'GOLD', GL002], [13, 'SILVER', SL001], [9, 'GOLD', GL002], [7, 'MIX', GL000]],
+    MTM: [[13, 'GOLD', GL001], [11, 'GOLD', GL000], [10, 'SILVER', SL001], [9, 'GOLD', GL000], [8, 'GOLD', GL002], [6, 'MIX', GL000]],
+    CLC: [[20, 'SILVER', SL001], [17, 'GOLD', GL000], [15, 'GOLD', GL001], [14, 'GOLD', GL000], [12, 'GOLD', GL002], [9, 'MIX', GL000]],
+  }[code];
   for (let i = 0; i < OLD.length; i += 1) {
     const [ago, metal, sch] = OLD[i];
     const date = addMonths(TODAY, -ago);

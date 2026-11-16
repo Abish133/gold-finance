@@ -512,8 +512,11 @@ function StatusBar() {
 /* ------------------------------------------------------------------ drawers */
 function AlertsDrawer({ open, onClose, alerts }) {
   const navigate = useNavigate();
+  const { currentBranch, isAllBranches } = useAuth();
+  // the reminders are always for the branch chosen in the header
+  const forWhom = isAllBranches ? 'All branches together' : currentBranch ? `${currentBranch.name} (${currentBranch.code})` : '';
   return (
-    <Drawer open={open} onClose={onClose} title="Reminders" icon={Bell} size="sm">
+    <Drawer open={open} onClose={onClose} title="Reminders" subtitle={forWhom ? `For ${forWhom}` : undefined} icon={Bell} size="sm">
       {!alerts.length ? <p className="text-sm text-ink-500">You are all caught up.</p> : (
         <div className="space-y-2">
           {alerts.map((a) => (
