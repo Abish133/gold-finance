@@ -62,6 +62,15 @@ npm run dev:client    # UI   -> http://localhost:5173
 
 Login with `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env` (default `admin`).
 
+### Hand over to the client - empty, only the admin login
+```bash
+npm run db:fresh --prefix server    # DELETES the database, creates the tables, adds ONLY the admin login
+```
+The login (Super Admin) is set in `server/src/db/seed-admin.js`. That file holds the real password, so it is **not in git** (listed in `.gitignore`) - keep a copy on the computer that hands over the app. The client changes the password after the first sign-in.
+There is one empty *Head Office* branch (signing in needs a branch) and the built-in parts the app needs (accounting year,
+roles, Gold / Silver purities, account heads, message texts). No company details, logo, rates, items, customers or loans -
+the client fills them in from **Help → Getting Started**.
+
 ### Start again with full demo data
 ```bash
 npm run db:reset --prefix server    # DELETES the database, creates it, migrates and seeds master data

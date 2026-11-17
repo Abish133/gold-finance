@@ -11,3 +11,5 @@ server/backups/
 .env.local
 .env.production
 .env.example
+# client handover seed - holds the real admin password, stays on this computer only
+server/src/db/seed-admin.js
