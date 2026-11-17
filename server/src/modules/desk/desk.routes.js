@@ -41,9 +41,26 @@ router.get('/rate-board', permitAny(['m_rates', 'loan_new', 'dashboard']), async
   const key = (r) => `${r.metal_id}:${Number(r.purity).toFixed(2)}`;
   const tMap = Object.fromEntries(today.map((r) => [key(r), r]));
   const pMap = Object.fromEntries(prev.map((r) => [key(r), r]));
+  // the last day any rate was saved for each metal - used when this purity itself has no earlier rate
+  // (rates typed as 91.6 / 92.5 by older entry or an import): converted through the fine rate, e.g. 91.6% at 7,304 -> 100% 7,974
+  const lastByMetal = {};
+  for (const r of prev) {
+    const cur = lastByMetal[r.metal_id];
+    if (!cur || String(r.rate_date) > String(cur.rate_date) || (String(r.rate_date) === String(cur.rate_date) && Number(r.purity) > Number(cur.purity))) lastByMetal[r.metal_id] = r;
+  }
+  const scaled = (r, purity, field) => (r && Number(r.purity) > 0 && r[field] != null ? Math.round((Number(r[field]) * Number(purity)) / Number(r.purity) * 100) / 100 : null);
   const rows = purities.map((p) => {
     const k = key(p);
-    return { ...p, today: tMap[k]?.market_rate ?? null, today_loan: tMap[k]?.loan_rate ?? null, previous: pMap[k]?.market_rate ?? null, previous_loan: pMap[k]?.loan_rate ?? null, previous_date: pMap[k]?.rate_date ?? null };
+    const own = pMap[k];
+    const near = lastByMetal[p.metal_id];
+    // the purity's own last rate, unless the metal has a newer rate saved under another purity
+    const usePrev = own && (!near || String(own.rate_date) >= String(near.rate_date)) ? own : null;
+    return {
+      ...p, today: tMap[k]?.market_rate ?? null, today_loan: tMap[k]?.loan_rate ?? null,
+      previous: usePrev ? usePrev.market_rate : scaled(near, p.purity, 'market_rate'),
+      previous_loan: usePrev ? usePrev.loan_rate : scaled(near, p.purity, 'loan_rate'),
+      previous_date: (usePrev || near)?.rate_date ?? null,
+    };
   });
   const history = await query(`SELECT rate_date, metal_id, MAX(market_rate) top_rate FROM metal_rates WHERE rate_date >= DATE_SUB(:d, INTERVAL 30 DAY) AND rate_date <= :d
       GROUP BY rate_date, metal_id ORDER BY rate_date DESC`, { d });

@@ -138,18 +138,20 @@ const main = async () => {
 
   /* ---------- daily rates from the start of the accounting year ---------- */
   branch = String(byCode.HO.id);
-  const haveRates = new Set(rowsOf(await call('GET', '/masters/rates?pageSize=2000&all=1')).map((r) => `${r.metal_id}:${String(r.rate_date).slice(0, 10)}`));
+  // as the shop does every morning on Masters > Gold / Silver Rate: Fine (100%) and Ornament (92%) for each metal
+  const haveRates = new Set(rowsOf(await call('GET', '/masters/rates?pageSize=2000&all=1')).map((r) => String(r.rate_date).slice(0, 10)));
   const rateDays = daysBetween(FY_START, TODAY);
   for (let i = 0; i <= rateDays; i += 1) {
     const d = addDays(FY_START, i);
-    if (!haveRates.has(`${goldMetal.id}:${d}`)) {
-      const m = Math.round(fineRate('GOLD', d) * 0.916);
-      await step(`gold rate ${d}`, () => call('POST', '/masters/rates', { metal_id: goldMetal.id, rate_date: d, purity: 91.6, market_rate: m, loan_rate: Math.round(m * 0.75) }));
-    }
-    if (!haveRates.has(`${silverMetal.id}:${d}`)) {
-      const m = Math.round(fineRate('SILVER', d) * 0.925 * 100) / 100;
-      await step(`silver rate ${d}`, () => call('POST', '/masters/rates', { metal_id: silverMetal.id, rate_date: d, purity: 92.5, market_rate: m, loan_rate: Math.round(m * 0.6 * 100) / 100 }));
-    }
+    if (haveRates.has(d)) continue;
+    const g = Math.round(fineRate('GOLD', d)); const s = Math.round(fineRate('SILVER', d) * 100) / 100;
+    const r2 = (v) => Math.round(v * 100) / 100;
+    await step(`rates ${d}`, () => call('POST', '/desk/rate-board', { date: d, rows: [
+      { metal_id: goldMetal.id, purity: 100, today: g, today_loan: r2(g * 0.75) },
+      { metal_id: goldMetal.id, purity: 92, today: r2(g * 0.92), today_loan: r2(g * 0.92 * 0.75) },
+      { metal_id: silverMetal.id, purity: 100, today: s, today_loan: r2(s * 0.6) },
+      { metal_id: silverMetal.id, purity: 92, today: r2(s * 0.92), today_loan: r2(s * 0.92 * 0.6) },
+    ] }));
   }
   console.log(`rates ready from ${FY_START} to ${TODAY}`);
 

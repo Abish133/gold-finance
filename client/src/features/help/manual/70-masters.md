@@ -10,7 +10,10 @@ screens: m_rates, m_schemes, m_items, m_metals, s_company, employees, attendance
 1. **Rate date** - today (opens by itself after Day End).
 2. Type the **Fine Gold (100%)** and **Fine Silver (100%)** rate in the *Today* column.
 3. **Auto from 100% Rate** fills the ornament rows: 92% = fine × 92 / 100.
-4. **Copy Previous Rate (F5)** - same as yesterday.
+4. **Copy Previous Rate (F5)** - when the rate has not changed since the last day. It fills every *Today* box with the last saved rate (the grey figure under each row, usually yesterday's). Nothing is saved yet - check the figures, change any that moved, then **Save Today's Rate (F2)**.
+   - Example: yesterday Fine Gold 7,974 · Gold Ornament 7,336.08 · Fine Silver 104.15 · Silver Ornament 95.82. Today the market is the same → **F5** → the four boxes show those figures → **F2**. Header shows the rate, new loans are allowed.
+   - If the last rate was saved for another purity (e.g. 91.6% from older entries or an import), it is turned into this row's purity through the 100% rate: 91.6% at 7,300 → Fine Gold 7,969.43.
+   - No earlier rate at all (first day)? The boxes stay empty - type the rates.
 5. **Save Today's Rate (F2)**. Rate card: **Print (F9)** or **PDF (Ctrl+P)**; history chart on the right.
 
 Example: Fine Gold 7,900 → Gold Ornament 92% **7,268**; Fine Silver 100 → Silver Ornament 92.

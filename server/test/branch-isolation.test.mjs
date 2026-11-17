@@ -46,7 +46,8 @@ const walk = (v, want, url, code, path = '') => {
   if (Array.isArray(v)) { v.forEach((x, i) => walk(x, want, url, code, `${path}[${i}]`)); return; }
   if (!v || typeof v !== 'object') return;
   const flag = (what, got) => leaks.push(`${code} ${url} ${path || '.'} ${what} belongs to branch ${got}`);
-  if (v.branch_id != null && Number(v.branch_id) !== want) flag(`branch_id ${v.branch_id}`, v.branch_id);
+  // branch_id 0 = a company-wide row (e.g. a global setting), shared by every branch
+  if (v.branch_id != null && Number(v.branch_id) !== 0 && Number(v.branch_id) !== want) flag(`branch_id ${v.branch_id}`, v.branch_id);
   if (v.loan_id != null && loanBranch.has(Number(v.loan_id)) && loanBranch.get(Number(v.loan_id)) !== want) flag(`loan ${v.loan_id}`, loanBranch.get(Number(v.loan_id)));
   if (v.customer_id != null && custBranch.get(Number(v.customer_id)) != null && custBranch.get(Number(v.customer_id)) !== want) flag(`customer ${v.customer_id}`, custBranch.get(Number(v.customer_id)));
   if (v.bill_no != null && v.branch_id == null && v.loan_id == null && billBranch.has(String(v.bill_no)) && billBranch.get(String(v.bill_no)) !== want) flag(`loan no ${v.bill_no}`, billBranch.get(String(v.bill_no)));

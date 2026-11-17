@@ -114,9 +114,6 @@ const run = async () => {
     await query('UPDATE purities SET is_active = 0');
     await pool.query('INSERT INTO purities (metal_id, name, purity) VALUES ?', [[[gold, 'Fine Gold', 100], [gold, 'Gold Ornament', 92], [silver, 'Fine Silver', 100], [silver, 'Silver Ornament', 92]]]);
   }
-  if (!(await queryOne('SELECT id FROM metal_rates LIMIT 1'))) {
-    await query('INSERT INTO metal_rates (metal_id, rate_date, purity, market_rate, loan_rate) VALUES (:g, CURDATE(), 91.6, 7200, 5400), (:s, CURDATE(), 92.5, 95, 60)', { g: gold, s: silver });
-  }
 
   /* items */
   if (!(await queryOne('SELECT id FROM item_categories LIMIT 1'))) {

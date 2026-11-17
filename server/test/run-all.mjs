@@ -23,7 +23,17 @@ const order = ['interest', 'interest-days', 'mybook', 'mybook-reports', 'smoke',
   };
   await call('POST', '/auth/login', { username: 'admin', password: 'Admin@123' });
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10);
-  const rates = (await call('GET', '/masters/rates?pageSize=100'))?.data || [];
+  let rates = (await call('GET', '/masters/rates?pageSize=100'))?.data || [];
+  // a brand-new database has no rate at all: enter a test rate for today (fine 100% and ornament 92%, as the Rate screen does)
+  if (!rates.length) {
+    const metals = (await call('GET', '/masters/lookups'))?.data?.metals || [];
+    const g = metals.find((m) => m.code === 'GOLD'); const s = metals.find((m) => m.code === 'SILVER');
+    const rows = [];
+    if (g) rows.push({ metal_id: g.id, purity: 100, today: 7900, today_loan: 5925 }, { metal_id: g.id, purity: 92, today: 7268, today_loan: 5451 });
+    if (s) rows.push({ metal_id: s.id, purity: 100, today: 100, today_loan: 60 }, { metal_id: s.id, purity: 92, today: 92, today_loan: 55.2 });
+    if (rows.length) { await call('POST', '/desk/rate-board', { date: today, rows }); console.log('no rates yet - test rate entered for today (gold 7,900 / silver 100)'); }
+    rates = (await call('GET', '/masters/rates?pageSize=100'))?.data || [];
+  }
   for (const metalId of [...new Set(rates.map((r) => r.metal_id))]) {
     const mine = rates.filter((r) => r.metal_id === metalId).sort((a, b) => String(b.rate_date).localeCompare(String(a.rate_date)));
     if (mine[0] && String(mine[0].rate_date).slice(0, 10) !== today) {

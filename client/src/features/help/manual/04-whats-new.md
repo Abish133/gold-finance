@@ -10,6 +10,7 @@ A short tour of the newer parts of the app. Each line says where to find it; the
 ## Branch switch
 | What | Where | What it does |
 |---|---|---|
+| **Copy Previous Rate (F5) always finds the last rate** | Masters → Gold / Silver Rate | Fills today's boxes with the last saved rate of each row - also when that rate was saved for another purity (91.6% → 100% / 92%). Still press Save (F2) |
 | **Reminders (🔔) say which branch and which loans** | 🔔 in the header | The panel shows *For Kottar Branch (KTR)*; each reminder gives the amount and loan nos, e.g. *3 loans are open for over 12 months - Rs 1,87,500 (loan no K1, K2, K3)*. *All Branches* adds them up. Click one to open the list |
 | **Changing branch reloads the open screen** | Branch box in the header | Auction list, Interest Calculator, Release, Part Payment and every other screen show only the new branch's loans, dates and totals - nothing stays from the old branch |
 

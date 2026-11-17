@@ -27,8 +27,11 @@ const hasRate = (await A('GET', '/masters/rates?pageSize=50')).data.some((r) => 
 if (!hasRate) {
   await A('POST', '/loans', { customer_id: cust.id, scheme_id: scheme.id, rate_per_gram: 5400, principal: 1000, items: [{ item_name: 'Ring', gross_wt: 1, stone_wt: 0 }] }, 400);
   ok('new loan blocked without today rate');
-  await A('POST', '/masters/rates', { metal_id: gold.id, rate_date: today, purity: 91.6, market_rate: 7300, loan_rate: 5500 });
-  await A('POST', '/masters/rates', { metal_id: silver.id, rate_date: today, purity: 92.5, market_rate: 96, loan_rate: 60 });
+  // as the Rate screen saves them: fine (100%) and ornament (92%) for each metal
+  await A('POST', '/desk/rate-board', { date: today, rows: [
+    { metal_id: gold.id, purity: 100, today: 7969, today_loan: 5977 }, { metal_id: gold.id, purity: 92, today: 7331.48, today_loan: 5498.61 },
+    { metal_id: silver.id, purity: 100, today: 103.78, today_loan: 62.27 }, { metal_id: silver.id, purity: 92, today: 95.48, today_loan: 57.29 },
+  ] });
   ok('rates entered');
 }
 
